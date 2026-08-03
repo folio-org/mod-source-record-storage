@@ -8,7 +8,6 @@ import static org.folio.rest.jaxrs.model.EntityType.MARC_HOLDINGS;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_HOLDING;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +32,7 @@ import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.kafka.KafkaConfig;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
@@ -61,7 +61,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
   @Override
   protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig) {
-    return new HoldingsPostProcessingEventHandler(recordService, snapshotService, kafkaConfig, mappingParametersCache, vertx);
+    return new HoldingsPostProcessingEventHandler(recordService, snapshotService, kafkaConfig, mappingParametersCache);
   }
 
   @Test
@@ -81,7 +81,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
       createDataImportEventPayload(payloadContext, DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(record -> handler.handle(dataImportEventPayload)
@@ -195,7 +195,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
       createDataImportEventPayload(payloadContext, DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(rec -> handler.handle(dataImportEventPayload)
@@ -366,7 +366,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
       createDataImportEventPayload(payloadContext, DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(rec -> handler.handle(dataImportEventPayload)
@@ -439,7 +439,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
       .withToken(TOKEN);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(record -> handler.handle(dataImportEventPayload)

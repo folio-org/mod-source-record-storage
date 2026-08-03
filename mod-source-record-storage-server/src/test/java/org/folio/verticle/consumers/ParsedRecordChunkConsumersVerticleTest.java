@@ -14,6 +14,7 @@ import org.folio.TestUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.errorhandlers.ParsedRecordChunksErrorHandler;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -22,7 +23,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
-import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.AbstractLBServiceTest;
 import org.junit.After;
 import org.junit.Before;
@@ -255,9 +255,9 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
         kafkaConfig.getEnvId(), getDefaultNameSpace(), TENANT_ID, DI_RAW_RECORDS_CHUNK_PARSED.value());
     var headers = new HashMap<String, String>();
     headers.putAll(Map.of(
-        OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL,
-        OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID,
-        OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN,
+        XOkapiHeaders.URL, OKAPI_URL,
+        XOkapiHeaders.TENANT, TENANT_ID,
+        XOkapiHeaders.TOKEN, TOKEN,
         JOB_EXECUTION_ID_HEADER, jobExecutionId
         ));
     send(topic, KAFKA_KEY_NAME, value, headers);

@@ -11,7 +11,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.LinkingRuleDto;
 import org.folio.client.InstanceLinkClient;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -33,7 +33,7 @@ public class LinkingRulesCache {
       .buildAsync();
   }
 
-  public Future<Optional<List<LinkingRuleDto>>> get(OkapiConnectionParams params) {
+  public Future<Optional<List<LinkingRuleDto>>> get(ConnectionParams params) {
     try {
       return Future.fromCompletionStage(cache.get(params.getTenantId(), (key, executor) -> instanceLinkClient.getLinkingRuleList(params)));
     } catch (Exception e) {

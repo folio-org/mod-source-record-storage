@@ -42,7 +42,7 @@ public abstract class AbstractDeleteEventHandler implements EventHandler {
   protected final TypeConnection typeConnection;
   protected final RecordService recordService;
 
-  public AbstractDeleteEventHandler(RecordService recordService, TypeConnection typeConnection) {
+  protected AbstractDeleteEventHandler(RecordService recordService, TypeConnection typeConnection) {
     this.recordService = recordService;
     this.typeConnection = typeConnection;
   }

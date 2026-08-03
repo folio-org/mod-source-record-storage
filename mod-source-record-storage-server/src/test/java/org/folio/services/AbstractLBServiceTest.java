@@ -164,12 +164,13 @@ public abstract class AbstractLBServiceTest {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    PostgresClientFactory.closeAll();
-    vertx.close().onComplete(context.asyncAssertSuccess(v -> {
-      PostgresClient.stopPostgresTester();
-      wireMockServer.stop();
-      kafkaContainer.stop();
-    }));
+    PostgresClientFactory.closeAll()
+      .compose(v -> vertx.close())
+      .onComplete(context.asyncAssertSuccess(v -> {
+        PostgresClient.stopPostgresTester();
+        wireMockServer.stop();
+        kafkaContainer.stop();
+      }));
   }
 
   public static String getFullModuleName() {

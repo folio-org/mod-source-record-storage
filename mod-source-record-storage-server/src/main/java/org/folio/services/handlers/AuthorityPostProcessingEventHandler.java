@@ -9,7 +9,6 @@ import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 
 import java.util.List;
 
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
@@ -33,9 +32,8 @@ public class AuthorityPostProcessingEventHandler extends AbstractPostProcessingE
   private final KafkaConfig kafkaConfig;
 
   public AuthorityPostProcessingEventHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig,
-                                             MappingParametersSnapshotCache mappingParamsCache,
-                                             Vertx vertx) {
-    super(recordService, snapshotService, kafkaConfig, mappingParamsCache, vertx);
+                                             MappingParametersSnapshotCache mappingParamsCache) {
+    super(recordService, snapshotService, kafkaConfig, mappingParamsCache);
     this.kafkaConfig = kafkaConfig;
   }
 

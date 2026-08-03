@@ -2,7 +2,6 @@ package org.folio.services.handlers.actions;
 
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
@@ -11,7 +10,6 @@ import static org.folio.services.util.AdditionalFieldsUtil.isSubfieldExist;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -28,7 +26,8 @@ import org.folio.Link;
 import org.folio.LinkingRuleDto;
 import org.folio.MappingProfile;
 import org.folio.client.InstanceLinkClient;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.processing.mapping.mapper.writer.marc.MarcBibRecordModifier;
@@ -57,9 +56,9 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   public MarcBibUpdateModifyEventHandler(RecordService recordService,
                                          SnapshotService snapshotService,
                                          MappingParametersSnapshotCache mappingParametersCache,
-                                         Vertx vertx, InstanceLinkClient instanceLinkClient,
+                                         InstanceLinkClient instanceLinkClient,
                                          LinkingRulesCache linkingRulesCache) {
-    super(recordService, snapshotService, mappingParametersCache, vertx);
+    super(recordService, snapshotService, mappingParametersCache);
     this.instanceLinkClient = instanceLinkClient;
     this.linkingRulesCache = linkingRulesCache;
   }
@@ -125,22 +124,21 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
       okapiParams = overrideOkapiParamsWithTenant(okapiParams, centralTenantId);
     }
 
-    OkapiConnectionParams finalOkapiParams = okapiParams;
+    ConnectionParams finalOkapiParams = okapiParams;
     return linkingRulesCache.get(finalOkapiParams)
       .compose(linkingRuleDtos -> loadInstanceLink(matchedRecord, instanceId, finalOkapiParams)
         .compose(links -> modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, links, linkingRuleDtos.orElse(Collections.emptyList())))
         .compose(links -> updateInstanceLinks(instanceId, links, finalOkapiParams)));
   }
 
-  private OkapiConnectionParams overrideOkapiParamsWithTenant(OkapiConnectionParams okapiParams, String tenantId) {
-    Map<String, String> newHeaders = new HashMap<>();
-    okapiParams.getHeaders().forEach(entry -> newHeaders.put(entry.getKey(), entry.getValue()));
-    newHeaders.put(OKAPI_TENANT_HEADER, tenantId);
-    return new OkapiConnectionParams(newHeaders, vertx);
+  private ConnectionParams overrideOkapiParamsWithTenant(ConnectionParams okapiParams, String tenantId) {
+    Map<String, String> newHeaders = new HashMap<>(okapiParams.getHeaders());
+    newHeaders.put(XOkapiHeaders.TENANT, tenantId);
+    return new ConnectionParams(newHeaders);
   }
 
   private Future<Optional<InstanceLinkDtoCollection>> loadInstanceLink(Record oldRecord, String instanceId,
-                                                                       OkapiConnectionParams okapiParams) {
+                                                                       ConnectionParams okapiParams) {
     Promise<Optional<InstanceLinkDtoCollection>> promise = Promise.promise();
     if (isSubfieldExist(oldRecord, AuthorityLinksUtils.AUTHORITY_ID_SUBFIELD)) {
       if (isNull(instanceId) || isBlank(instanceId)) {
@@ -207,7 +205,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
   }
 
   private Future<Void> updateInstanceLinks(String instanceId, Optional<InstanceLinkDtoCollection> links,
-                                           OkapiConnectionParams okapiParams) {
+                                           ConnectionParams okapiParams) {
     Promise<Void> promise = Promise.promise();
     if (links.isPresent()) {
       instanceLinkClient.updateInstanceLinks(instanceId, links.get(), okapiParams)

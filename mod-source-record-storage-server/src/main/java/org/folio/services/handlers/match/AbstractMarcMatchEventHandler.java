@@ -1,7 +1,6 @@
 package org.folio.services.handlers.match;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -71,17 +70,14 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private final DataImportEventTypes matchedEventType;
   private final DataImportEventTypes notMatchedEventType;
   private final ConsortiumConfigurationCache consortiumConfigurationCache;
-  private final Vertx vertx;
 
   protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType,
-                                          DataImportEventTypes notMatchedEventType, ConsortiumConfigurationCache consortiumConfigurationCache,
-                                          Vertx vertx) {
+                                          DataImportEventTypes notMatchedEventType, ConsortiumConfigurationCache consortiumConfigurationCache) {
     this.typeConnection = typeConnection;
     this.recordDao = recordDao;
     this.matchedEventType = matchedEventType;
     this.notMatchedEventType = notMatchedEventType;
     this.consortiumConfigurationCache = consortiumConfigurationCache;
-    this.vertx = vertx;
   }
 
   @Override
@@ -124,7 +120,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
                                                                                            MatchField matchField,
                                                                                            Filter.ComparisonPartType comparisonPartType,
                                                                                            List<Record> recordList) {
-    return consortiumConfigurationCache.get(RestUtil.retrieveOkapiConnectionParams(payload, vertx))
+    return consortiumConfigurationCache.get(RestUtil.retrieveOkapiConnectionParams(payload))
       .compose(consortiumConfigurationOptional -> {
         if (consortiumConfigurationOptional.isPresent() && !consortiumConfigurationOptional.get().getCentralTenantId().equals(payload.getTenant())) {
           LOG.debug("matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords:: Matching on centralTenant with id: {}",

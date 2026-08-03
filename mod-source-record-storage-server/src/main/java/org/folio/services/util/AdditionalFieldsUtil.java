@@ -192,7 +192,7 @@ public final class AdditionalFieldsUtil {
     org.marc4j.marc.Record marcRecord = computeMarcRecord(record);
     if (marcRecord != null) {
       List<VariableField> variableFields = marcRecord.getVariableFields(field);
-      Optional<DataField> dataField = variableFields.stream().filter(v -> v instanceof DataField)
+      Optional<DataField> dataField = variableFields.stream().filter(DataField.class::isInstance)
         .map(v -> (DataField) v)
         .filter(v -> ind1 == v.getIndicator1() && ind2 == v.getIndicator2())
         .findFirst();
@@ -346,8 +346,8 @@ public final class AdditionalFieldsUtil {
    */
   private static boolean isFieldContainsValue(VariableField field, char subfield, String value) {
     boolean isContains = false;
-    if (field instanceof DataField) {
-      for (Subfield sub : ((DataField) field).getSubfields(subfield)) {
+    if (field instanceof DataField dataField) {
+      for (Subfield sub : dataField.getSubfields(subfield)) {
         if (isNotEmpty(sub.getData()) && sub.getData().contains(value.trim())) {
           isContains = true;
           break;
@@ -457,15 +457,15 @@ public final class AdditionalFieldsUtil {
       org.marc4j.marc.Record marcRecord = computeMarcRecord(record);
       if (marcRecord != null) {
         for (VariableField field : marcRecord.getVariableFields(tag)) {
-          if (field instanceof DataField) {
-            for (Subfield sub : ((DataField) field).getSubfields(subfield)) {
+          if (field instanceof DataField dataField) {
+            for (Subfield sub : dataField.getSubfields(subfield)) {
               if (isNotEmpty(sub.getData()) && sub.getData().equals(value.trim())) {
                 return true;
               }
             }
-          } else if (field instanceof ControlField
-            && isNotEmpty(((ControlField) field).getData())
-            && ((ControlField) field).getData().equals(value.trim())) {
+          } else if (field instanceof ControlField controlField
+                     && isNotEmpty(controlField.getData())
+                     && controlField.getData().equals(value.trim())) {
             return true;
           }
         }
@@ -792,9 +792,7 @@ public final class AdditionalFieldsUtil {
   }
 
   private static String normalizeContent(Object content) {
-    return (content instanceof String)
-      ? (String) content
-      : Json.encode(content);
+    return (content instanceof String s) ? s : Json.encode(content);
   }
 
   /**

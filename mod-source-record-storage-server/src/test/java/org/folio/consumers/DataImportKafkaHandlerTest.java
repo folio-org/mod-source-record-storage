@@ -21,7 +21,7 @@ import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.JobProfile;
 import org.folio.TestUtil;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.processing.events.EventManager;
@@ -125,7 +125,7 @@ public class DataImportKafkaHandlerTest {
   public void setUp() {
     KafkaTestUtil.clearAllTopics(getConsumerProperties());
     mocksCloseable = MockitoAnnotations.openMocks(this);
-    when(profileSnapshotCacheMock.get(anyString(), any(OkapiConnectionParams.class)))
+    when(profileSnapshotCacheMock.get(anyString(), any(ConnectionParams.class)))
       .thenReturn(Future.succeededFuture(Optional.of(jobProfileSnapshotWrapper)));
     when(cancelledJobsIdsCacheMock.contains(anyString())).thenReturn(false);
     when(mockedEventHandler.isEligible(any(DataImportEventPayload.class)))
@@ -229,7 +229,7 @@ public class DataImportKafkaHandlerTest {
     // then
     future.onComplete(context.asyncAssertSuccess(actualKafkaRecordKey -> {
       context.assertEquals(expectedKafkaRecordKey, actualKafkaRecordKey);
-      verify(profileSnapshotCacheMock, never()).get(anyString(), any(OkapiConnectionParams.class));
+      verify(profileSnapshotCacheMock, never()).get(anyString(), any(ConnectionParams.class));
       verify(mockedEventHandler, never()).isEligible(any(DataImportEventPayload.class));
     }));
   }

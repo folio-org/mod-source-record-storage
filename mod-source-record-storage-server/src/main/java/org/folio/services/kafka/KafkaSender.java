@@ -5,14 +5,16 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import java.util.List;
 import org.folio.kafka.KafkaConfig;
 import org.folio.services.util.EventHandlingUtil;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class KafkaSender {
 
-  @Autowired
-  private KafkaConfig kafkaConfig;
+  private final KafkaConfig kafkaConfig;
+
+  public KafkaSender(KafkaConfig kafkaConfig) {
+    this.kafkaConfig = kafkaConfig;
+  }
 
   public Future<Boolean> sendEventToKafka(String tenantId, String eventPayload, String eventType,
                                           List<KafkaHeader> kafkaHeaders, String key) {

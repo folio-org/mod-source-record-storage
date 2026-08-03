@@ -20,6 +20,7 @@ import io.vertx.reactivex.core.Vertx;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -41,7 +42,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.UUID;
 
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 public abstract class AbstractRestVerticleTest {
@@ -186,15 +186,15 @@ public abstract class AbstractRestVerticleTest {
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
       .setBaseUri("http://localhost:" + PORT)
-      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
-      .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
-      .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserId)
+      .addHeader(XOkapiHeaders.URL, "http://localhost:" + mockServer.port())
+      .addHeader(XOkapiHeaders.TENANT, TENANT_ID)
+      .addHeader(XOkapiHeaders.USER_ID, okapiUserId)
       .build();
 
     specWithoutUserId = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
       .setBaseUri("http://localhost:" + PORT)
-      .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
+      .addHeader(XOkapiHeaders.TENANT, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_HEADER_TOKEN, OKAPI_TOKEN)
       .build();
   }
@@ -202,14 +202,15 @@ public abstract class AbstractRestVerticleTest {
   @AfterClass
   public static void tearDownClass(final TestContext context) {
     Async async = context.async();
-    PostgresClientFactory.closeAll();
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
-      if (useExternalDatabase.equals("embedded")) {
-        PostgresClient.stopPostgresTester();
-      }
-      kafkaContainer.stop();
-      async.complete();
-    }));
+    PostgresClientFactory.closeAll()
+      .compose(v -> vertx.close())
+      .onComplete(context.asyncAssertSuccess(res -> {
+        if (useExternalDatabase.equals("embedded")) {
+          PostgresClient.stopPostgresTester();
+        }
+        kafkaContainer.stop();
+        async.complete();
+      }));
   }
 
   private static void setUpConsortiumConfigurationCache() {
@@ -235,7 +236,7 @@ public abstract class AbstractRestVerticleTest {
     for (Snapshot snapshot : snapshots) {
       RestAssured.given()
         .spec(spec)
-        .header(RestVerticle.OKAPI_HEADER_TENANT, tenantId)
+        .header(XOkapiHeaders.TENANT, tenantId)
         .body(snapshot)
         .when()
         .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
@@ -262,7 +263,7 @@ public abstract class AbstractRestVerticleTest {
     for (Record aRecord : records) {
       RestAssured.given()
         .spec(spec)
-        .header(RestVerticle.OKAPI_HEADER_TENANT, tenantId)
+        .header(XOkapiHeaders.TENANT, tenantId)
         .body(aRecord)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)

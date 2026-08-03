@@ -9,7 +9,7 @@ import io.vertx.core.json.Json;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.services.exceptions.CacheLoadingException;
@@ -37,7 +37,7 @@ public class JobProfileSnapshotCache {
       .buildAsync();
   }
 
-  public Future<Optional<ProfileSnapshotWrapper>> get(String profileSnapshotId, OkapiConnectionParams params) {
+  public Future<Optional<ProfileSnapshotWrapper>> get(String profileSnapshotId, ConnectionParams params) {
     try {
       return Future.fromCompletionStage(cache.get(profileSnapshotId, (key, executor) -> loadJobProfileSnapshot(key, params)));
     } catch (Exception e) {
@@ -46,8 +46,8 @@ public class JobProfileSnapshotCache {
     }
   }
 
-  private CompletableFuture<Optional<ProfileSnapshotWrapper>> loadJobProfileSnapshot(String profileSnapshotId, OkapiConnectionParams params) {
-    LOGGER.debug("loadJobProfileSnapshot:: Trying to load jobProfileSnapshot by id '{}' for cache, okapi url: {}, tenantId: {}", profileSnapshotId, params.getOkapiUrl(), params.getTenantId());
+  private CompletableFuture<Optional<ProfileSnapshotWrapper>> loadJobProfileSnapshot(String profileSnapshotId, ConnectionParams params) {
+    LOGGER.debug("loadJobProfileSnapshot:: Trying to load jobProfileSnapshot by id '{}' for cache, okapi url: {}, tenantId: {}", profileSnapshotId, params.getConnectionUrl(), params.getTenantId());
 
     return RestUtil.doRequestWithSystemUser(params, "/data-import-profiles/jobProfileSnapshots/" + profileSnapshotId, HttpMethod.GET, null)
       .toCompletionStage()

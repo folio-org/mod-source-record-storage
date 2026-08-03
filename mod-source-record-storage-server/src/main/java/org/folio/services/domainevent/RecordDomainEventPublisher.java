@@ -1,14 +1,9 @@
 package org.folio.services.domainevent;
 
 import static java.util.Objects.isNull;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_CREATED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_DELETED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_UPDATED;
-import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
-import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -21,6 +16,7 @@ import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.MarcUtil;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.kafka.KafkaSender;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +57,7 @@ public class RecordDomainEventPublisher {
       var kafkaHeaders = getKafkaHeaders(okapiHeaders, aRecord.getRecordType());
       var key = aRecord.getId();
       LOG.debug("publishRecord:: Sending event to Kafka - recordId: {}, eventType: {}", key, eventType);
-      kafkaSender.sendEventToKafka(okapiHeaders.get(OKAPI_TENANT_HEADER), Json.encode(domainEventPayload),
+      kafkaSender.sendEventToKafka(okapiHeaders.get(XOkapiHeaders.TENANT), Json.encode(domainEventPayload),
         eventType.name(), kafkaHeaders, key);
     } catch (Exception e) {
       LOG.warn("Exception during Record domain event sending", e);
@@ -106,20 +102,20 @@ public class RecordDomainEventPublisher {
   private List<KafkaHeader> getKafkaHeaders(Map<String, String> okapiHeaders, Record.RecordType recordType) {
     var headers = new ArrayList<KafkaHeader>();
 
-    Optional.ofNullable(okapiHeaders.get(OKAPI_URL_HEADER))
-      .ifPresent(url -> headers.add(KafkaHeader.header(OKAPI_URL_HEADER, url)));
+    Optional.ofNullable(okapiHeaders.get(XOkapiHeaders.URL))
+      .ifPresent(url -> headers.add(KafkaHeader.header(XOkapiHeaders.URL, url)));
 
-    Optional.ofNullable(okapiHeaders.get(OKAPI_TENANT_HEADER))
-      .ifPresent(tenant -> headers.add(KafkaHeader.header(OKAPI_TENANT_HEADER, tenant)));
+    Optional.ofNullable(okapiHeaders.get(XOkapiHeaders.TENANT))
+      .ifPresent(tenant -> headers.add(KafkaHeader.header(XOkapiHeaders.TENANT, tenant)));
 
-    Optional.ofNullable(okapiHeaders.get(OKAPI_TOKEN_HEADER))
-      .ifPresent(token -> headers.add(KafkaHeader.header(OKAPI_TOKEN_HEADER, token)));
+    Optional.ofNullable(okapiHeaders.get(XOkapiHeaders.TOKEN))
+      .ifPresent(token -> headers.add(KafkaHeader.header(XOkapiHeaders.TOKEN, token)));
 
-    Optional.ofNullable(okapiHeaders.get(OKAPI_USER_HEADER))
-      .ifPresent(userId -> headers.add(KafkaHeader.header(OKAPI_USER_HEADER, userId)));
+    Optional.ofNullable(okapiHeaders.get(XOkapiHeaders.USER_ID))
+      .ifPresent(userId -> headers.add(KafkaHeader.header(XOkapiHeaders.USER_ID, userId)));
 
-    Optional.ofNullable(okapiHeaders.get(OKAPI_REQUEST_HEADER))
-        .ifPresent(requestId -> headers.add(KafkaHeader.header(OKAPI_REQUEST_HEADER, requestId)));
+    Optional.ofNullable(okapiHeaders.get(XOkapiHeaders.REQUEST_ID))
+        .ifPresent(requestId -> headers.add(KafkaHeader.header(XOkapiHeaders.REQUEST_ID, requestId)));
 
     Optional.ofNullable(recordType)
       .map(Record.RecordType::value)

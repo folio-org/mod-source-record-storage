@@ -2,7 +2,6 @@ package org.folio.services;
 
 import static java.util.Collections.singletonList;
 import static org.folio.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_CREATED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED;
@@ -38,6 +37,7 @@ import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.MatchingException;
 import org.folio.rest.jaxrs.model.EntityType;
@@ -90,7 +90,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
     MockitoAnnotations.initMocks(this);
 
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    handler = new MarcAuthorityMatchEventHandler(recordDao, null, vertx);
+    handler = new MarcAuthorityMatchEventHandler(recordDao, null);
     Async async = context.async();
 
     existingRecordSnapshot = new Snapshot()
@@ -211,7 +211,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
               )))
           ))));
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
@@ -261,7 +261,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
                 new Field().withLabel("recordSubfield").withValue("")
               )))))));
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
@@ -312,7 +312,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
               )))
           ))));
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
@@ -383,7 +383,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
       )
       .withState(Record.State.ACTUAL);
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord2, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> recordDao.saveRecord(existingRecord3, okapiHeaders)
@@ -457,7 +457,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
       )
       .withState(Record.State.ACTUAL);
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> recordDao.saveRecord(existingRecord2, okapiHeaders)
@@ -527,7 +527,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
       )
       .withState(Record.State.ACTUAL);
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> recordDao.saveRecord(existingRecord2, okapiHeaders)
@@ -601,7 +601,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
       )
       .withState(Record.State.ACTUAL);
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord2, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> recordDao.saveRecord(existingRecord3, okapiHeaders)
@@ -650,7 +650,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("a"))))))));
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
@@ -696,7 +696,7 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("a"))))))));
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(record -> handler.handle(dataImportEventPayload)

@@ -150,10 +150,12 @@ public class PostgresClientFactoryTest {
   }
 
   @After
-  public void cleanup() {
+  public void cleanup(TestContext context) {
+    Async async = context.async();
     PostgresClientFactory.setConfigFilePath(null);
-    PostgresClientFactory.closeAll();
     Envs.setEnv(new HashMap<>());
+    PostgresClientFactory.closeAll()
+      .onComplete(context.asyncAssertSuccess(res -> async.complete()));
   }
 
   @AfterClass

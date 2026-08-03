@@ -15,7 +15,8 @@ import java.util.stream.StreamSupport;
 @Service
 public class TenantDataProviderImpl implements TenantDataProvider {
   private static final String SUFFIX = "_mod_source_record_storage";
-  private Vertx vertx;
+
+  private final Vertx vertx;
 
   @Autowired
   public TenantDataProviderImpl(Vertx vertx) {

@@ -10,7 +10,7 @@ import io.vertx.core.json.Json;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.services.exceptions.CacheLoadingException;
@@ -43,7 +43,7 @@ public class MappingParametersSnapshotCache {
       .buildAsync();
   }
 
-  public Future<Optional<MappingParameters>> get(String jobExecutionId, OkapiConnectionParams params) {
+  public Future<Optional<MappingParameters>> get(String jobExecutionId, ConnectionParams params) {
 
     if (jobExecutionId == null) {
       LOGGER.warn("get:: Attempted to retrieve from cache with a null jobExecutionId.");
@@ -76,11 +76,11 @@ public class MappingParametersSnapshotCache {
     }
   }
 
-  private CompletableFuture<Optional<MappingParameters>> loadMappingParametersSnapshot(String jobExecutionId, OkapiConnectionParams params) {
+  private CompletableFuture<Optional<MappingParameters>> loadMappingParametersSnapshot(String jobExecutionId, ConnectionParams params) {
     return loadWithRetry(jobExecutionId, params, 0, INITIAL_DELAY_MS);
   }
 
-  private CompletableFuture<Optional<MappingParameters>> loadWithRetry(String jobExecutionId, OkapiConnectionParams params, int attempt, long delay) {
+  private CompletableFuture<Optional<MappingParameters>> loadWithRetry(String jobExecutionId, ConnectionParams params, int attempt, long delay) {
     LOGGER.debug("loadWithRetry:: Attempt {} to load MappingParametersSnapshot for jobExecutionId '{}'", attempt + 1, jobExecutionId);
 
     return RestUtil.doRequestWithSystemUser(params, "/mapping-metadata/" + jobExecutionId, HttpMethod.GET, null)

@@ -27,8 +27,8 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.folio.LinkingRuleDto;
 import org.folio.client.InstanceLinkClient;
-import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dataimport.util.RestUtil;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -51,7 +51,7 @@ public class LinkingRulesCacheTest {
 
   public static WireMockServer mockServer;
   private static Vertx vertx = Vertx.vertx();
-  private static OkapiConnectionParams params;
+  private static ConnectionParams params;
 
   private final InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
   private final LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx, CACHE_EXPIRATION_TIME);
@@ -70,11 +70,11 @@ public class LinkingRulesCacheTest {
     mockServer.stubFor(get(urlPathEqualTo(LINKING_RULES_URL))
       .willReturn(WireMock.ok().withBody(Json.encode(linkingRules))));
 
-    params = new OkapiConnectionParams(Map.of(
-      RestUtil.OKAPI_TENANT_HEADER, TENANT_ID,
-      RestUtil.OKAPI_TOKEN_HEADER, "token",
-      RestUtil.OKAPI_URL_HEADER, mockServer.baseUrl()
-    ), vertx);
+    params = new ConnectionParams(Map.of(
+      XOkapiHeaders.TENANT, TENANT_ID,
+      XOkapiHeaders.TOKEN, "token",
+      XOkapiHeaders.URL, mockServer.baseUrl()
+    ));
   }
   @AfterClass
   public static void tearDownClass(TestContext context) {
@@ -150,7 +150,7 @@ public class LinkingRulesCacheTest {
   public void shouldFailOnException(TestContext context) {
     Async async = context.async();
 
-    OkapiConnectionParams params = new OkapiConnectionParams(emptyMap(), vertx);
+    ConnectionParams params = new ConnectionParams(emptyMap());
 
     Future<Optional<List<LinkingRuleDto>>> optionalFuture = linkingRulesCache.get(params);
 

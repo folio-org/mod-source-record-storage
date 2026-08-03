@@ -13,8 +13,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dataimport.util.RestUtil;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.junit.Before;
 import org.junit.Rule;
@@ -57,7 +57,7 @@ public class JobProfileSnapshotCacheTest {
       .withId(UUID.randomUUID().toString())
       .withContentType(ACTION_PROFILE)));
 
-  private OkapiConnectionParams params;
+  private ConnectionParams params;
 
   @Before
   public void setUp() {
@@ -65,11 +65,11 @@ public class JobProfileSnapshotCacheTest {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(jobProfileSnapshot))));
 
-    this.params = new OkapiConnectionParams(Map.of(
-      RestUtil.OKAPI_TENANT_HEADER, TENANT_ID,
-      RestUtil.OKAPI_TOKEN_HEADER, "token",
-      RestUtil.OKAPI_URL_HEADER, mockServer.baseUrl()
-    ), vertx);
+    this.params = new ConnectionParams(Map.of(
+      XOkapiHeaders.TENANT, TENANT_ID,
+      XOkapiHeaders.TOKEN, "token",
+      XOkapiHeaders.URL, mockServer.baseUrl()
+    ));
   }
 
   @Test

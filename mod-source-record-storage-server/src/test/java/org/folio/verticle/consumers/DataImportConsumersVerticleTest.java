@@ -17,7 +17,6 @@ import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -50,6 +49,7 @@ import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.DataImportEventPayload;
@@ -169,7 +169,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     PgPoolQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     RecordDaoImpl recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordDao.saveRecord(record, okapiHeaders))
       .compose(v -> recordDao.saveRecord(incorrectRecord, okapiHeaders))
@@ -378,9 +378,9 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     var topic = getTopicName(eventType.value());
     var event = new Event().withEventPayload(Json.encode(eventPayload));
     Map<String, String> headers = Map.of(
-        RestUtil.OKAPI_URL_HEADER, mockServer.baseUrl(),
-        RestUtil.OKAPI_TENANT_HEADER, TENANT_ID,
-        RestUtil.OKAPI_TOKEN_HEADER, TOKEN,
+        XOkapiHeaders.URL, mockServer.baseUrl(),
+        XOkapiHeaders.TENANT, TENANT_ID,
+        XOkapiHeaders.TOKEN, TOKEN,
         JOB_EXECUTION_ID_HEADER, snapshotId,
         RECORD_ID_HEADER, record.getId(),
         CHUNK_ID_HEADER, UUID.randomUUID().toString()

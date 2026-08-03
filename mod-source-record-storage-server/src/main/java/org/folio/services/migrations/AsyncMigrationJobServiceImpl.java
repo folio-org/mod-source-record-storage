@@ -26,8 +26,8 @@ public class AsyncMigrationJobServiceImpl implements AsyncMigrationJobService {
   private static final String MIGRATION_IN_PROGRESS_MSG = "Failed to initiate migration job, because migration job with id '%s' already in progress";
   private static final String ERROR_UPDATE_JOB_STATUS_MSG = "Error updating migration job status to '%s', jobId: '%s'";
 
-  private AsyncMigrationJobDao migrationJobDao;
-  private List<AsyncMigrationTaskRunner> jobRunners;
+  private final AsyncMigrationJobDao migrationJobDao;
+  private final List<AsyncMigrationTaskRunner> jobRunners;
 
   @Autowired
   public AsyncMigrationJobServiceImpl(AsyncMigrationJobDao migrationJobDao, List<AsyncMigrationTaskRunner> jobRunners) {

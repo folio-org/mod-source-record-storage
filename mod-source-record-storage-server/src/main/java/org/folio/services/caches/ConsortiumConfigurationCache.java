@@ -9,7 +9,7 @@ import io.vertx.core.json.JsonArray;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.services.entities.ConsortiumConfiguration;
 import org.folio.services.exceptions.CacheLoadingException;
@@ -46,7 +46,7 @@ public class ConsortiumConfigurationCache {
    * @param params okapi connection parameters
    * @return future with optional {@link ConsortiumConfiguration}
    */
-  public Future<Optional<ConsortiumConfiguration>> get(OkapiConnectionParams params) {
+  public Future<Optional<ConsortiumConfiguration>> get(ConnectionParams params) {
     try {
       return Future.fromCompletionStage(cache.get(params.getTenantId(), (key, executor) -> loadConsortiumConfiguration(params)));
     } catch (Exception e) {
@@ -55,8 +55,8 @@ public class ConsortiumConfigurationCache {
     }
   }
 
-  private CompletableFuture<? extends Optional<ConsortiumConfiguration>> loadConsortiumConfiguration(OkapiConnectionParams params) {
-    LOGGER.debug("loadConsortiumConfiguration:: Trying to load consortiumConfiguration by tenantId '{}' for cache, okapi url: {}, tenantId: {}", params.getTenantId(), params.getOkapiUrl(), params.getTenantId());
+  private CompletableFuture<? extends Optional<ConsortiumConfiguration>> loadConsortiumConfiguration(ConnectionParams params) {
+    LOGGER.debug("loadConsortiumConfiguration:: Trying to load consortiumConfiguration by tenantId '{}' for cache, okapi url: {}, tenantId: {}", params.getTenantId(), params.getConnectionUrl(), params.getTenantId());
 
     return RestUtil.doRequestWithSystemUser(params, USER_TENANTS_ENDPOINT, HttpMethod.GET, null)
       .toCompletionStage()

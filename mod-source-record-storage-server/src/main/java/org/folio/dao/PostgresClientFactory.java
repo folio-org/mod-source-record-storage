@@ -2,12 +2,15 @@ package org.folio.dao;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.pgclient.PgBuilder;
 import io.vertx.reactivex.sqlclient.Pool;
+import io.vertx.reactivex.sqlclient.SqlClient;
 import io.vertx.sqlclient.PoolOptions;
+import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -163,9 +166,15 @@ public class PostgresClientFactory {
   /**
    * Close all cached connections.
    */
-  public static void closeAll() {
-    POOL_CACHE.values().forEach(PostgresClientFactory::close);
-    POOL_CACHE.clear();
+  public static Future<Void> closeAll() {
+    List<Future<Void>> closeFutures = POOL_CACHE.values()
+      .stream()
+      .map(SqlClient::close)
+      .toList();
+
+    return Future.all(closeFutures)
+      .onSuccess(v -> POOL_CACHE.clear())
+      .mapEmpty();
   }
 
   /**
@@ -260,9 +269,4 @@ public class PostgresClientFactory {
   private static String convertToPsqlStandard(String tenantId) {
     return format("%s_%s", tenantId.toLowerCase(), MODULE_NAME);
   }
-
-  private static void close(Pool client) {
-    client.close();
-  }
-
 }

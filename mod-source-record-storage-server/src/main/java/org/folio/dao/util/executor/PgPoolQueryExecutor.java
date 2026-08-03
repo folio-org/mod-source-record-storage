@@ -4,8 +4,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.impl.NoStackTraceThrowable;
-import io.vertx.sqlclient.ClosedConnectionException;
+import io.vertx.core.VertxException;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
@@ -28,8 +27,7 @@ import java.util.function.Supplier;
  * A query executor that uses {@link Pool} connection pool to execute queries.
  * The executor provides built-in retry functionality for transactional operations
  * based on a configurable number of retries ({@link #numRetries}) and delay ({@link #retryDelay}),
- * specifically for exceptions like {@link NoStackTraceThrowable}, {@link ClosedChannelException}
- * or {@link ClosedConnectionException}.
+ * specifically for exceptions like {@link VertxException}, {@link ClosedChannelException}.
  */
 public class PgPoolQueryExecutor implements QueryExecutor {
 
@@ -85,8 +83,7 @@ public class PgPoolQueryExecutor implements QueryExecutor {
     }
 
     return supplier.get().recover(err -> {
-      if (err instanceof NoStackTraceThrowable || err instanceof ClosedChannelException
-        || err instanceof ClosedConnectionException) {
+      if (err instanceof VertxException || err instanceof ClosedChannelException) {
 
         Promise<U> promise = Promise.promise();
         Context currentContext = Vertx.currentContext();

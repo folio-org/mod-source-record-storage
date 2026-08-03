@@ -22,8 +22,8 @@ import org.folio.InstanceLinkDtoCollection;
 import org.folio.Link;
 import org.folio.LinkingRuleDto;
 import org.folio.SubfieldModification;
-import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dataimport.util.RestUtil;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.services.exceptions.InstanceLinksException;
 import org.junit.Rule;
 import org.junit.Test;
@@ -36,11 +36,11 @@ public class LinksClientTest extends AbstractClientTest {
   private static final UrlPathPattern URL_PATH_PATTERN =
     new UrlPathPattern(new RegexPattern("/links/instances/.*"), true);
 
-  private final OkapiConnectionParams params = new OkapiConnectionParams(Map.of(
-    RestUtil.OKAPI_TENANT_HEADER, TENANT_ID,
-    RestUtil.OKAPI_TOKEN_HEADER, "token",
-    RestUtil.OKAPI_URL_HEADER, wireMockServer.baseUrl()
-  ), vertx);
+  private final ConnectionParams params = new ConnectionParams(Map.of(
+    XOkapiHeaders.TENANT, TENANT_ID,
+    XOkapiHeaders.TOKEN, "token",
+    XOkapiHeaders.URL, wireMockServer.baseUrl()
+  ));
 
   private final InstanceLinkClient client = new InstanceLinkClient();
 

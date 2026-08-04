@@ -8,7 +8,6 @@ import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.pgclient.PgBuilder;
 import io.vertx.reactivex.sqlclient.Pool;
-import io.vertx.reactivex.sqlclient.SqlClient;
 import io.vertx.sqlclient.PoolOptions;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
@@ -169,7 +168,7 @@ public class PostgresClientFactory {
   public static Future<Void> closeAll() {
     List<Future<Void>> closeFutures = POOL_CACHE.values()
       .stream()
-      .map(SqlClient::close)
+      .map(PostgresClientFactory::close)
       .toList();
 
     return Future.all(closeFutures)
@@ -269,4 +268,18 @@ public class PostgresClientFactory {
   private static String convertToPsqlStandard(String tenantId) {
     return format("%s_%s", tenantId.toLowerCase(), MODULE_NAME);
   }
+
+  private static Future<Void> close(Pool client) {
+    try {
+      return client.close()
+        .recover(throwable -> {
+          LOG.error("Error closing client", throwable);
+          return Future.succeededFuture();
+        });
+    } catch (Exception e) {
+      LOG.error("Error closing client", e);
+      return Future.succeededFuture();
+    }
+  }
+
 }

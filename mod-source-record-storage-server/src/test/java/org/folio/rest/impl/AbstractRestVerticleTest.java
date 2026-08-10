@@ -202,15 +202,12 @@ public abstract class AbstractRestVerticleTest {
   @AfterClass
   public static void tearDownClass(final TestContext context) {
     Async async = context.async();
-    PostgresClientFactory.closeAll()
-      .compose(v -> vertx.close())
-      .onComplete(context.asyncAssertSuccess(res -> {
-        if (useExternalDatabase.equals("embedded")) {
-          PostgresClient.stopPostgresTester();
-        }
-        kafkaContainer.stop();
-        async.complete();
-      }));
+    PostgresClientFactory.closeAll();
+    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
+      PostgresClient.stopPostgresTester();
+      kafkaContainer.stop();
+      async.complete();
+    }));
   }
 
   private static void setUpConsortiumConfigurationCache() {

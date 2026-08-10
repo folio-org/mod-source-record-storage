@@ -25,14 +25,13 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.kafka.KafkaConfig;
-import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.SharedPostgresContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
-import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -117,8 +116,7 @@ public abstract class AbstractLBServiceTest {
       .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()
       ));
 
-    PostgresClient.setPostgresTester(new PostgresTesterContainer());
-    JsonObject pgClientConfig = PostgresClient.getInstance(vertx).getConnectionConfig();
+    JsonObject pgClientConfig = SharedPostgresContainer.getConnectionConfig();
 
     Envs.setEnv(
       pgClientConfig.getString(PostgresClientFactory.HOST),
@@ -164,14 +162,18 @@ public abstract class AbstractLBServiceTest {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    // await pool close before stopping the container so no cached client is left
-    // pointing at an already stopped database (avoids "connection refused" in the next class)
+    Async async = context.async();
+    Vertx currentVertx = vertx;
+    // Clear the factory caches so the next class rebuilds its pools, but never stop the shared
+    // container/tester - it stays up for the whole JVM fork and is reaped at JVM exit.
+    // The Async is created synchronously so VertxUnit waits for vertx to fully close before the
+    // next class reassigns the shared static vertx field (otherwise we could close the new vertx).
     PostgresClientFactory.closeAll()
-      .onComplete(closed -> vertx.close().onComplete(context.asyncAssertSuccess(v -> {
-        PostgresClient.stopPostgresTester();
+      .onComplete(closed -> currentVertx.close().onComplete(v -> {
         wireMockServer.stop();
         kafkaContainer.stop();
-      })));
+        async.complete();
+      }));
   }
 
   public static String getFullModuleName() {

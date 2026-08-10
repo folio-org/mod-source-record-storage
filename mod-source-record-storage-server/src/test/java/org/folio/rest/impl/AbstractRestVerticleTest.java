@@ -201,13 +201,17 @@ public abstract class AbstractRestVerticleTest {
 
   @AfterClass
   public static void tearDownClass(final TestContext context) {
-    Async async = context.async();
-    PostgresClientFactory.closeAll();
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
-      PostgresClient.stopPostgresTester();
-      kafkaContainer.stop();
-      async.complete();
-    }));
+    // close pooled clients first, then stop the container that backs them so no cached
+    // client is left pointing at an already stopped database; finally stop the container
+    // (it was never stopped before, leaking a running container per test class).
+    PostgresClientFactory.closeAll()
+      .onComplete(closed -> vertx.close().onComplete(context.asyncAssertSuccess(res -> {
+        if (postgresSQLContainer != null) {
+          postgresSQLContainer.stop();
+        }
+        PostgresClient.stopPostgresTester();
+        kafkaContainer.stop();
+      })));
   }
 
   private static void setUpConsortiumConfigurationCache() {

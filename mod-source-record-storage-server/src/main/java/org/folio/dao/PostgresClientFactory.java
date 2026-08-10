@@ -166,14 +166,35 @@ public class PostgresClientFactory {
    * Close all cached connections.
    */
   public static Future<Void> closeAll() {
+    closeDataSources();
     List<Future<Void>> closeFutures = POOL_CACHE.values()
       .stream()
       .map(PostgresClientFactory::close)
       .toList();
 
+    // clear on completion (not only on success) so a failed close never leaves
+    // a stale pool cached that still points at an already stopped database
     return Future.all(closeFutures)
-      .onSuccess(v -> POOL_CACHE.clear())
+      .onComplete(ar -> POOL_CACHE.clear())
       .mapEmpty();
+  }
+
+  /**
+   * Close and evict every cached {@link DataSource}. Without this the static
+   * {@link #DATA_SOURCE_CACHE} would keep Hikari pools bound to a database (e.g. a test
+   * container) that has already been stopped, causing "connection refused" on reuse.
+   */
+  private static void closeDataSources() {
+    DATA_SOURCE_CACHE.values().forEach(dataSource -> {
+      if (dataSource instanceof AutoCloseable closeable) {
+        try {
+          closeable.close();
+        } catch (Exception e) {
+          LOG.error("Error closing data source", e);
+        }
+      }
+    });
+    DATA_SOURCE_CACHE.clear();
   }
 
   /**

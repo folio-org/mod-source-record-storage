@@ -164,12 +164,14 @@ public abstract class AbstractLBServiceTest {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    PostgresClientFactory.closeAll();
-    vertx.close().onComplete(context.asyncAssertSuccess(v -> {
-      PostgresClient.stopPostgresTester();
-      wireMockServer.stop();
-      kafkaContainer.stop();
-    }));
+    // await pool close before stopping the container so no cached client is left
+    // pointing at an already stopped database (avoids "connection refused" in the next class)
+    PostgresClientFactory.closeAll()
+      .onComplete(closed -> vertx.close().onComplete(context.asyncAssertSuccess(v -> {
+        PostgresClient.stopPostgresTester();
+        wireMockServer.stop();
+        kafkaContainer.stop();
+      })));
   }
 
   public static String getFullModuleName() {

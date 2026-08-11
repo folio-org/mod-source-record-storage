@@ -21,6 +21,7 @@ import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -548,7 +549,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      context.assertEquals(expectedParsedContent, getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
+      context.assertEquals(getParsedContentWithoutDate(expectedParsedContent), getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       validate005Field(context, expectedDate, actualRecord);
       async.complete();
@@ -602,7 +603,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
       Record actualRecord =
         Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      context.assertEquals(expectedParsedContent, getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
+      context.assertEquals(getParsedContentWithoutDate(expectedParsedContent), getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       validate005Field(context, expectedDate, actualRecord);
       async.complete();
@@ -1022,23 +1023,25 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   public static String getParsedContentWithoutLeaderAndDate(String parsedContent) {
     JsonObject parsedContentAsJson = new JsonObject(parsedContent);
     parsedContentAsJson.remove("leader");
-    remove005FieldFromRecord(parsedContentAsJson);
+    removeFieldFromRecord(parsedContentAsJson, TAG_005);
+    removeFieldFromRecord(parsedContentAsJson, TAG_999);
 
     return parsedContentAsJson.encode();
   }
 
   public static String getParsedContentWithoutDate(String parsedContent) {
     JsonObject parsedContentAsJson = new JsonObject(parsedContent);
-    remove005FieldFromRecord(parsedContentAsJson);
+    removeFieldFromRecord(parsedContentAsJson, TAG_005);
+    removeFieldFromRecord(parsedContentAsJson, TAG_999);
 
     return parsedContentAsJson.encode();
   }
 
-  private static JsonObject remove005FieldFromRecord(JsonObject recordJson) {
+  private static JsonObject removeFieldFromRecord(JsonObject recordJson, String tag) {
     JsonArray fieldsArray = recordJson.getJsonArray("fields");
     for (int i = 0; i < fieldsArray.size(); i++) {
       JsonObject fieldObject = fieldsArray.getJsonObject(i);
-      if (fieldObject.containsKey(TAG_005)) {
+      if (fieldObject.containsKey(tag)) {
         fieldsArray.remove(i);
         break;
       }

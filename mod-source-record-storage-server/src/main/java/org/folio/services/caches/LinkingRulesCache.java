@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.VertxException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -38,7 +39,7 @@ public class LinkingRulesCache {
       return Future.fromCompletionStage(cache.get(params.getTenantId(), (key, executor) -> instanceLinkClient.getLinkingRuleList(params)));
     } catch (Exception e) {
       LOGGER.warn("get:: Error loading Linking rules", e);
-      return Future.failedFuture(e);
+      return Future.failedFuture(new VertxException(e));
     }
   }
 }

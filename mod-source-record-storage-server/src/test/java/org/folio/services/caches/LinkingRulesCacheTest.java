@@ -156,7 +156,7 @@ public class LinkingRulesCacheTest {
 
     optionalFuture.onComplete(ar -> {
       context.assertTrue(ar.failed());
-      context.assertTrue(ar.cause().getCause() instanceof VertxException);
+      context.assertTrue(ar.cause() instanceof VertxException);
 
       async.complete();
     });

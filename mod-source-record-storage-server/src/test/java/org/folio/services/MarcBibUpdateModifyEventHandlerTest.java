@@ -122,8 +122,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   private static final String RECORD_ID = "eae222e8-70fd-4422-852c-60d22bae36b8";
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final int CACHE_EXPIRATION_TIME = 3600;
-  private static RawRecord rawRecord;
-  private static ParsedRecord parsedRecord;
+  private static String rawRecordContent;
+  private RawRecord rawRecord;
+  private ParsedRecord parsedRecord;
 
   @Rule
   public RunTestOnContext rule = new RunTestOnContext();
@@ -213,11 +214,11 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   @BeforeClass
   public static void setUpBeforeClass(TestContext context) throws IOException {
-    rawRecord = new RawRecord().withId(RECORD_ID)
-      .withContent(
-        new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    parsedRecord = new ParsedRecord().withId(RECORD_ID)
-      .withContent(PARSED_CONTENT);
+    // Cache only the raw record content (read from disk once). The RawRecord/ParsedRecord objects
+    // themselves are recreated per test in setUp(), because some tests mutate their parsed content
+    // in place and a single shared static instance would leak those edits across tests.
+    rawRecordContent =
+      new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class);
     Async async = context.async();
     TenantClient tenantClient = new TenantClient(OKAPI_URL, CENTRAL_TENANT_ID, TOKEN);
     try {
@@ -249,6 +250,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @Before
   public void setUp(TestContext context) {
     MockitoAnnotations.openMocks(this);
+    // Recreate the raw/parsed records for every test. They are shared by the record objects built
+    // below and get mutated in place by some tests (e.g. record.getParsedRecord().setContent(...)),
+    // so reusing a single static instance would let one test's parsed-content edits bleed into the
+    // next test and corrupt the 999$s matched-id resolution.
+    rawRecord = new RawRecord().withId(RECORD_ID).withContent(rawRecordContent);
+    parsedRecord = new ParsedRecord().withId(RECORD_ID).withContent(PARSED_CONTENT);
     wireMockServer.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
@@ -303,7 +310,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     PgPoolQueryExecutor localTenantQueryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     PgPoolQueryExecutor centralTenantQueryExecutor = postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID);
 
-    SnapshotDaoUtil.save(localTenantQueryExecutor, snapshot)
+    // Remove any data left over from a previous test before seeding this one. Some tests trigger
+    // concurrent event handlers whose writes can settle after their @Test finished, so relying only
+    // on tearDown() would let a record with the fixed RECORD_ID leak into the next test and break the
+    // idx_records_matched_id_gen unique constraint (DuplicateRecordException).
+    SnapshotDaoUtil.deleteAll(localTenantQueryExecutor)
+      .compose(v -> SnapshotDaoUtil.deleteAll(centralTenantQueryExecutor))
+      .compose(v -> SnapshotDaoUtil.save(localTenantQueryExecutor, snapshot))
       .compose(v -> recordService.saveRecord(record, Map.of(XOkapiHeaders.TENANT, TENANT_ID)))
       .compose(v -> SnapshotDaoUtil.save(localTenantQueryExecutor, snapshotForRecordUpdate))
       .compose(v -> SnapshotDaoUtil.save(centralTenantQueryExecutor, snapshot_2))
@@ -314,20 +327,14 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @After
   public void tearDown(TestContext context) {
     wireMockServer.resetRequests();
+    Async async = context.async();
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID)))
       .onComplete(ar -> {
         if (ar.failed()) {
-          context.asyncAssertFailure();
-        } else {
-          SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID))
-            .onComplete(arCentral -> {
-              if (arCentral.failed()) {
-                context.asyncAssertFailure();
-              } else {
-                context.asyncAssertSuccess();
-              }
-            });
+          context.fail(ar.cause());
         }
+        async.complete();
       });
   }
 
@@ -866,12 +873,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
-    // when
-    CompletableFuture<DataImportEventPayload> future1 = modifyRecordEventHandler.handle(dataImportEventPayloadOriginalRecord);
-    CompletableFuture<DataImportEventPayload> future2 = modifyRecordEventHandler.handle(dataImportEventPayloadDuplicateRecord);
-
-    // then
-    future1.whenComplete((eventPayload, throwable) -> {
+    // when: the first import updates the matched record and commits.
+    modifyRecordEventHandler.handle(dataImportEventPayloadOriginalRecord).whenComplete((eventPayload, throwable) -> {
       context.assertNull(throwable);
       context.assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
@@ -882,12 +885,16 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
       context.assertEquals(dataImportEventPayloadOriginalRecord.getJobExecutionId(), actualRecord.getSnapshotId());
       validate005Field(context, expectedDate, actualRecord);
-    });
 
-    future2.whenComplete((eventPayload, throwable) -> {
-      context.assertNotNull(throwable);
-      context.assertEquals(throwable.getClass(), DuplicateRecordException.class);
-      async.complete();
+      // then: re-importing the same record must be rejected as a duplicate. The second import runs
+      // only after the first has committed, so the two updates never open concurrent transactions on
+      // the same record. Running them concurrently deadlocks under full-suite DB load and can leak a
+      // write past this test that breaks the next test's setUp on idx_records_matched_id_gen.
+      modifyRecordEventHandler.handle(dataImportEventPayloadDuplicateRecord).whenComplete((duplicatePayload, duplicateThrowable) -> {
+        context.assertNotNull(duplicateThrowable);
+        context.assertEquals(DuplicateRecordException.class, duplicateThrowable.getClass());
+        async.complete();
+      });
     });
   }
 

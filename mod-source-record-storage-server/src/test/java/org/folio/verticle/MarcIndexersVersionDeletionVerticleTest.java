@@ -42,6 +42,7 @@ import org.mockito.MockitoAnnotations;
 public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTest {
 
   private static final String MARC_INDEXERS_TABLE = "marc_indexers";
+  private static final String OLD_RECORDS_TRACKING_TABLE = "old_records_tracking";
   private static final String MARC_ID_FIELD = "marc_id";
   private static final String VERSION_FIELD = "version";
 
@@ -79,7 +80,9 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00001"));
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
+    postgresClientFactory.getQueryExecutor(TENANT_ID)
+      .execute(dsl -> dsl.deleteFrom(table(name(OLD_RECORDS_TRACKING_TABLE))))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot))
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .onComplete(save -> {
         if (save.failed()) {

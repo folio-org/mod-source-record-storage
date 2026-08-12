@@ -482,7 +482,7 @@ public final class AdditionalFieldsUtil {
   }
 
   public static void normalize035(Record srsRecord) {
-    List<Subfield> subfields = get035SubfieldOclcValues(srsRecord, TAG_035);
+    List<Subfield> subfields = new ArrayList<>(get035SubfieldOclcValues(srsRecord, TAG_035));
     if (!subfields.isEmpty()) {
       LOGGER.debug("normalize035:: normalizing 035 field of a record with id: {}", srsRecord.getId());
       formatOclc(subfields);

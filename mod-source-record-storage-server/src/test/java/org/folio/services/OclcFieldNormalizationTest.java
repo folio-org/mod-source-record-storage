@@ -133,6 +133,28 @@ public class OclcFieldNormalizationTest {
           "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)56072293\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
           "{\"035\":{\"subfields\":[{\"z\":\"(OCoLC)50824229\"},{\"z\":\"(OCoLC)81729337\"},{\"z\":\"(OCoLC)776983186\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
           "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}"
+      },
+      // Regression: multi-subfield 035 followed by a standalone duplicate should preserve the multi-subfield field intact
+      {
+        "{\"leader\":\"00165nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+          "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)1299112\"},{\"z\":\"(OCoLC)1079294651\"},{\"z\":\"(OCoLC)1130250129\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+          "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)1299112\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+          "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}",
+
+        "{\"leader\":\"00134nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+          "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)1299112\"},{\"z\":\"(OCoLC)1079294651\"},{\"z\":\"(OCoLC)1130250129\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+          "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}"
+      },
+      // Regression: same as above but the multi-subfield 035 $a is in non-normalized format — normalization must not strip $a from the multi-subfield field
+      {
+        "{\"leader\":\"00168nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+          "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)ocm1299112\"},{\"z\":\"(OCoLC)1079294651\"},{\"z\":\"(OCoLC)1130250129\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+          "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)1299112\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+          "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}",
+
+        "{\"leader\":\"00134nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"}," +
+          "{\"035\":{\"subfields\":[{\"a\":\"(OCoLC)1299112\"},{\"z\":\"(OCoLC)1079294651\"},{\"z\":\"(OCoLC)1130250129\"}],\"ind1\":\" \",\"ind2\":\" \"}}," +
+          "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}"
       }
     });
   }
@@ -140,15 +162,15 @@ public class OclcFieldNormalizationTest {
   @Test
   public void shouldNormalizeOCoLCField035() {
     // given
-    ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
+    var parsedRecord = new ParsedRecord().withContent(parsedContent);
 
-    Record record = new Record().withId(UUID.randomUUID().toString())
+    var marcRecord = new Record().withId(UUID.randomUUID().toString())
       .withParsedRecord(parsedRecord)
       .withGeneration(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
     // when
-    AdditionalFieldsUtil.normalize035(record);
+    AdditionalFieldsUtil.normalize035(marcRecord);
     Assert.assertEquals(expectedParsedContent, parsedRecord.getContent());
   }
 }

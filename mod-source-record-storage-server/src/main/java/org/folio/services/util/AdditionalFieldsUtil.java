@@ -23,13 +23,13 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -72,6 +72,10 @@ public final class AdditionalFieldsUtil {
   private static final String OCLC = "OCoLC";
   private static final String OCLC_PREFIX = "(OCoLC)";
   private static final String OCLC_PATTERN = "\\((" + OCLC + ")\\)((ocm|ocn|on)?0*|([a-zA-Z]+)0*)(\\d+\\w*)";
+  private static final Pattern OCLC_NUMBER_PATTERN = Pattern.compile(OCLC_PATTERN);
+  private static final Pattern OCLC_DOTS_AND_SPACES = Pattern.compile("[.\\s]");
+  private static final Pattern OCLC_LEADING_ZEROS = Pattern.compile("^0+");
+  private static final Pattern OCLC_PREFIX_DIGITS = Pattern.compile("\\d+");
 
 
   public static final DateTimeFormatter dateTime005Formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.S");
@@ -488,47 +492,75 @@ public final class AdditionalFieldsUtil {
   }
 
   private static void formatOclc(List<Subfield> subfields) {
-    Pattern pattern = Pattern.compile(OCLC_PATTERN);
+    subfields.forEach(sf -> sf.setData(normalizeOclcValue(sf.getData())));
+  }
 
-    for (Subfield subfield : subfields) {
-      String data = subfield.getData().replaceAll("[.\\s]", "");
-      Matcher matcher = pattern.matcher(data);
-      if (matcher.find()) {
-        String oclcTag = matcher.group(1); // "OCoLC"
-        String numericAndTrailing = matcher.group(5); // Numeric part and any characters that follow
-        String prefix = matcher.group(2); // Entire prefix including letters and potentially leading zeros
-
-        if (prefix != null && (prefix.startsWith("ocm") || prefix.startsWith("ocn") || prefix.startsWith("on"))) {
-          // If "ocm" or "ocn", strip entirely from the prefix
-          subfield.setData("(" + oclcTag + ")" + numericAndTrailing);
-        } else {
-          // For other cases, strip leading zeros only from the numeric part
-          numericAndTrailing = numericAndTrailing.replaceFirst("^0+", "");
-          if (prefix != null) {
-            prefix = prefix.replaceAll("\\d+", ""); // Safely remove digits from the prefix if not null
-          }
-          // Add back any other prefix that might have been included like "tfe"
-          subfield.setData("(" + oclcTag + ")" + (prefix != null ? prefix : "") + numericAndTrailing);
-        }
-      }
+  static String normalizeOclcValue(String value) {
+    var data = OCLC_DOTS_AND_SPACES.matcher(value).replaceAll("");
+    var matcher = OCLC_NUMBER_PATTERN.matcher(data);
+    if (!matcher.find()) {
+      return value;
     }
+    var oclcTag = matcher.group(1);
+    var numericAndTrailing = matcher.group(5);
+    var prefix = matcher.group(2);
+    if (prefix != null && (prefix.startsWith("ocm") || prefix.startsWith("ocn") || prefix.startsWith("on"))) {
+      // If "ocm" or "ocn", strip entirely from the prefix
+      return "(" + oclcTag + ")" + numericAndTrailing;
+    }
+    // For other cases, strip leading zeros only from the numeric part
+    numericAndTrailing = OCLC_LEADING_ZEROS.matcher(numericAndTrailing).replaceFirst("");
+    if (prefix != null) {
+      prefix = OCLC_PREFIX_DIGITS.matcher(prefix).replaceAll("");
+    }
+    // Add back any other prefix that might have been included like "tfe"
+    return "(" + oclcTag + ")" + (prefix != null ? prefix : "") + numericAndTrailing;
   }
 
   private static void deduplicateOclc(Record srcRecord, List<Subfield> subfields, String tag) {
-    List<Subfield> subfieldsToDelete = new ArrayList<>();
+    var marcRecord = computeMarcRecord(srcRecord);
+    if (marcRecord == null) return;
 
-    for (Subfield subfield: new ArrayList<>(subfields)) {
-      if (subfields.stream().anyMatch(s -> isOclcSubfieldDuplicated(subfield, s))) {
-        subfieldsToDelete.add(subfield);
+    // Build a direct subfield → parent map once so detection can inspect field shape
+    var parentMap = new IdentityHashMap<Subfield, DataField>();
+    marcRecord.getVariableFields(tag).forEach(vf -> {
+      if (vf instanceof DataField df) {
+        df.getSubfields().forEach(sf -> parentMap.put(sf, df));
+      }
+    });
+
+    var subfieldsToDelete = new ArrayList<Subfield>();
+    for (var subfield : new ArrayList<>(subfields)) {
+      var duplicate = subfields.stream()
+        .filter(s -> isOclcSubfieldDuplicated(subfield, s))
+        .findFirst();
+      if (duplicate.isPresent()) {
+        // If deleting `subfield` would orphan its field (sole subfield of that code, other subfields
+        // remain), but deleting `duplicate` would not, swap the choice to protect the richer field.
+        boolean preferKeepCurrent = isSoleOfCodeInMultiSubfieldField(subfield, parentMap)
+          && !isSoleOfCodeInMultiSubfieldField(duplicate.get(), parentMap);
+        subfieldsToDelete.add(preferKeepCurrent ? duplicate.get() : subfield);
         subfields.remove(subfield);
       }
     }
-    Optional.ofNullable(computeMarcRecord(srcRecord)).ifPresent(marcRecord -> {
-      List<VariableField> variableFields = marcRecord.getVariableFields(tag);
 
-      subfieldsToDelete.forEach(subfieldToDelete ->
-        variableFields.forEach(field -> removeSubfieldIfExist(marcRecord, field, subfieldToDelete)));
-    });
+    var variableFields = marcRecord.getVariableFields(tag);
+    subfieldsToDelete.forEach(subfieldToDelete ->
+      variableFields.forEach(field -> removeSubfieldIfExist(marcRecord, field, subfieldToDelete)));
+  }
+
+  /**
+   * Returns true when {@code subfield} is the only subfield of its code in its parent DataField
+   * and the parent has other subfields of different codes. Removing such a subfield would leave
+   * the parent without its primary marker (e.g. $a) while other subfields ($z, $b, …) remain,
+   * which creates an incomplete 035 field.
+   */
+  private static boolean isSoleOfCodeInMultiSubfieldField(Subfield subfield,
+                                                           Map<Subfield, DataField> parentMap) {
+    var parent = parentMap.get(subfield);
+    return parent != null
+      && parent.getSubfields(subfield.getCode()).size() == 1
+      && parent.getSubfields().size() > 1;
   }
 
   private static boolean isOclcSubfieldDuplicated(Subfield s1, Subfield s2) {
@@ -612,9 +644,27 @@ public final class AdditionalFieldsUtil {
   public static void fill035FieldInMarcRecordIfNotExists(Record record, String incoming001) {
     String originalHrIdPrefix = getValueFromControlledField(record, HR_ID_PREFIX_FROM_FIELD);
     String incoming035 = mergeFieldsFor035(originalHrIdPrefix, incoming001);
-    if (StringUtils.isNotEmpty(incoming001) && !isFieldExist(record, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, incoming035)) {
+    if (StringUtils.isNotEmpty(incoming001) && !oclcSubfieldExistsIn035(record, incoming035)) {
       addDataFieldToMarcRecord(record, HR_ID_TO_FIELD, HR_ID_FIELD_IND, HR_ID_FIELD_IND, HR_ID_FIELD_SUB, incoming035);
     }
+  }
+
+  /**
+   * Returns true when a 035 $a already carries {@code value} or its OCLC-normalized equivalent,
+   * preventing duplicate 035 fields that differ only in OCLC number format (e.g. ocm/ocn prefixes
+   * or leading zeros).
+   */
+  private static boolean oclcSubfieldExistsIn035(Record marcRecord, String value) {
+    if (isFieldExist(marcRecord, HR_ID_TO_FIELD, HR_ID_FIELD_SUB, value)) {
+      return true;
+    }
+    if (!value.trim().startsWith(OCLC_PREFIX)) {
+      return false;
+    }
+    var normalizedValue = normalizeOclcValue(value);
+    return get035SubfieldOclcValues(marcRecord, TAG_035).stream()
+      .filter(sf -> sf.getCode() == HR_ID_FIELD_SUB)
+      .anyMatch(sf -> normalizeOclcValue(sf.getData()).equals(normalizedValue));
   }
 
   private static String mergeFieldsFor035(String valueFrom003, String valueFrom001) {

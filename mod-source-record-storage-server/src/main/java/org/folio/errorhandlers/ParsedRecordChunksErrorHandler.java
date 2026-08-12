@@ -1,7 +1,6 @@
 package org.folio.errorhandlers;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
@@ -10,7 +9,7 @@ import io.vertx.kafka.client.producer.impl.KafkaHeaderImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.kafka.exception.DuplicateEventException;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
 import org.folio.kafka.ProcessRecordErrorHandler;
@@ -48,10 +47,11 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
   public static final String CORRELATION_ID_HEADER = "correlationId";
   public static final String RECORD_ID_HEADER = "recordId";
 
-  @Autowired
-  private KafkaConfig kafkaConfig;
-  @Autowired
-  private Vertx vertx;
+  private final KafkaConfig kafkaConfig;
+
+  public ParsedRecordChunksErrorHandler(KafkaConfig kafkaConfig) {
+    this.kafkaConfig = kafkaConfig;
+  }
 
   @Override
   public void handle(Throwable throwable, KafkaConsumerRecord<String, byte[]> consumerRecord) {
@@ -66,7 +66,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
       RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
     List<KafkaHeader> kafkaHeaders = consumerRecord.headers();
-    OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
+    ConnectionParams okapiConnectionParams = new ConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders));
 
     String jobExecutionId = okapiConnectionParams.getHeaders().get(JOB_EXECUTION_ID_HEADER);
     String correlationId = okapiConnectionParams.getHeaders().get(CORRELATION_ID_HEADER);

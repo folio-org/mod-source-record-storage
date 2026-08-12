@@ -9,7 +9,6 @@ import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
 import static org.folio.processing.events.services.publisher.KafkaEventPublisher.RECORD_ID_HEADER;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
@@ -39,7 +38,8 @@ import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -67,14 +67,12 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
   protected RecordService recordService;
   protected SnapshotService snapshotService;
   protected MappingParametersSnapshotCache mappingParametersCache;
-  protected Vertx vertx;
 
   protected AbstractUpdateModifyEventHandler(RecordService recordService, SnapshotService snapshotService,
-                                             MappingParametersSnapshotCache mappingParametersCache, Vertx vertx) {
+                                             MappingParametersSnapshotCache mappingParametersCache) {
     this.recordService = recordService;
     this.snapshotService = snapshotService;
     this.mappingParametersCache = mappingParametersCache;
-    this.vertx = vertx;
   }
 
   @Override
@@ -107,7 +105,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
       String userId = (String) payload.getAdditionalProperties().get(USER_ID_HEADER);
       Record newRecord = extractRecord(payload, modifiedEntityType().value());
       String incoming001 = getValueFromControlledField(newRecord, HR_ID_FROM_FIELD);
-      OkapiConnectionParams okapiParams = getOkapiParams(payload);
+      ConnectionParams okapiParams = getOkapiParams(payload);
       preparePayload(payload);
 
       LOG.debug("handle:: Load mapping parameters for jobExecutionId: '{}' and recordId: '{}'", jobExecutionId, recordId);
@@ -159,7 +157,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
             LOG.debug("handle:: Start saving modified MARC record for jobExecutionId: '{}', recordId: '{}' and changedRecordId: '{}' for centralTenantId: '{}'", jobExecutionId, finalRecordId, changedRecord.getId(), centralTenantId);
             var okapiHeaders = toOkapiHeaders(payload);
             if (centralTenantId != null) {
-              okapiHeaders.put(OKAPI_TENANT_HEADER, centralTenantId);
+              okapiHeaders.put(XOkapiHeaders.TENANT, centralTenantId);
               return snapshotService.copySnapshotToOtherTenant(changedRecord.getSnapshotId(), payload.getTenant(), centralTenantId)
                 .compose(snapshot -> recordService.saveRecord(changedRecord, okapiHeaders));
             }
@@ -357,7 +355,7 @@ public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
     return Json.decodeValue(payload.getContext().get(key), Record.class);
   }
 
-  protected OkapiConnectionParams getOkapiParams(DataImportEventPayload payload) {
-    return RestUtil.retrieveOkapiConnectionParams(payload, vertx);
+  protected ConnectionParams getOkapiParams(DataImportEventPayload payload) {
+    return RestUtil.retrieveOkapiConnectionParams(payload);
   }
 }

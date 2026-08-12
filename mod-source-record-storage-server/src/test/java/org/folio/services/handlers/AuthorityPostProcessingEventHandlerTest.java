@@ -8,7 +8,6 @@ import static org.folio.rest.jaxrs.model.EntityType.AUTHORITY;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +33,7 @@ import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.kafka.KafkaConfig;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -65,7 +65,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
   @Override
   protected AbstractPostProcessingEventHandler createHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig) {
-    return new AuthorityPostProcessingEventHandler(recordService, snapshotService, kafkaConfig, mappingParametersCache, vertx);
+    return new AuthorityPostProcessingEventHandler(recordService, snapshotService, kafkaConfig, mappingParametersCache);
   }
 
   @Test
@@ -85,7 +85,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       createDataImportEventPayload(payloadContext, DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(record -> handler.handle(dataImportEventPayload)
@@ -243,7 +243,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       createDataImportEventPayload(payloadContext, DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(rec -> handler.handle(dataImportEventPayload)
@@ -430,7 +430,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
       .withToken(TOKEN);
 
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
       .onSuccess(record -> handler.handle(dataImportEventPayload)

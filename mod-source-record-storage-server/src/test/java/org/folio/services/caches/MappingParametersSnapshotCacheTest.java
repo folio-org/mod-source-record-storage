@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.folio.services.exceptions.CacheLoadingException;
@@ -37,7 +37,7 @@ class MappingParametersSnapshotCacheTest {
 
   private MappingParametersSnapshotCache cache;
   private static Vertx vertx;
-  static OkapiConnectionParams params;
+  static ConnectionParams params;
   private static Map<String, Integer> requestCounts;
 
   @BeforeAll
@@ -80,7 +80,7 @@ class MappingParametersSnapshotCacheTest {
       .listen(0)
       .onComplete(vtc.succeeding(server -> {
         Map<String, String> okapiHeaders = Map.of("x-okapi-url", "http://localhost:" + server.actualPort());
-        params = new OkapiConnectionParams(okapiHeaders, vertx);
+        params = new ConnectionParams(okapiHeaders);
         vtc.completeNow();
       }));
   }

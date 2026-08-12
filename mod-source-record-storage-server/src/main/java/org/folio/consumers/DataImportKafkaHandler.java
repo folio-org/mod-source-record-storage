@@ -12,9 +12,10 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventPayload;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.events.EventManager;
 import org.folio.processing.events.services.publisher.KafkaEventPublisher;
 import org.folio.processing.exceptions.EventProcessingException;
@@ -37,8 +38,6 @@ import static org.folio.DataImportEventTypes.DI_ERROR;
 import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_AUTHORITY_UPDATED_READY_FOR_POST_PROCESSING;
-import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
-import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
 @Component
@@ -139,7 +138,7 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
       eventPayload.getContext().put(USER_ID_HEADER, userId);
       populateWithCommonHeaders(eventPayload, targetRecord);
 
-      OkapiConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload, vertx);
+      ConnectionParams params = RestUtil.retrieveOkapiConnectionParams(eventPayload);
       String jobProfileSnapshotId = eventPayload.getContext().get(PROFILE_SNAPSHOT_ID_KEY);
       printLogInfo(DEBUG, format("handle:: Using jobProfileSnapshotId: %s", jobProfileSnapshotId), debugInfo);
 
@@ -196,13 +195,13 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, byte[]
     if (StringUtils.isNotBlank(permissions)) {
       eventPayload.getContext().put(PERMISSIONS, permissions);
     }
-    String requestId = extractHeaderValue(OKAPI_REQUEST_HEADER, kafkaRecord.headers());
+    String requestId = extractHeaderValue(XOkapiHeaders.REQUEST_ID, kafkaRecord.headers());
     if (StringUtils.isNotBlank(requestId)) {
-      eventPayload.getContext().put(OKAPI_REQUEST_HEADER, requestId);
+      eventPayload.getContext().put(XOkapiHeaders.REQUEST_ID, requestId);
     }
-    String userId = extractHeaderValue(OKAPI_USER_HEADER, kafkaRecord.headers());
+    String userId = extractHeaderValue(XOkapiHeaders.USER_ID, kafkaRecord.headers());
     if (StringUtils.isNotBlank(userId)) {
-      eventPayload.getContext().put(OKAPI_USER_HEADER, userId);
+      eventPayload.getContext().put(XOkapiHeaders.USER_ID, userId);
     }
   }
 

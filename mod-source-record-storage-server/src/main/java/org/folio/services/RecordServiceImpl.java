@@ -11,7 +11,6 @@ import static org.folio.dao.util.RecordDaoUtil.getExternalIdType;
 import static org.folio.dao.util.RecordType.MARC_HOLDING;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_FOUND_TEMPLATE;
 import static org.folio.dao.util.SnapshotDaoUtil.SNAPSHOT_NOT_STARTED_MESSAGE_TEMPLATE;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
@@ -22,7 +21,6 @@ import io.reactivex.Flowable;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgException;
@@ -57,8 +55,9 @@ import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dao.util.executor.QueryExecutor;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.exception.DuplicateEventException;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.value.ListValue;
 import org.folio.rest.jaxrs.model.FetchParsedRecordsBatchRequest;
 import org.folio.rest.jaxrs.model.FieldRange;
@@ -110,14 +109,11 @@ public class RecordServiceImpl implements RecordService {
 
   private final RecordDao recordDao;
   private final ConsortiumConfigurationCache consortiumConfigurationCache;
-  private final Vertx vertx;
 
   @Autowired
-  public RecordServiceImpl(final RecordDao recordDao, ConsortiumConfigurationCache consortiumConfigurationCache,
-                           Vertx vertx) {
+  public RecordServiceImpl(final RecordDao recordDao, ConsortiumConfigurationCache consortiumConfigurationCache) {
     this.recordDao = recordDao;
     this.consortiumConfigurationCache = consortiumConfigurationCache;
-    this.vertx = vertx;
   }
 
   @Override
@@ -138,7 +134,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Record> saveRecord(Record rec, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     LOG.debug("saveRecord:: Saving record with id: {} for tenant: {}", rec.getId(), tenantId);
     ensureRecordHasId(rec);
     ensureRecordHasSuppressDiscovery(rec);
@@ -188,7 +184,7 @@ public class RecordServiceImpl implements RecordService {
     }
     List<Future<Record>> setMatchedIdsFutures = new ArrayList<>();
     recordCollection.getRecords().forEach(rec -> setMatchedIdsFutures.add(setMatchedIdForRecord(rec,
-      okapiHeaders.get(OKAPI_TENANT_HEADER))));
+      okapiHeaders.get(XOkapiHeaders.TENANT))));
     return Future.all(setMatchedIdsFutures)
       .compose(ar -> ar.succeeded()
         ? recordDao.saveRecords(recordCollection, okapiHeaders)
@@ -217,7 +213,7 @@ public class RecordServiceImpl implements RecordService {
     RecordsModifierOperator recordsMatchedIdsSetter = recordCollection -> {
       try {
         for (var sourceRecord : recordCollection.getRecords()) {
-          setMatchedIdForRecord(sourceRecord, okapiHeaders.get(OKAPI_TENANT_HEADER))
+          setMatchedIdForRecord(sourceRecord, okapiHeaders.get(XOkapiHeaders.TENANT))
             .toCompletionStage().toCompletableFuture().get();
         }
         return recordCollection;
@@ -263,7 +259,7 @@ public class RecordServiceImpl implements RecordService {
     }
     rec.setId(UUID.randomUUID().toString());
 
-    return recordDao.getRecordByMatchedId(matchedId, okapiHeaders.get(OKAPI_TENANT_HEADER))
+    return recordDao.getRecordByMatchedId(matchedId, okapiHeaders.get(XOkapiHeaders.TENANT))
       .map(r -> r.orElseThrow(() -> new NotFoundException(format(RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND, matchedId))))
       .compose(v -> saveRecord(rec, okapiHeaders))
       .recover(throwable -> {
@@ -305,7 +301,7 @@ public class RecordServiceImpl implements RecordService {
   public Future<SourceRecordCollection> getSourceRecords(List<String> ids, IdType idType, RecordType recordType,
                                                          Boolean deleted, Boolean includeShared,
                                                          Map<String, String> okapiHeaders) {
-    String tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    String tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     return recordDao.getSourceRecords(ids, idType, recordType, deleted, tenantId)
       .compose(sourceRecordCollection -> {
         if (Boolean.TRUE.equals(includeShared) && !MARC_HOLDING.equals(recordType)) {
@@ -319,7 +315,7 @@ public class RecordServiceImpl implements RecordService {
                                                              List<String> ids, IdType idType, RecordType recordType,
                                                              Boolean deleted, String tenantId,
                                                              Map<String, String> okapiHeaders) {
-    OkapiConnectionParams connectionParams = OkapiConnectionParams.createSystemUserConnectionParams(okapiHeaders, vertx);
+    ConnectionParams connectionParams = ConnectionParams.createSystemUserConnectionParams(okapiHeaders);
     return consortiumConfigurationCache.get(connectionParams)
       .compose(consortiumConfigurationOptional -> {
         if (consortiumConfigurationOptional.isEmpty()) {
@@ -449,7 +445,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Void> deleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
       .map(rec -> {
@@ -464,7 +460,7 @@ public class RecordServiceImpl implements RecordService {
 
   @Override
   public Future<Void> unDeleteRecordById(String id, IdType idType, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     return recordDao.getRecordByExternalId(id, idType, tenantId)
       .map(recordOptional -> recordOptional.orElseThrow(() -> new NotFoundException(format(NOT_FOUND_MESSAGE, Record.class.getSimpleName(), id))))
       .map(foundRecord -> {
@@ -478,10 +474,9 @@ public class RecordServiceImpl implements RecordService {
 
   private Future<Record> setMatchedIdForRecord(Record rec, String tenantId) {
     Optional<Record> fastResult = tryGetMatchedIdFrom999(rec);
-    if (fastResult.isPresent()) {
-      return Future.succeededFuture(fastResult.get());
-    }
-    return recordDao.executeInTransaction(queryExecutor -> setMatchedIdForRecord(queryExecutor, rec), tenantId);
+    return fastResult.map(Future::succeededFuture)
+      .orElseGet(() -> recordDao.executeInTransaction(queryExecutor ->
+        setMatchedIdForRecord(queryExecutor, rec), tenantId));
   }
 
   private Future<Record> setMatchedIdForRecord(QueryExecutor queryExecutor, Record rec) {

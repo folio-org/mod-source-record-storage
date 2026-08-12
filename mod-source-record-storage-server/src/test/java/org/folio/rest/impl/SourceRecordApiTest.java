@@ -1,7 +1,6 @@
 package org.folio.rest.impl;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TENANT;
 import static org.folio.services.AbstractLBServiceTest.getFullModuleName;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
@@ -38,6 +37,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.WebClient;
 import org.apache.http.HttpStatus;
 import org.folio.dao.util.IdType;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
@@ -1232,7 +1232,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .header(OKAPI_HEADER_TENANT, CENTRAL_TENANT_ID)
+      .header(XOkapiHeaders.TENANT, CENTRAL_TENANT_ID)
       .queryParam("idType", IdType.INSTANCE)
       .queryParam("includeShared", true)
       .body(externalIds)

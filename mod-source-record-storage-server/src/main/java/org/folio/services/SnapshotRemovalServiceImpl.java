@@ -11,7 +11,7 @@ import java.util.List;
 import org.folio.dao.RecordDao;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.RecordType;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.rest.jaxrs.model.Record;
 import org.jooq.Condition;
@@ -32,9 +32,9 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
   private static final String INVENTORY_INSTANCES_PATH = "/inventory/instances/%s";
   private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "50"));
 
-  private SnapshotService snapshotService;
-  private RecordService recordService;
-  private RecordDao recordDao;
+  private final SnapshotService snapshotService;
+  private final RecordService recordService;
+  private final RecordDao recordDao;
 
   @Autowired
   public SnapshotRemovalServiceImpl(SnapshotService snapshotService, RecordService recordService, RecordDao recordDao) {
@@ -44,12 +44,12 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
   }
 
   @Override
-  public Future<Boolean> deleteSnapshot(String snapshotId, OkapiConnectionParams params) {
+  public Future<Boolean> deleteSnapshot(String snapshotId, ConnectionParams params) {
     return deleteInstancesBySnapshotId(snapshotId, params)
       .compose(ar -> snapshotService.deleteSnapshot(snapshotId, params.getTenantId()));
   }
 
-  private Future<Void> deleteInstancesBySnapshotId(String snapshotId, OkapiConnectionParams params) {
+  private Future<Void> deleteInstancesBySnapshotId(String snapshotId, ConnectionParams params) {
     Condition condition = filterRecordBySnapshotId(snapshotId);
     return recordDao.executeInTransaction(queryExecutor -> RecordDaoUtil.countByCondition(queryExecutor, condition), params.getTenantId())
       .compose(totalRecords -> {
@@ -66,7 +66,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
       });
   }
 
-  private Future<Void> deleteInstances(List<Record> records, OkapiConnectionParams params) {
+  private Future<Void> deleteInstances(List<Record> records, ConnectionParams params) {
     List<String> instanceIds = records.stream()
       .filter(record -> record.getExternalIdsHolder() != null)
       .map(record -> record.getExternalIdsHolder().getInstanceId())
@@ -84,7 +84,7 @@ public class SnapshotRemovalServiceImpl implements SnapshotRemovalService {
     return promise.future();
   }
 
-  private Future<Boolean> deleteInstanceById(String id, OkapiConnectionParams params) {
+  private Future<Boolean> deleteInstanceById(String id, ConnectionParams params) {
     Promise<Boolean> promise = Promise.promise();
     String instacesUrl = format(INVENTORY_INSTANCES_PATH, id);
 

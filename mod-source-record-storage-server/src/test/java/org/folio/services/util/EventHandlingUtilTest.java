@@ -4,6 +4,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import org.folio.DataImportEventPayload;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -11,12 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.RecordDomainEventPublisher.RECORD_DOMAIN_EVENT_TOPIC;
-import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
-import static org.folio.services.util.EventHandlingUtil.OKAPI_USER_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -129,19 +125,19 @@ public class EventHandlingUtilTest {
     Map<String, String> headers = EventHandlingUtil.toOkapiHeaders(eventPayload);
 
     // Then
-    assertEquals(OKAPI_URL, headers.get(OKAPI_URL_HEADER));
-    assertEquals(TENANT, headers.get(OKAPI_TENANT_HEADER));
-    assertEquals(TOKEN, headers.get(OKAPI_TOKEN_HEADER));
-    assertNull(headers.get(OKAPI_USER_HEADER));
-    assertNull(headers.get(OKAPI_REQUEST_HEADER));
+    assertEquals(OKAPI_URL, headers.get(XOkapiHeaders.URL));
+    assertEquals(TENANT, headers.get(XOkapiHeaders.TENANT));
+    assertEquals(TOKEN, headers.get(XOkapiHeaders.TOKEN));
+    assertNull(headers.get(XOkapiHeaders.USER_ID));
+    assertNull(headers.get(XOkapiHeaders.REQUEST_ID));
   }
 
   @Test
   public void shouldConvertDataImportEventPayloadToOkapiHeadersWithUserIdAndRequestId() {
     // Given
     HashMap<String, String> context = new HashMap<>();
-    context.put(OKAPI_USER_HEADER, USER_ID);
-    context.put(OKAPI_REQUEST_HEADER, REQUEST_ID);
+    context.put(XOkapiHeaders.USER_ID, USER_ID);
+    context.put(XOkapiHeaders.REQUEST_ID, REQUEST_ID);
 
     DataImportEventPayload eventPayload = new DataImportEventPayload()
       .withOkapiUrl(OKAPI_URL)
@@ -153,11 +149,11 @@ public class EventHandlingUtilTest {
     Map<String, String> headers = EventHandlingUtil.toOkapiHeaders(eventPayload);
 
     // Then
-    assertEquals(OKAPI_URL, headers.get(OKAPI_URL_HEADER));
-    assertEquals(TENANT, headers.get(OKAPI_TENANT_HEADER));
-    assertEquals(TOKEN, headers.get(OKAPI_TOKEN_HEADER));
-    assertEquals(USER_ID, headers.get(OKAPI_USER_HEADER));
-    assertEquals(REQUEST_ID, headers.get(OKAPI_REQUEST_HEADER));
+    assertEquals(OKAPI_URL, headers.get(XOkapiHeaders.URL));
+    assertEquals(TENANT, headers.get(XOkapiHeaders.TENANT));
+    assertEquals(TOKEN, headers.get(XOkapiHeaders.TOKEN));
+    assertEquals(USER_ID, headers.get(XOkapiHeaders.USER_ID));
+    assertEquals(REQUEST_ID, headers.get(XOkapiHeaders.REQUEST_ID));
   }
 
   @Test
@@ -169,31 +165,31 @@ public class EventHandlingUtilTest {
     Map<String, String> headers = EventHandlingUtil.toOkapiHeaders(kafkaHeaders);
 
     // Then
-    assertEquals(OKAPI_URL, headers.get(OKAPI_URL_HEADER));
-    assertEquals(TENANT, headers.get(OKAPI_TENANT_HEADER));
-    assertEquals(TOKEN, headers.get(OKAPI_TOKEN_HEADER));
-    assertEquals(USER_ID, headers.get(OKAPI_USER_HEADER));
-    assertEquals(REQUEST_ID, headers.get(OKAPI_REQUEST_HEADER));
+    assertEquals(OKAPI_URL, headers.get(XOkapiHeaders.URL));
+    assertEquals(TENANT, headers.get(XOkapiHeaders.TENANT));
+    assertEquals(TOKEN, headers.get(XOkapiHeaders.TOKEN));
+    assertEquals(USER_ID, headers.get(XOkapiHeaders.USER_ID));
+    assertEquals(REQUEST_ID, headers.get(XOkapiHeaders.REQUEST_ID));
   }
 
   @Test
   public void shouldConvertKafkaHeadersToOkapiHeadersWithoutOptionalHeaders() {
     // Given
     List<KafkaHeader> kafkaHeaders = List.of(
-      KafkaHeader.header(OKAPI_URL_HEADER, OKAPI_URL),
-      KafkaHeader.header(OKAPI_TENANT_HEADER, TENANT),
-      KafkaHeader.header(OKAPI_TOKEN_HEADER, TOKEN)
+      KafkaHeader.header(XOkapiHeaders.URL, OKAPI_URL),
+      KafkaHeader.header(XOkapiHeaders.TENANT, TENANT),
+      KafkaHeader.header(XOkapiHeaders.TOKEN, TOKEN)
     );
 
     // When
     Map<String, String> headers = EventHandlingUtil.toOkapiHeaders(kafkaHeaders);
 
     // Then
-    assertEquals(OKAPI_URL, headers.get(OKAPI_URL_HEADER));
-    assertEquals(TENANT, headers.get(OKAPI_TENANT_HEADER));
-    assertEquals(TOKEN, headers.get(OKAPI_TOKEN_HEADER));
-    assertNull(headers.get(OKAPI_USER_HEADER));
-    assertNull(headers.get(OKAPI_REQUEST_HEADER));
+    assertEquals(OKAPI_URL, headers.get(XOkapiHeaders.URL));
+    assertEquals(TENANT, headers.get(XOkapiHeaders.TENANT));
+    assertEquals(TOKEN, headers.get(XOkapiHeaders.TOKEN));
+    assertNull(headers.get(XOkapiHeaders.USER_ID));
+    assertNull(headers.get(XOkapiHeaders.REQUEST_ID));
   }
 
   @Test
@@ -206,11 +202,11 @@ public class EventHandlingUtilTest {
     Map<String, String> headers = EventHandlingUtil.toOkapiHeaders(kafkaHeaders, overrideTenant);
 
     // Then
-    assertEquals(OKAPI_URL, headers.get(OKAPI_URL_HEADER));
-    assertEquals(overrideTenant, headers.get(OKAPI_TENANT_HEADER));
-    assertEquals(TOKEN, headers.get(OKAPI_TOKEN_HEADER));
-    assertEquals(USER_ID, headers.get(OKAPI_USER_HEADER));
-    assertEquals(REQUEST_ID, headers.get(OKAPI_REQUEST_HEADER));
+    assertEquals(OKAPI_URL, headers.get(XOkapiHeaders.URL));
+    assertEquals(overrideTenant, headers.get(XOkapiHeaders.TENANT));
+    assertEquals(TOKEN, headers.get(XOkapiHeaders.TOKEN));
+    assertEquals(USER_ID, headers.get(XOkapiHeaders.USER_ID));
+    assertEquals(REQUEST_ID, headers.get(XOkapiHeaders.REQUEST_ID));
   }
 
   @Test
@@ -222,11 +218,11 @@ public class EventHandlingUtilTest {
     Map<String, String> headers = EventHandlingUtil.toOkapiHeaders(kafkaHeaders, null);
 
     // Then
-    assertEquals(OKAPI_URL, headers.get(OKAPI_URL_HEADER));
-    assertEquals(TENANT, headers.get(OKAPI_TENANT_HEADER));
-    assertEquals(TOKEN, headers.get(OKAPI_TOKEN_HEADER));
-    assertEquals(USER_ID, headers.get(OKAPI_USER_HEADER));
-    assertEquals(REQUEST_ID, headers.get(OKAPI_REQUEST_HEADER));
+    assertEquals(OKAPI_URL, headers.get(XOkapiHeaders.URL));
+    assertEquals(TENANT, headers.get(XOkapiHeaders.TENANT));
+    assertEquals(TOKEN, headers.get(XOkapiHeaders.TOKEN));
+    assertEquals(USER_ID, headers.get(XOkapiHeaders.USER_ID));
+    assertEquals(REQUEST_ID, headers.get(XOkapiHeaders.REQUEST_ID));
   }
 
   @Test
@@ -280,11 +276,11 @@ public class EventHandlingUtilTest {
 
   private List<KafkaHeader> createKafkaHeaders() {
     return List.of(
-      KafkaHeader.header(OKAPI_URL_HEADER, OKAPI_URL),
-      KafkaHeader.header(OKAPI_TENANT_HEADER, TENANT),
-      KafkaHeader.header(OKAPI_TOKEN_HEADER, TOKEN),
-      KafkaHeader.header(OKAPI_USER_HEADER, USER_ID),
-      KafkaHeader.header(OKAPI_REQUEST_HEADER, REQUEST_ID)
+      KafkaHeader.header(XOkapiHeaders.URL, OKAPI_URL),
+      KafkaHeader.header(XOkapiHeaders.TENANT, TENANT),
+      KafkaHeader.header(XOkapiHeaders.TOKEN, TOKEN),
+      KafkaHeader.header(XOkapiHeaders.USER_ID, USER_ID),
+      KafkaHeader.header(XOkapiHeaders.REQUEST_ID, REQUEST_ID)
     );
   }
 }

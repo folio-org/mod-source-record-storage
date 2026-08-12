@@ -8,9 +8,6 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.addFieldToMarcRecord;
@@ -19,14 +16,12 @@ import static org.folio.services.util.AdditionalFieldsUtil.getValueFromControlle
 import static org.folio.services.util.AdditionalFieldsUtil.isFieldsFillingNeeded;
 import static org.folio.services.util.AdditionalFieldsUtil.remove035WithActualHrId;
 import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransactionDate;
-import static org.folio.services.util.EventHandlingUtil.OKAPI_REQUEST_HEADER;
 import static org.folio.services.util.EventHandlingUtil.sendEventToKafka;
 import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 import static org.folio.services.util.RestUtil.retrieveOkapiConnectionParams;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.kafka.client.producer.KafkaHeader;
@@ -46,6 +41,7 @@ import org.folio.MappingProfile;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordType;
 import org.folio.kafka.KafkaConfig;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.events.services.handler.EventHandler;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -83,18 +79,16 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
   private final KafkaConfig kafkaConfig;
   private final MappingParametersSnapshotCache mappingParamsCache;
-  private final Vertx vertx;
   private final RecordService recordService;
   private final SnapshotService snapshotService;
 
 
   protected AbstractPostProcessingEventHandler(RecordService recordService, SnapshotService snapshotService, KafkaConfig kafkaConfig,
-                                               MappingParametersSnapshotCache mappingParamsCache, Vertx vertx) {
+                                               MappingParametersSnapshotCache mappingParamsCache) {
     this.recordService = recordService;
     this.snapshotService = snapshotService;
     this.kafkaConfig = kafkaConfig;
     this.mappingParamsCache = mappingParamsCache;
-    this.vertx = vertx;
   }
 
   @Override
@@ -103,7 +97,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     var eventType = dataImportEventPayload.getEventType();
     var jobExecutionId = dataImportEventPayload.getJobExecutionId();
     try {
-      mappingParamsCache.get(jobExecutionId, retrieveOkapiConnectionParams(dataImportEventPayload, vertx))
+      mappingParamsCache.get(jobExecutionId, retrieveOkapiConnectionParams(dataImportEventPayload))
         .compose(parametersOptional -> parametersOptional
           .map(mappingParams -> prepareRecord(dataImportEventPayload, mappingParams))
           .orElse(Future.failedFuture(format(MAPPING_PARAMS_NOT_FOUND_MSG, jobExecutionId))))
@@ -156,9 +150,9 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
 
   protected List<KafkaHeader> getKafkaHeaders(DataImportEventPayload eventPayload) {
     List<KafkaHeader> kafkaHeaders = new ArrayList<>(List.of(
-      KafkaHeader.header(OKAPI_URL_HEADER, eventPayload.getOkapiUrl()),
-      KafkaHeader.header(OKAPI_TENANT_HEADER, eventPayload.getTenant()),
-      KafkaHeader.header(OKAPI_TOKEN_HEADER, eventPayload.getToken()))
+      KafkaHeader.header(XOkapiHeaders.URL, eventPayload.getOkapiUrl()),
+      KafkaHeader.header(XOkapiHeaders.TENANT, eventPayload.getTenant()),
+      KafkaHeader.header(XOkapiHeaders.TOKEN, eventPayload.getToken()))
     );
 
     String recordId = eventPayload.getContext().get(RECORD_ID_HEADER);
@@ -171,9 +165,9 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       kafkaHeaders.add(KafkaHeader.header(USER_ID_HEADER, userId));
     }
 
-    String requestId = eventPayload.getContext().get(OKAPI_REQUEST_HEADER);
+    String requestId = eventPayload.getContext().get(XOkapiHeaders.REQUEST_ID);
     if (StringUtils.isNotBlank(requestId)) {
-      kafkaHeaders.add(KafkaHeader.header(OKAPI_REQUEST_HEADER, requestId));
+      kafkaHeaders.add(KafkaHeader.header(XOkapiHeaders.REQUEST_ID, requestId));
     }
     return kafkaHeaders;
   }
@@ -265,7 +259,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       .and(filterRecordByExternalId(externalId));
 
     return recordService.getRecords(condition, getDbType(), new ArrayList<>(), 0, 999,
-      okapiHeaders.get(OKAPI_TENANT_HEADER)).compose(recordCollection -> {
+      okapiHeaders.get(XOkapiHeaders.TENANT)).compose(recordCollection -> {
         Promise<Void> result = Promise.promise();
         @SuppressWarnings("squid:S3740")
         List<Future<Record>> futures = new ArrayList<>();
@@ -325,7 +319,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
    * @return - Future with Record result
    */
   private Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     return recordService.getRecordById(record.getId(), tenantId)
       .compose(r -> {
         if (r.isPresent()) {
@@ -364,7 +358,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}", jobExecutionId, centralTenantId);
     var okapiHeaders = toOkapiHeaders(dataImportEventPayload);
     if (centralTenantId != null) {
-      okapiHeaders.put(OKAPI_TENANT_HEADER, centralTenantId);
+      okapiHeaders.put(XOkapiHeaders.TENANT, centralTenantId);
       return snapshotService.copySnapshotToOtherTenant(record.getSnapshotId(), dataImportEventPayload.getTenant(), centralTenantId)
         .compose(f -> saveRecord(record, okapiHeaders));
     }

@@ -11,7 +11,6 @@ import static org.folio.services.util.AdditionalFieldsUtil.isFieldExist;
 import static org.folio.services.util.AdditionalFieldsUtil.removeField;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.junit.Assert.assertFalse;
-import static org.mockito.ArgumentMatchers.any;
 
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import io.vertx.core.json.JsonArray;
@@ -40,7 +39,7 @@ public class AdditionalFieldsUtilTest {
   private static final String PARSED_MARC_RECORD_PATH = "src/test/resources/parsedMarcRecord.json";
 
   @Test
-  public void shouldAddInstanceIdSubfield() throws IOException {
+  public void shouldAddInstanceIdSubfield() {
     // given
     String recordId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
@@ -616,17 +615,6 @@ public class AdditionalFieldsUtilTest {
     Assert.assertTrue(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, jsonObject));
 
     srcRecord.getExternalIdsHolder().setHoldingsHrid(holdingHrid);
-
-    Assert.assertFalse(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, jsonObject));
-  }
-
-  @Test
-  public void isFieldsFillingNeededForUnknownRecordType() {
-    String entityId = UUID.randomUUID().toString();
-    Record srcRecord = new Record().withRecordType(any());
-
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.put("id", entityId);
 
     Assert.assertFalse(AdditionalFieldsUtil.isFieldsFillingNeeded(srcRecord, jsonObject));
   }

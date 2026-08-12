@@ -15,8 +15,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.folio.dataimport.util.OkapiConnectionParams;
-import org.folio.dataimport.util.RestUtil;
+import org.folio.dataimport.util.ConnectionParams;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.services.entities.ConsortiumConfiguration;
 import org.junit.Before;
 import org.junit.Rule;
@@ -37,7 +37,7 @@ public class ConsortiumConfigurationCacheTest {
   private final Vertx vertx = Vertx.vertx();
   private final ConsortiumConfigurationCache consortiumConfigurationCache =
     new ConsortiumConfigurationCache(vertx, 3600);
-  private OkapiConnectionParams params;
+  private ConnectionParams params;
   private final JsonObject consortiumConfiguration = new JsonObject()
     .put("userTenants", new JsonArray().add(new JsonObject().put("centralTenantId", CENTRAL_TENANT_ID).put("consortiumId", CONSORTIUM_ID)));
 
@@ -55,11 +55,11 @@ public class ConsortiumConfigurationCacheTest {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_ENDPOINT), true))
       .willReturn(WireMock.ok().withBody(consortiumConfiguration.encode())));
 
-    this.params = new OkapiConnectionParams(Map.of(
-      RestUtil.OKAPI_TENANT_HEADER, TENANT_ID,
-      RestUtil.OKAPI_TOKEN_HEADER, "token",
-      RestUtil.OKAPI_URL_HEADER, mockServer.baseUrl()
-    ), vertx);
+    this.params = new ConnectionParams(Map.of(
+      XOkapiHeaders.TENANT, TENANT_ID,
+      XOkapiHeaders.TOKEN, "token",
+      XOkapiHeaders.URL, mockServer.baseUrl()
+    ));
   }
 
   @Test

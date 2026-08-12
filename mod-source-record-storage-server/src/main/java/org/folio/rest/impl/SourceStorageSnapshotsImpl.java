@@ -11,7 +11,7 @@ import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 
 import org.folio.dataimport.util.ExceptionHelper;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.resource.SourceStorageSnapshots;
 import org.folio.rest.tools.utils.TenantTool;
@@ -106,7 +106,7 @@ public class SourceStorageSnapshotsImpl implements SourceStorageSnapshots {
       Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        snapshotRemovalService.deleteSnapshot(jobExecutionId, new OkapiConnectionParams(okapiHeaders, vertxContext.owner()))
+        snapshotRemovalService.deleteSnapshot(jobExecutionId, new ConnectionParams(okapiHeaders))
           .map(deleted -> Boolean.TRUE.equals(deleted)
             ? DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond204()
             : DeleteSourceStorageSnapshotsByJobExecutionIdResponse.respond404WithTextPlain(

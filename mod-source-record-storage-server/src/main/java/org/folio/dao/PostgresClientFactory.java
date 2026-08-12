@@ -2,12 +2,14 @@ package org.folio.dao;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.pgclient.PgBuilder;
 import io.vertx.reactivex.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
+import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -163,9 +165,36 @@ public class PostgresClientFactory {
   /**
    * Close all cached connections.
    */
-  public static void closeAll() {
-    POOL_CACHE.values().forEach(PostgresClientFactory::close);
-    POOL_CACHE.clear();
+  public static Future<Void> closeAll() {
+    closeDataSources();
+    List<Future<Void>> closeFutures = POOL_CACHE.values()
+      .stream()
+      .map(PostgresClientFactory::close)
+      .toList();
+
+    // clear on completion (not only on success) so a failed close never leaves
+    // a stale pool cached that still points at an already stopped database
+    return Future.all(closeFutures)
+      .onComplete(ar -> POOL_CACHE.clear())
+      .mapEmpty();
+  }
+
+  /**
+   * Close and evict every cached {@link DataSource}. Without this the static
+   * {@link #DATA_SOURCE_CACHE} would keep Hikari pools bound to a database (e.g. a test
+   * container) that has already been stopped, causing "connection refused" on reuse.
+   */
+  private static void closeDataSources() {
+    DATA_SOURCE_CACHE.values().forEach(dataSource -> {
+      if (dataSource instanceof AutoCloseable closeable) {
+        try {
+          closeable.close();
+        } catch (Exception e) {
+          LOG.error("Error closing data source", e);
+        }
+      }
+    });
+    DATA_SOURCE_CACHE.clear();
   }
 
   /**
@@ -261,8 +290,17 @@ public class PostgresClientFactory {
     return format("%s_%s", tenantId.toLowerCase(), MODULE_NAME);
   }
 
-  private static void close(Pool client) {
-    client.close();
+  private static Future<Void> close(Pool client) {
+    try {
+      return client.close()
+        .recover(throwable -> {
+          LOG.error("Error closing client", throwable);
+          return Future.succeededFuture();
+        });
+    } catch (Exception e) {
+      LOG.error("Error closing client", e);
+      return Future.succeededFuture();
+    }
   }
 
 }

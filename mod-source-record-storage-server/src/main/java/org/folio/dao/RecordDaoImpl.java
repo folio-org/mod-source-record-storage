@@ -27,7 +27,6 @@ import static org.folio.rest.jooq.Tables.RAW_RECORDS_LB;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.rest.jooq.Tables.SNAPSHOTS_LB;
 import static org.folio.rest.jooq.enums.RecordType.MARC_BIB;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.rest.util.QueryParamUtil.toRecordType;
 import static org.jooq.impl.DSL.condition;
 import static org.jooq.impl.DSL.countDistinct;
@@ -81,7 +80,7 @@ import io.vertx.sqlclient.RowSet;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.BinaryExpression;
 import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.Parenthesis;
+import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang.ArrayUtils;
@@ -103,6 +102,7 @@ import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dao.util.TenantUtil;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.kafka.exception.DuplicateEventException;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.value.ListValue;
 import org.folio.processing.value.MissingValue;
 import org.folio.processing.value.Value;
@@ -148,7 +148,6 @@ import org.jooq.LoaderError;
 import org.jooq.Name;
 import org.jooq.OrderField;
 import org.jooq.Record1;
-import org.jooq.Record2;
 import org.jooq.ResultQuery;
 import org.jooq.SelectConditionStep;
 import org.jooq.SelectJoinStep;
@@ -423,14 +422,21 @@ public class RecordDaoImpl implements RecordDao {
     if (expr instanceof BinaryExpression binExpr) {
       parseExpression(binExpr.getLeftExpression(), expressions);
       parseExpression(binExpr.getRightExpression(), expressions);
-    } else if (expr instanceof Parenthesis parenthesis) {
-      if (containsParenthesis(parenthesis.getExpression())) parseExpression(parenthesis.getExpression(), expressions);
+    } else if (expr instanceof ParenthesedExpressionList) {
+      @SuppressWarnings("unchecked")
+      ParenthesedExpressionList<Expression> parenthesis = (ParenthesedExpressionList<Expression>) expr;
+      var expression = getExpression(parenthesis);
+      if (containsParenthesis(expression)) parseExpression(expression, expressions);
       else expressions.add(parenthesis);
     }
   }
 
+  private static Expression getExpression(ParenthesedExpressionList<Expression> parenthesedExpressionList) {
+    return parenthesedExpressionList.isEmpty() ? null : parenthesedExpressionList.getFirst();
+  }
+
   private static boolean containsParenthesis(Expression expr) {
-    if (expr instanceof Parenthesis) {
+    if (expr instanceof ParenthesedExpressionList) {
       return true;
     } else if (expr instanceof BinaryExpression binExpr) {
       return containsParenthesis(binExpr.getLeftExpression()) || containsParenthesis(binExpr.getRightExpression());
@@ -668,7 +674,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> saveRecord(Record record, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     LOG.trace("saveRecord:: Saving {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(queryExecutor -> saveRecord(queryExecutor, record, okapiHeaders));
   }
@@ -683,7 +689,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<RecordsBatchResponse> saveRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     logRecordCollection("saveRecords:: Saving", recordCollection, tenantId);
     var firstRecord = recordCollection.getRecords().getFirst();
     var snapshotId = firstRecord.getSnapshotId();
@@ -714,7 +720,7 @@ public class RecordDaoImpl implements RecordDao {
         getExternalIdType(Record.RecordType.fromValue(recordType.name())))
       .and(RecordDaoUtil.filterRecordByDeleted(false));
 
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     Context context = Vertx.currentContext();
     if(context == null) {
       return Future.failedFuture("saveRecordsByExternalIds:: operation must be executed by a Vertx thread");
@@ -762,7 +768,7 @@ public class RecordDaoImpl implements RecordDao {
             Set<UUID> matchedIds = new HashSet<>();
             List<RecordsLbRecord> dbRecords = new ArrayList<>();
             List<RawRecordsLbRecord> dbRawRecords = new ArrayList<>();
-            List<Record2<UUID, JSONB>> dbParsedRecords = new ArrayList<>();
+            List<org.jooq.Record> dbParsedRecords = new ArrayList<>();
             List<ErrorRecordsLbRecord> dbErrorRecords = new ArrayList<>();
 
             List<String> errorMessages = validateAndExtractDatabasePersistRecords(modifiedRecords.getRecords(), recordType,
@@ -841,7 +847,7 @@ public class RecordDaoImpl implements RecordDao {
                                       Set<UUID> matchedIds,
                                       List<RecordsLbRecord> dbRecords,
                                       List<RawRecordsLbRecord> dbRawRecords,
-                                      List<Record2<UUID, JSONB>> dbParsedRecords,
+                                      List<org.jooq.Record> dbParsedRecords,
                                       List<ErrorRecordsLbRecord> dbErrorRecords) throws IOException {
     LOG.info("persistDatabaseRecords:: dbRecords: {}", dbRecords.size());
     List<UUID> ids = new ArrayList<>();
@@ -916,7 +922,7 @@ public class RecordDaoImpl implements RecordDao {
     Set<UUID> matchedIds = new HashSet<>();
     List<RecordsLbRecord> dbRecords = new ArrayList<>();
     List<RawRecordsLbRecord> dbRawRecords = new ArrayList<>();
-    List<Record2<UUID, JSONB>> dbParsedRecords = new ArrayList<>();
+    List<org.jooq.Record> dbParsedRecords = new ArrayList<>();
     List<ErrorRecordsLbRecord> dbErrorRecords = new ArrayList<>();
 
     // make sure only one snapshot id
@@ -1040,7 +1046,7 @@ public class RecordDaoImpl implements RecordDao {
                                                                 Set<UUID> matchedIds,
                                                                 List<RecordsLbRecord> dbRecords,
                                                                 List<RawRecordsLbRecord> dbRawRecords,
-                                                                List<Record2<UUID, JSONB>> dbParsedRecords,
+                                                                List<org.jooq.Record> dbParsedRecords,
                                                                 List<ErrorRecordsLbRecord> dbErrorRecords) {
     List<String> errorMessages = new ArrayList<>();
     records.stream()
@@ -1058,7 +1064,7 @@ public class RecordDaoImpl implements RecordDao {
         if (Objects.nonNull(record.getParsedRecord())) {
           try {
             recordType.formatRecord(record);
-            Record2<UUID, JSONB> dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
+            org.jooq.Record dbParsedRecord = recordType.toDatabaseRecord2(record.getParsedRecord());
             dbParsedRecords.add(dbParsedRecord);
           } catch (Exception e) {
             // create error record and remove from record
@@ -1125,7 +1131,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<Record> updateRecord(Record record, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     LOG.trace("updateRecord:: Updating {} record {} for tenant {}", record.getRecordType(), record.getId(), tenantId);
     return getQueryExecutor(tenantId).transaction(queryExecutor -> getRecordById(queryExecutor, record.getId())
       .compose(optionalRecord -> optionalRecord
@@ -1235,7 +1241,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecord> updateParsedRecord(Record record, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     LOG.trace("updateParsedRecord:: Updating {} record {} for tenant {}", record.getRecordType(),
       record.getId(), tenantId);
     return getQueryExecutor(tenantId)
@@ -1252,7 +1258,7 @@ public class RecordDaoImpl implements RecordDao {
 
   @Override
   public Future<ParsedRecordsBatchResponse> updateParsedRecords(RecordCollection recordCollection, Map<String, String> okapiHeaders) {
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     logRecordCollection("updateParsedRecords:: Updating", recordCollection, tenantId);
     Context context = Vertx.currentContext();
     if (context == null) return Future.failedFuture("updateParsedRecords must be called by a vertx thread");
@@ -1496,7 +1502,7 @@ public class RecordDaoImpl implements RecordDao {
   @Override
   public Future<Boolean> deleteRecordsByExternalId(String externalId, Map<String, String> okapiHeaders) {
     var idType = IdType.EXTERNAL;
-    var tenantId = okapiHeaders.get(OKAPI_TENANT_HEADER);
+    var tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     LOG.trace("deleteRecordsByExternalId:: Deleting records by externalId {} for tenant {}", externalId, tenantId);
     var externalUuid = UUID.fromString(externalId);
     return getQueryExecutor(tenantId).transaction(queryExecutor -> getRecordByExternalId(queryExecutor, externalId, idType)

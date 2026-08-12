@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.InstanceLinkDtoCollection;
 import org.folio.LinkingRuleDto;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.dataimport.util.RestUtil;
 import org.folio.services.exceptions.InstanceLinksException;
 import org.springframework.stereotype.Component;
@@ -21,9 +21,9 @@ public class InstanceLinkClient {
   private static final Logger LOGGER = LogManager.getLogger(InstanceLinkClient.class);
 
   public CompletableFuture<Optional<InstanceLinkDtoCollection>> getLinksByInstanceId(String instanceId,
-                                                                                     OkapiConnectionParams params) {
+                                                                                     ConnectionParams params) {
     LOGGER.trace("Trying to get InstanceLinkDtoCollection for okapi url: {}, tenantId: {}, instanceId: {}",
-      params.getOkapiUrl(), params.getTenantId(), instanceId);
+      params.getConnectionUrl(), params.getTenantId(), instanceId);
     return RestUtil.doRequestWithSystemUser(params, "/links/instances/" + instanceId, HttpMethod.GET, null)
       .toCompletionStage()
       .toCompletableFuture()
@@ -45,9 +45,9 @@ public class InstanceLinkClient {
       });
   }
 
-  public CompletableFuture<Optional<List<LinkingRuleDto>>> getLinkingRuleList(OkapiConnectionParams params) {
-    LOGGER.trace("Trying to get list of LinkingRule for okapi url: {}, tenantId: {}",
-      params.getOkapiUrl(), params.getTenantId());
+  public CompletableFuture<Optional<List<LinkingRuleDto>>> getLinkingRuleList(ConnectionParams params) {
+    LOGGER.trace("Trying to get list of LinkingRule for connection url: {}, tenantId: {}",
+      params.getConnectionUrl(), params.getTenantId());
 
     return RestUtil.doRequestWithSystemUser(params, "/linking-rules/instance-authority", HttpMethod.GET, null)
       .toCompletionStage()
@@ -72,9 +72,9 @@ public class InstanceLinkClient {
 
   public CompletableFuture<Void> updateInstanceLinks(String instanceId,
                                                      InstanceLinkDtoCollection instanceLinkCollection,
-                                                     OkapiConnectionParams params) {
-    LOGGER.trace("Trying to put InstanceLinkDtoCollection for okapi url: {}, tenantId: {}, instanceId: {}",
-      params.getOkapiUrl(), params.getTenantId(), instanceId);
+                                                     ConnectionParams params) {
+    LOGGER.trace("Trying to put InstanceLinkDtoCollection for connection url: {}, tenantId: {}, instanceId: {}",
+      params.getConnectionUrl(), params.getTenantId(), instanceId);
     return RestUtil.doRequestWithSystemUser(params, "/links/instances/" + instanceId, HttpMethod.PUT, instanceLinkCollection)
       .toCompletionStage()
       .toCompletableFuture()

@@ -6,6 +6,7 @@ import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import org.folio.kafka.KafkaConfig;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
@@ -22,7 +23,6 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
-import static org.folio.dataimport.util.RestUtil.OKAPI_TENANT_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -89,7 +89,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
     when(kafkaRecord.key()).thenReturn(KAFKA_RECORD_KEY);
     when(kafkaRecord.headers()).thenReturn(List.of(
       KafkaHeader.header(JOB_EXECUTION_ID_HEADER, jobId),
-      KafkaHeader.header(OKAPI_TENANT_HEADER, TENANT_ID)
+      KafkaHeader.header(XOkapiHeaders.TENANT, TENANT_ID)
     ));
     when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
 
@@ -125,7 +125,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
     when(kafkaRecord.key()).thenReturn(KAFKA_RECORD_KEY);
     when(kafkaRecord.headers()).thenReturn(List.of(
       KafkaHeader.header(JOB_EXECUTION_ID_HEADER, jobId),
-      KafkaHeader.header(OKAPI_TENANT_HEADER, TENANT_ID)
+      KafkaHeader.header(XOkapiHeaders.TENANT, TENANT_ID)
     ));
     when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
 
@@ -154,7 +154,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
     when(kafkaRecord.key()).thenReturn(KAFKA_RECORD_KEY);
     when(kafkaRecord.headers()).thenReturn(List.of(
       KafkaHeader.header(JOB_EXECUTION_ID_HEADER, jobId),
-      KafkaHeader.header(OKAPI_TENANT_HEADER, TENANT_ID)
+      KafkaHeader.header(XOkapiHeaders.TENANT, TENANT_ID)
     ));
     when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
 

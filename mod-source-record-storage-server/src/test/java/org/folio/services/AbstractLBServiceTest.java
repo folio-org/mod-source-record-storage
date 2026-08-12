@@ -24,15 +24,15 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.KafkaConfig;
-import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.SharedPostgresContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
-import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -59,14 +59,14 @@ public abstract class AbstractLBServiceTest {
 
   private static final String KAFKA_HOST = "KAFKA_HOST";
   private static final String KAFKA_PORT = "KAFKA_PORT";
-  private static final String KAFKA_ENV = "ENV";
-  private static final String KAFKA_ENV_ID = "test-env";
+  public static final String KAFKA_ENV = "ENV";
+  public static final String KAFKA_ENV_ID = "test-env";
   private static final String KAFKA_MAX_REQUEST_SIZE = "MAX_REQUEST_SIZE";
   private static final int KAFKA_MAX_REQUEST_SIZE_VAL = 1048576;
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
-  private static final int PORT = NetworkUtils.nextFreePort();
+  private static int PORT;
 
-  protected static final String OKAPI_URL = "http://localhost:" + PORT;
+  protected static String OKAPI_URL;
 
   protected static final String TENANT_ID = "diku";
   protected static final String TOKEN = "dummy";
@@ -91,6 +91,12 @@ public abstract class AbstractLBServiceTest {
   @BeforeClass
   public static void setUpClass(TestContext context) {
     Async async = context.async();
+    // Pick a fresh free port for every test class. All LB test classes run in the same reused
+    // Surefire JVM fork; a fixed shared port could still be held by a previous class's RestVerticle
+    // (its vertx close lags behind), so deployVerticle would fail with "Address already in use" and
+    // the following postTenant call would then fail with a misleading connection-refused error.
+    PORT = NetworkUtils.nextFreePort();
+    OKAPI_URL = "http://localhost:" + PORT;
     vertx = Vertx.vertx();
 
     kafkaContainer.start();
@@ -117,8 +123,7 @@ public abstract class AbstractLBServiceTest {
       .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()
       ));
 
-    PostgresClient.setPostgresTester(new PostgresTesterContainer());
-    JsonObject pgClientConfig = PostgresClient.getInstance(vertx).getConnectionConfig();
+    JsonObject pgClientConfig = SharedPostgresContainer.getConnectionConfig();
 
     Envs.setEnv(
       pgClientConfig.getString(PostgresClientFactory.HOST),
@@ -133,13 +138,19 @@ public abstract class AbstractLBServiceTest {
       .setConfig(new JsonObject().put("http.port", PORT));
 
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete( deployResponse -> {
+      if (deployResponse.failed()) {
+        // Surface the real cause (e.g. a port BindException) instead of letting the module start
+        // half-deployed and failing later with a confusing postTenant connection-refused error.
+        context.fail(deployResponse.cause());
+        return;
+      }
       try {
         String fullModuleName = getFullModuleName();
         tenantClient.postTenant(new TenantAttributes().withModuleTo(fullModuleName), res2 -> {
           postgresClientFactory = new PostgresClientFactory(vertx);
           context.assertTrue(res2.succeeded());
           if (res2.result().statusCode() == 204) {
-            async.complete();
+            cleanUpExistingData(async);
             return;
           }
           if (res2.result().statusCode() == 201) {
@@ -149,10 +160,11 @@ public abstract class AbstractLBServiceTest {
               if (error != null) {
                 context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
               }
+              cleanUpExistingData(async);
             }));
-          } else {
-            context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
+            return;
           }
+          context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
           async.complete();
         });
       } catch (Exception e) {
@@ -164,16 +176,37 @@ public abstract class AbstractLBServiceTest {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    PostgresClientFactory.closeAll();
-    vertx.close().onComplete(context.asyncAssertSuccess(v -> {
-      PostgresClient.stopPostgresTester();
-      wireMockServer.stop();
-      kafkaContainer.stop();
-    }));
+    Async async = context.async();
+    Vertx currentVertx = vertx;
+    // Clear the factory caches so the next class rebuilds its pools, but never stop the shared
+    // container/tester - it stays up for the whole JVM fork and is reaped at JVM exit.
+    // The Async is created synchronously so VertxUnit waits for vertx to fully close before the
+    // next class reassigns the shared static vertx field (otherwise we could close the new vertx).
+    PostgresClientFactory.closeAll()
+      .onComplete(closed -> currentVertx.close().onComplete(v -> {
+        wireMockServer.stop();
+        kafkaContainer.stop();
+        async.complete();
+      }));
   }
 
   public static String getFullModuleName() {
     return ModuleName.getModuleName() + "-" + ModuleName.getModuleVersion();
+  }
+
+  /**
+   * Removes data left in the shared {@code diku} schema by previously executed test classes and then
+   * completes the setup {@link Async}.
+   *
+   * <p>The Postgres test container is started once and reused for the whole JVM fork (see
+   * {@link SharedPostgresContainer}), so - unlike when every class used to get its own container -
+   * the schema is no longer empty when a class starts. Deleting all snapshots cascades to records and
+   * their child tables, giving each class a clean starting state and avoiding cross-class data bleed
+   * (duplicate records, stale matches, delete deadlocks).
+   */
+  private static void cleanUpExistingData(Async async) {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .onComplete(ar -> async.complete());
   }
 
   void compareMetadata(TestContext context, Metadata expected, Metadata actual) {

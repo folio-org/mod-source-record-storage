@@ -3,7 +3,6 @@ package org.folio.dao;
 import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_NAMESPACE_ID;
 import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
 import static org.folio.rest.jaxrs.model.Record.State.DELETED;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
@@ -31,6 +30,7 @@ import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordType;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.value.MissingValue;
 import org.folio.processing.value.StringValue;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -107,7 +107,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
-    okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(record, okapiHeaders))
       .compose(savedSnapshot -> recordDao.saveRecord(deletedRecord, okapiHeaders))

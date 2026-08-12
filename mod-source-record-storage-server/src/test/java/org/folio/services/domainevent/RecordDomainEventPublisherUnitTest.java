@@ -1,8 +1,5 @@
 package org.folio.services.domainevent;
 
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_CREATED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_DELETED;
 import static org.folio.services.domainevent.SourceRecordDomainEventType.SOURCE_RECORD_UPDATED;
@@ -17,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.folio.dao.util.MarcUtil;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -43,7 +41,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", false);
     var aRecord = new Record();
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordCreated(aRecord, headers);
@@ -57,7 +55,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", false);
     var aRecord = new Record();
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordUpdated(aRecord, aRecord, headers);
@@ -71,7 +69,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", false);
     var aRecord = new Record();
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordDeleted(aRecord, headers);
@@ -85,7 +83,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record();
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordCreated(aRecord, headers);
@@ -99,7 +97,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record();
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordUpdated(aRecord, aRecord, headers);
@@ -113,7 +111,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record();
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordDeleted(aRecord, headers);
@@ -127,7 +125,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record().withRecordType(Record.RecordType.MARC_BIB);
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordCreated(aRecord, headers);
@@ -141,7 +139,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record().withRecordType(Record.RecordType.MARC_BIB);
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordUpdated(aRecord, aRecord, headers);
@@ -155,7 +153,7 @@ public class RecordDomainEventPublisherUnitTest {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record().withRecordType(Record.RecordType.MARC_BIB);
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordDeleted(aRecord, headers);
@@ -168,7 +166,7 @@ public class RecordDomainEventPublisherUnitTest {
   public void publishRecordUpdated_shouldSendNoEvents_ifOldAndNewRecordsAreNull() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
-    var headers = Map.of(OKAPI_TENANT_HEADER, "TENANT", OKAPI_URL_HEADER, "OKAPI_URL", OKAPI_TOKEN_HEADER, "TOKEN");
+    var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
 
     // when
     publisher.publishRecordUpdated(null, null, headers);
@@ -186,10 +184,10 @@ public class RecordDomainEventPublisherUnitTest {
     var aRecord = getRecord(parsedContent, metadata);
     var expectedOldRecord = MarcUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
-    var tenantId = "OKAPI_TENANT_HEADER";
+    var tenantId = "XOkapiHeaders.TENANT";
     var okapiUrl = "OKAPI_URL";
     var token = "TOKEN";
-    var givenHeaders = Map.of(OKAPI_TENANT_HEADER, tenantId, OKAPI_URL_HEADER, okapiUrl, OKAPI_TOKEN_HEADER, token);
+    var givenHeaders = Map.of(XOkapiHeaders.TENANT, tenantId, XOkapiHeaders.URL, okapiUrl, XOkapiHeaders.TOKEN, token);
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, aRecord);
     var eventType = SOURCE_RECORD_CREATED.name();
     var expectedPayload = new JsonObject().put("new", JsonObject.mapFrom(expectedOldRecord)).encode();
@@ -217,7 +215,7 @@ public class RecordDomainEventPublisherUnitTest {
     var tenantId = "TENANT";
     var okapiUrl = "OKAPI_URL";
     var token = "TOKEN";
-    var givenHeaders = Map.of(OKAPI_TENANT_HEADER, tenantId, OKAPI_URL_HEADER, okapiUrl, OKAPI_TOKEN_HEADER, token);
+    var givenHeaders = Map.of(XOkapiHeaders.TENANT, tenantId, XOkapiHeaders.URL, okapiUrl, XOkapiHeaders.TOKEN, token);
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, oldRecord);
     var eventType = SOURCE_RECORD_UPDATED.name();
     var expectedPayload = new JsonObject()
@@ -240,10 +238,10 @@ public class RecordDomainEventPublisherUnitTest {
     var aRecord = getRecord(parsedContent, metadata);
     var expectedDeletedRecord = MarcUtil.clone(aRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
-    var tenantId = "OKAPI_TENANT_HEADER";
+    var tenantId = "XOkapiHeaders.TENANT";
     var okapiUrl = "OKAPI_URL";
     var token = "TOKEN";
-    var givenHeaders = Map.of(OKAPI_TENANT_HEADER, tenantId, OKAPI_URL_HEADER, okapiUrl, OKAPI_TOKEN_HEADER, token);
+    var givenHeaders = Map.of(XOkapiHeaders.TENANT, tenantId, XOkapiHeaders.URL, okapiUrl, XOkapiHeaders.TOKEN, token);
     var expectedHeaders = getKafkaHeaders(okapiUrl, tenantId, token, aRecord);
     var eventType = SOURCE_RECORD_DELETED.name();
     var expectedPayload = new JsonObject().put("old", JsonObject.mapFrom(expectedDeletedRecord)).encode();
@@ -265,7 +263,7 @@ public class RecordDomainEventPublisherUnitTest {
     var expectedNewRecord = MarcUtil.clone(newRecord, Record.class).withErrorRecord(null).withRawRecord(null);
 
     var tenantId = "TENANT";
-    var expectedHeaders = List.of(KafkaHeader.header(OKAPI_TENANT_HEADER, tenantId),
+    var expectedHeaders = List.of(KafkaHeader.header(XOkapiHeaders.TENANT, tenantId),
       KafkaHeader.header("folio.srs.recordType", newRecord.getRecordType().value())
     );
     var eventType = SOURCE_RECORD_CREATED.name();
@@ -273,7 +271,7 @@ public class RecordDomainEventPublisherUnitTest {
       .put("new", JsonObject.mapFrom(expectedNewRecord)).encode();
 
     // when
-    publisher.publishRecordCreated(newRecord, Map.of(OKAPI_TENANT_HEADER, tenantId));
+    publisher.publishRecordCreated(newRecord, Map.of(XOkapiHeaders.TENANT, tenantId));
 
     // then
     verify(kafkaSender).sendEventToKafka(tenantId, expectedPayload, eventType, expectedHeaders, newRecord.getId());
@@ -282,15 +280,15 @@ public class RecordDomainEventPublisherUnitTest {
   private List<KafkaHeader> getKafkaHeaders(String okapiUrl, String tenantId, String token, Record aRecord) {
     if (token == null) {
       return List.of(
-        KafkaHeader.header(OKAPI_URL_HEADER, okapiUrl),
-        KafkaHeader.header(OKAPI_TENANT_HEADER, tenantId),
+        KafkaHeader.header(XOkapiHeaders.URL, okapiUrl),
+        KafkaHeader.header(XOkapiHeaders.TENANT, tenantId),
         KafkaHeader.header("folio.srs.recordType", aRecord.getRecordType().value())
       );
     }
     return List.of(
-      KafkaHeader.header(OKAPI_URL_HEADER, okapiUrl),
-      KafkaHeader.header(OKAPI_TENANT_HEADER, tenantId),
-      KafkaHeader.header(OKAPI_TOKEN_HEADER, token),
+      KafkaHeader.header(XOkapiHeaders.URL, okapiUrl),
+      KafkaHeader.header(XOkapiHeaders.TENANT, tenantId),
+      KafkaHeader.header(XOkapiHeaders.TOKEN, token),
       KafkaHeader.header("folio.srs.recordType", aRecord.getRecordType().value())
     );
   }

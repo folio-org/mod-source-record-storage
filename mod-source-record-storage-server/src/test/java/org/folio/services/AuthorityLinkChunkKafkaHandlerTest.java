@@ -6,9 +6,6 @@ import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
 import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
 import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
@@ -84,9 +81,9 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final Map<String, String> OKAPI_HEADERS = Map.of(
-    OKAPI_URL_HEADER, OKAPI_URL,
-    OKAPI_TENANT_HEADER, TENANT_ID,
-    OKAPI_TOKEN_HEADER, TOKEN,
+    XOkapiHeaders.URL, OKAPI_URL,
+    XOkapiHeaders.TENANT, TENANT_ID,
+    XOkapiHeaders.TOKEN, TOKEN,
     XOkapiHeaders.USER_ID, USER_ID
   );
   private final RawRecord rawRecord = new RawRecord().withId(RECORD_ID)
@@ -105,7 +102,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   public void setUp(TestContext context) {
     MockitoAnnotations.openMocks(this);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache, vertx);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache);
 
     var async = context.async();
     var snapshot = new Snapshot()
@@ -147,7 +144,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(ERROR_INSTANCE_ID).withInstanceHrid(ERROR_HR_ID));
 
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .compose(savedRecord -> recordService.saveRecord(secondRecord, okapiHeaders))

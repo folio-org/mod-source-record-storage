@@ -2,9 +2,6 @@ package org.folio.services.util;
 
 import static java.util.Arrays.stream;
 import static java.util.Objects.nonNull;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TOKEN_HEADER;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
 import static org.folio.services.domainevent.RecordDomainEventPublisher.RECORD_DOMAIN_EVENT_TOPIC;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
@@ -27,6 +24,7 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SimpleKafkaProducerManager;
 import org.folio.kafka.services.KafkaProducerRecordBuilder;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.events.utils.PomReaderUtil;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.EventMetadata;
@@ -37,8 +35,6 @@ public final class EventHandlingUtil {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String RECORD_ID_HEADER = "recordId";
   private static final String CHUNK_ID_HEADER = "chunkId";
-  public static final String OKAPI_REQUEST_HEADER = "x-okapi-request-id";
-  public static final String OKAPI_USER_HEADER = "x-okapi-user-id";
 
 
   private EventHandlingUtil() { }
@@ -127,16 +123,16 @@ public final class EventHandlingUtil {
 
   public static Map<String, String> toOkapiHeaders(DataImportEventPayload eventPayload) {
     var okapiHeaders = new HashMap<String, String>();
-    okapiHeaders.put(OKAPI_URL_HEADER, eventPayload.getOkapiUrl());
-    okapiHeaders.put(OKAPI_TENANT_HEADER, eventPayload.getTenant());
-    okapiHeaders.put(OKAPI_TOKEN_HEADER, eventPayload.getToken());
-    String userId = eventPayload.getContext().get(OKAPI_USER_HEADER);
+    okapiHeaders.put(XOkapiHeaders.URL, eventPayload.getOkapiUrl());
+    okapiHeaders.put(XOkapiHeaders.TENANT, eventPayload.getTenant());
+    okapiHeaders.put(XOkapiHeaders.TOKEN, eventPayload.getToken());
+    String userId = eventPayload.getContext().get(XOkapiHeaders.USER_ID);
     if (StringUtils.isNotBlank(userId)) {
-      okapiHeaders.put(OKAPI_USER_HEADER, userId);
+      okapiHeaders.put(XOkapiHeaders.USER_ID, userId);
     }
-    String requestId = eventPayload.getContext().get(OKAPI_REQUEST_HEADER);
+    String requestId = eventPayload.getContext().get(XOkapiHeaders.REQUEST_ID);
     if (StringUtils.isNotBlank(requestId)) {
-      okapiHeaders.put(OKAPI_REQUEST_HEADER, requestId);
+      okapiHeaders.put(XOkapiHeaders.REQUEST_ID, requestId);
     }
     return okapiHeaders;
   }
@@ -147,16 +143,16 @@ public final class EventHandlingUtil {
 
   public static Map<String, String> toOkapiHeaders(List<KafkaHeader> kafkaHeaders, String eventTenantId) {
     var okapiHeaders = new HashMap<String, String>();
-    okapiHeaders.put(OKAPI_URL_HEADER, extractHeaderValue(OKAPI_URL_HEADER, kafkaHeaders));
-    okapiHeaders.put(OKAPI_TENANT_HEADER, nonNull(eventTenantId) ? eventTenantId : extractHeaderValue(OKAPI_TENANT_HEADER, kafkaHeaders));
-    okapiHeaders.put(OKAPI_TOKEN_HEADER, extractHeaderValue(OKAPI_TOKEN_HEADER, kafkaHeaders));
-    String userId = extractHeaderValue(OKAPI_USER_HEADER, kafkaHeaders);
+    okapiHeaders.put(XOkapiHeaders.URL, extractHeaderValue(XOkapiHeaders.URL, kafkaHeaders));
+    okapiHeaders.put(XOkapiHeaders.TENANT, nonNull(eventTenantId) ? eventTenantId : extractHeaderValue(XOkapiHeaders.TENANT, kafkaHeaders));
+    okapiHeaders.put(XOkapiHeaders.TOKEN, extractHeaderValue(XOkapiHeaders.TOKEN, kafkaHeaders));
+    String userId = extractHeaderValue(XOkapiHeaders.USER_ID, kafkaHeaders);
     if (StringUtils.isNotBlank(userId)) {
-      okapiHeaders.put(OKAPI_USER_HEADER, userId);
+      okapiHeaders.put(XOkapiHeaders.USER_ID, userId);
     }
-    String requestId = extractHeaderValue(OKAPI_REQUEST_HEADER, kafkaHeaders);
+    String requestId = extractHeaderValue(XOkapiHeaders.REQUEST_ID, kafkaHeaders);
     if (StringUtils.isNotBlank(requestId)) {
-      okapiHeaders.put(OKAPI_REQUEST_HEADER, requestId);
+      okapiHeaders.put(XOkapiHeaders.REQUEST_ID, requestId);
     }
     return okapiHeaders;
   }

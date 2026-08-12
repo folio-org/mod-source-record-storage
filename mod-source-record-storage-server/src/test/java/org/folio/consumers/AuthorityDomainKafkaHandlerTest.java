@@ -1,7 +1,6 @@
 package org.folio.consumers;
 
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.Json;
@@ -27,6 +26,7 @@ import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
@@ -34,7 +34,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jooq.enums.RecordState;
-import org.folio.rest.util.OkapiConnectionParams;
 import org.folio.services.AbstractLBServiceTest;
 import org.folio.services.RecordService;
 import org.folio.services.RecordServiceImpl;
@@ -81,7 +80,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   public void setUp(TestContext context) {
     MockitoAnnotations.openMocks(this);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache, vertx);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache);
     handler = new AuthorityDomainKafkaHandler(recordService);
     Async async = context.async();
     Snapshot snapshot = new Snapshot()
@@ -97,7 +96,7 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord);
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .onSuccess(ar -> async.complete())
@@ -179,9 +178,9 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   private ConsumerRecord<String, String> getConsumerRecord(HashMap<String, String> payload) {
     ConsumerRecord<String, String> consumerRecord = new ConsumerRecord<>("topic", 1, 1, RECORD_ID, Json.encode(payload));
     consumerRecord.headers().add(new RecordHeader("domain-event-type", "DELETE".getBytes(StandardCharsets.UTF_8)));
-    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_URL_HEADER, OKAPI_URL.getBytes(StandardCharsets.UTF_8)));
-    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_TENANT_HEADER, TENANT_ID.getBytes(StandardCharsets.UTF_8)));
-    consumerRecord.headers().add(new RecordHeader(OkapiConnectionParams.OKAPI_TOKEN_HEADER, TOKEN.getBytes(StandardCharsets.UTF_8)));
+    consumerRecord.headers().add(new RecordHeader(XOkapiHeaders.URL, OKAPI_URL.getBytes(StandardCharsets.UTF_8)));
+    consumerRecord.headers().add(new RecordHeader(XOkapiHeaders.TENANT, TENANT_ID.getBytes(StandardCharsets.UTF_8)));
+    consumerRecord.headers().add(new RecordHeader(XOkapiHeaders.TOKEN, TOKEN.getBytes(StandardCharsets.UTF_8)));
     return consumerRecord;
   }
 

@@ -1,7 +1,7 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 
 public interface SnapshotRemovalService {
 
@@ -12,5 +12,5 @@ public interface SnapshotRemovalService {
    * @param params      okapi connection parameters
    * @return future with true if snapshot was deleted
    */
-  Future<Boolean> deleteSnapshot(String snapshotId, OkapiConnectionParams params);
+  Future<Boolean> deleteSnapshot(String snapshotId, ConnectionParams params);
 }

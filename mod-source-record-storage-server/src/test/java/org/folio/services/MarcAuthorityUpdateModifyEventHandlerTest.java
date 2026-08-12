@@ -9,7 +9,6 @@ import static org.folio.rest.jaxrs.model.MappingDetail.MarcMappingOption.UPDATE;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
-import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
 import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +46,7 @@ import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.EntityType;
@@ -169,9 +169,9 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
 
     ConsortiumConfigurationCache consortiumConfigCache = new ConsortiumConfigurationCache(vertx, CACHE_EXPIRATION_TIME);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    recordService = new RecordServiceImpl(recordDao, consortiumConfigCache, vertx);
+    recordService = new RecordServiceImpl(recordDao, consortiumConfigCache);
     MappingParametersSnapshotCache mappingParametersCache = new MappingParametersSnapshotCache(vertx, CACHE_EXPIRATION_TIME);
-    modifyRecordEventHandler = new MarcAuthorityUpdateModifyEventHandler(recordService, null, mappingParametersCache, vertx);
+    modifyRecordEventHandler = new MarcAuthorityUpdateModifyEventHandler(recordService, null, mappingParametersCache);
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
@@ -195,7 +195,7 @@ public class MarcAuthorityUpdateModifyEventHandlerTest extends AbstractLBService
         .withAuthorityHrid("hrid00123"));
 
     PgPoolQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
-    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordService.saveRecord(record, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))

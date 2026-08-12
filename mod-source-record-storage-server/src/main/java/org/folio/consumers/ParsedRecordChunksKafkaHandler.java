@@ -11,7 +11,7 @@ import io.vertx.kafka.client.producer.KafkaProducer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.ParsedRecordDaoUtil;
-import org.folio.dataimport.util.OkapiConnectionParams;
+import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.AsyncRecordHandler;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaHeaderUtils;
@@ -32,7 +32,6 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
 import static org.folio.services.util.EventHandlingUtil.constructModuleName;
@@ -49,9 +48,8 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   private static final AtomicInteger chunkCounter = new AtomicInteger();
   private static final AtomicInteger indexer = new AtomicInteger();
 
-  private RecordService recordService;
-  private Vertx vertx;
-  private KafkaConfig kafkaConfig;
+  private final RecordService recordService;
+  private final KafkaConfig kafkaConfig;
   private final SimpleKafkaProducerManager producerManager;
   private final CancelledJobsIdsCache cancelledJobsIdCache;
 
@@ -66,9 +64,8 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
                                         KafkaConfig kafkaConfig) {
     this.recordService = recordService;
     this.cancelledJobsIdCache = cancelledJobsIdsCache;
-    this.vertx = vertx;
     this.kafkaConfig = kafkaConfig;
-    producerManager = new SimpleKafkaProducerManager(vertx, kafkaConfig);
+    this.producerManager = new SimpleKafkaProducerManager(vertx, kafkaConfig);
   }
 
   @Override
@@ -92,7 +89,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       RecordCollection recordCollection = Json.decodeValue(event.getEventPayload(), RecordCollection.class);
 
       List<KafkaHeader> kafkaHeaders = targetRecord.headers();
-      OkapiConnectionParams okapiConnectionParams = new OkapiConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders), vertx);
+      ConnectionParams okapiConnectionParams = new ConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders));
       String tenantId = okapiConnectionParams.getTenantId();
 
       LOGGER.debug("handle:: RecordCollection has been received with event: '{}', jobExecutionId '{}', chunkId: '{}', starting processing... chunkNumber '{}'-'{}'",
@@ -139,7 +136,7 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
 
     producer.send(targetRecord)
       .<Void>mapEmpty()
-      .eventually((Supplier<Future<Void>>) producer::close)
+      .eventually(producer::close)
       .onSuccess(res -> {
         String chunkId = extractHeaderValue(CHUNK_ID_HEADER, commonRecord.headers());
         LOGGER.debug("sendBackRecordsBatchResponse:: RecordCollection processing has been completed with response sent... event: '{}', chunkId: '{}', chunkNumber '{}'-'{}'",

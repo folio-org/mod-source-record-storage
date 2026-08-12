@@ -19,7 +19,9 @@ import io.vertx.ext.web.client.WebClient;
 import io.vertx.reactivex.core.Vertx;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
+import org.folio.SharedPostgresContainer;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -27,7 +29,6 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
-import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
@@ -35,19 +36,14 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.kafka.KafkaContainer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.UUID;
 
-import static org.folio.dataimport.util.RestUtil.OKAPI_URL_HEADER;
 import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
 
 public abstract class AbstractRestVerticleTest {
-
-  public static final String POSTGRES_IMAGE = "postgres:16-alpine";
-  private static PostgreSQLContainer<?> postgresSQLContainer;
 
   private static String useExternalDatabase;
 
@@ -69,8 +65,8 @@ public abstract class AbstractRestVerticleTest {
   private static final String KAFKA_HOST = "KAFKA_HOST";
   private static final String KAFKA_PORT = "KAFKA_PORT";
   private static final String OKAPI_URL_ENV = "OKAPI_URL";
-  protected static final int PORT = NetworkUtils.nextFreePort();
-  protected static final String OKAPI_URL = "http://localhost:" + PORT;
+  protected static int PORT;
+  protected static String OKAPI_URL;
   private static final String MAX_POOL_SIZE = "50";
 
   static Vertx vertx;
@@ -88,6 +84,12 @@ public abstract class AbstractRestVerticleTest {
   @BeforeClass
   public static void setUpClass(final TestContext context) throws Exception {
     Async async = context.async();
+
+    // Bind the module to a fresh free port for every test class. Surefire reuses one JVM fork for
+    // the whole module, and the RestVerticle HTTP server from a previous class is not always
+    // released before the next class starts, which caused "Address already in use" (BindException).
+    PORT = NetworkUtils.nextFreePort();
+    OKAPI_URL = "http://localhost:" + PORT;
 
     VertxOptions options = new VertxOptions();
     options.setBlockedThreadCheckInterval(6000);
@@ -122,15 +124,14 @@ public abstract class AbstractRestVerticleTest {
         PostgresClientFactory.setConfigFilePath(postgresConfigPath);
         break;
       case "embedded":
-        postgresSQLContainer = new PostgreSQLContainer<>(POSTGRES_IMAGE);
-        postgresSQLContainer.start();
+        JsonObject pgConfig = SharedPostgresContainer.getConnectionConfig();
 
         HashMap<String, String> envs = new HashMap<>();
-        envs.put(Envs.DB_HOST.toString(), postgresSQLContainer.getHost());
-        envs.put(Envs.DB_PORT.toString(), String.valueOf(postgresSQLContainer.getFirstMappedPort()));
-        envs.put(Envs.DB_USERNAME.toString(), postgresSQLContainer.getUsername());
-        envs.put(Envs.DB_PASSWORD.toString(), postgresSQLContainer.getPassword());
-        envs.put(Envs.DB_DATABASE.toString(), postgresSQLContainer.getDatabaseName());
+        envs.put(Envs.DB_HOST.toString(), pgConfig.getString(PostgresClientFactory.HOST));
+        envs.put(Envs.DB_PORT.toString(), String.valueOf(pgConfig.getInteger(PostgresClientFactory.PORT)));
+        envs.put(Envs.DB_USERNAME.toString(), pgConfig.getString(PostgresClientFactory.USERNAME));
+        envs.put(Envs.DB_PASSWORD.toString(), pgConfig.getString(PostgresClientFactory.PASSWORD));
+        envs.put(Envs.DB_DATABASE.toString(), pgConfig.getString(PostgresClientFactory.DATABASE));
         envs.put(Envs.DB_MAXPOOLSIZE.toString(), MAX_POOL_SIZE);
 
         Envs.setEnv(envs);
@@ -186,15 +187,15 @@ public abstract class AbstractRestVerticleTest {
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
       .setBaseUri("http://localhost:" + PORT)
-      .addHeader(OKAPI_URL_HEADER, "http://localhost:" + mockServer.port())
-      .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
-      .addHeader(RestVerticle.OKAPI_USERID_HEADER, okapiUserId)
+      .addHeader(XOkapiHeaders.URL, "http://localhost:" + mockServer.port())
+      .addHeader(XOkapiHeaders.TENANT, TENANT_ID)
+      .addHeader(XOkapiHeaders.USER_ID, okapiUserId)
       .build();
 
     specWithoutUserId = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
       .setBaseUri("http://localhost:" + PORT)
-      .addHeader(RestVerticle.OKAPI_HEADER_TENANT, TENANT_ID)
+      .addHeader(XOkapiHeaders.TENANT, TENANT_ID)
       .addHeader(RestVerticle.OKAPI_HEADER_TOKEN, OKAPI_TOKEN)
       .build();
   }
@@ -202,14 +203,16 @@ public abstract class AbstractRestVerticleTest {
   @AfterClass
   public static void tearDownClass(final TestContext context) {
     Async async = context.async();
-    PostgresClientFactory.closeAll();
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
-      if (useExternalDatabase.equals("embedded")) {
-        PostgresClient.stopPostgresTester();
-      }
-      kafkaContainer.stop();
-      async.complete();
-    }));
+    Vertx currentVertx = vertx;
+    // Clear the factory caches so the next class rebuilds its pools, but never stop the shared
+    // container/tester - it stays up for the whole JVM fork and is reaped at JVM exit.
+    // The Async is created synchronously so VertxUnit waits for vertx to fully close before the
+    // next class reassigns the shared static vertx field (otherwise we could close the new vertx).
+    PostgresClientFactory.closeAll()
+      .onComplete(closed -> currentVertx.close().onComplete(res -> {
+        kafkaContainer.stop();
+        async.complete();
+      }));
   }
 
   private static void setUpConsortiumConfigurationCache() {
@@ -235,7 +238,7 @@ public abstract class AbstractRestVerticleTest {
     for (Snapshot snapshot : snapshots) {
       RestAssured.given()
         .spec(spec)
-        .header(RestVerticle.OKAPI_HEADER_TENANT, tenantId)
+        .header(XOkapiHeaders.TENANT, tenantId)
         .body(snapshot)
         .when()
         .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
@@ -262,7 +265,7 @@ public abstract class AbstractRestVerticleTest {
     for (Record aRecord : records) {
       RestAssured.given()
         .spec(spec)
-        .header(RestVerticle.OKAPI_HEADER_TENANT, tenantId)
+        .header(XOkapiHeaders.TENANT, tenantId)
         .body(aRecord)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)

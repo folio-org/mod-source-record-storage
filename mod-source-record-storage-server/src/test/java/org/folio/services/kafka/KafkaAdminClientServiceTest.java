@@ -3,6 +3,8 @@ package org.folio.services.kafka;
 import static io.vertx.core.Future.failedFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
+import static org.folio.services.AbstractLBServiceTest.KAFKA_ENV;
+import static org.folio.services.AbstractLBServiceTest.KAFKA_ENV_ID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.instanceOf;
@@ -46,6 +48,7 @@ public class KafkaAdminClientServiceTest {
 
   @Before
   public void setUp() {
+    System.setProperty(KAFKA_ENV, KAFKA_ENV_ID);
     vertx = mock(Vertx.class);
     mockClient = mock(KafkaAdminClient.class);
     srsKafkaTopicService = mock(SRSKafkaTopicService.class);
@@ -152,21 +155,21 @@ public class KafkaAdminClientServiceTest {
   }
 
   private final Set<String> allExpectedTopics = Set.of(
-    "folio.foo-tenant.srs.marc-bib",
-    "folio.Default.foo-tenant.DI_PARSED_RECORDS_CHUNK_SAVED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
-    "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_DELETED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET",
-    "folio.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
-    "folio.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_UPDATED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_UPDATED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
-    "folio.Default.foo-tenant.DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED",
-    "folio.Default.foo-tenant.DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_MATCHED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED",
-    "folio.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_UPDATED"
+    "test-env.foo-tenant.srs.marc-bib",
+    "test-env.Default.foo-tenant.DI_PARSED_RECORDS_CHUNK_SAVED",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_MATCHED",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_DELETED",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_UPDATED",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_BIB_RECORD_UPDATED",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING",
+    "test-env.Default.foo-tenant.DI_LOG_SRS_MARC_AUTHORITY_RECORD_CREATED",
+    "test-env.Default.foo-tenant.DI_LOG_SRS_MARC_AUTHORITY_RECORD_UPDATED",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_MATCHED",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED",
+    "test-env.Default.foo-tenant.DI_SRS_MARC_AUTHORITY_RECORD_UPDATED"
   );
 }

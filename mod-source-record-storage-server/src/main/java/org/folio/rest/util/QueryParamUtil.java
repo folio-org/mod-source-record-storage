@@ -4,7 +4,7 @@ import static java.lang.String.format;
 
 import javax.ws.rs.BadRequestException;
 
-import org.codehaus.plexus.util.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.RecordType;
@@ -75,7 +75,7 @@ public final class QueryParamUtil {
   public static String firstNonEmpty(final String... values) {
     if (values != null) {
       for (final String val : values) {
-        if (org.apache.commons.lang3.StringUtils.isNotEmpty(val)) {
+        if (StringUtils.isNotEmpty(val)) {
           return val;
         }
       }

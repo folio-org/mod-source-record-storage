@@ -21,21 +21,17 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.processing.util.MarcRecordNormalizer;
 import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.exceptions.PostProcessingException;
@@ -69,13 +65,7 @@ public final class AdditionalFieldsUtil {
   private static final char HR_ID_FIELD_SUB = 'a';
   private static final char HR_ID_FIELD_IND = ' ';
   private static final String ANY_STRING = "*";
-  private static final String OCLC = "OCoLC";
   private static final String OCLC_PREFIX = "(OCoLC)";
-  private static final String OCLC_PATTERN = "\\((" + OCLC + ")\\)((ocm|ocn|on)?0*|([a-zA-Z]+)0*)(\\d+\\w*)";
-  private static final Pattern OCLC_NUMBER_PATTERN = Pattern.compile(OCLC_PATTERN);
-  private static final Pattern OCLC_DOTS_AND_SPACES = Pattern.compile("[.\\s]");
-  private static final Pattern OCLC_LEADING_ZEROS = Pattern.compile("^0+");
-  private static final Pattern OCLC_PREFIX_DIGITS = Pattern.compile("\\d+");
 
 
   public static final DateTimeFormatter dateTime005Formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss.S");
@@ -482,98 +472,11 @@ public final class AdditionalFieldsUtil {
   }
 
   public static void normalize035(Record srsRecord) {
-    List<Subfield> subfields = new ArrayList<>(get035SubfieldOclcValues(srsRecord, TAG_035));
-    if (!subfields.isEmpty()) {
+    var marc4jRecord = computeMarcRecord(srsRecord);
+    if (marc4jRecord != null) {
       LOGGER.debug("normalize035:: normalizing 035 field of a record with id: {}", srsRecord.getId());
-      formatOclc(subfields);
-      deduplicateOclc(srsRecord, subfields, TAG_035);
+      MarcRecordNormalizer.normalize035Field(marc4jRecord);
       recalculateLeaderAndParsedRecord(srsRecord);
-    }
-  }
-
-  private static void formatOclc(List<Subfield> subfields) {
-    subfields.forEach(sf -> sf.setData(normalizeOclcValue(sf.getData())));
-  }
-
-  static String normalizeOclcValue(String value) {
-    var data = OCLC_DOTS_AND_SPACES.matcher(value).replaceAll("");
-    var matcher = OCLC_NUMBER_PATTERN.matcher(data);
-    if (!matcher.find()) {
-      return value;
-    }
-    var oclcTag = matcher.group(1);
-    var numericAndTrailing = matcher.group(5);
-    var prefix = matcher.group(2);
-    if (prefix != null && (prefix.startsWith("ocm") || prefix.startsWith("ocn") || prefix.startsWith("on"))) {
-      // If "ocm" or "ocn", strip entirely from the prefix
-      return "(" + oclcTag + ")" + numericAndTrailing;
-    }
-    // For other cases, strip leading zeros only from the numeric part
-    numericAndTrailing = OCLC_LEADING_ZEROS.matcher(numericAndTrailing).replaceFirst("");
-    if (prefix != null) {
-      prefix = OCLC_PREFIX_DIGITS.matcher(prefix).replaceAll("");
-    }
-    // Add back any other prefix that might have been included like "tfe"
-    return "(" + oclcTag + ")" + (prefix != null ? prefix : "") + numericAndTrailing;
-  }
-
-  private static void deduplicateOclc(Record srcRecord, List<Subfield> subfields, String tag) {
-    var marcRecord = computeMarcRecord(srcRecord);
-    if (marcRecord == null) return;
-
-    // Build a direct subfield → parent map once so detection can inspect field shape
-    var parentMap = new IdentityHashMap<Subfield, DataField>();
-    marcRecord.getVariableFields(tag).forEach(vf -> {
-      if (vf instanceof DataField df) {
-        df.getSubfields().forEach(sf -> parentMap.put(sf, df));
-      }
-    });
-
-    var subfieldsToDelete = new ArrayList<Subfield>();
-    for (var subfield : new ArrayList<>(subfields)) {
-      var duplicate = subfields.stream()
-        .filter(s -> isOclcSubfieldDuplicated(subfield, s))
-        .findFirst();
-      if (duplicate.isPresent()) {
-        // If deleting `subfield` would orphan its field (sole subfield of that code, other subfields
-        // remain), but deleting `duplicate` would not, swap the choice to protect the richer field.
-        boolean preferKeepCurrent = isSoleOfCodeInMultiSubfieldField(subfield, parentMap)
-          && !isSoleOfCodeInMultiSubfieldField(duplicate.get(), parentMap);
-        subfieldsToDelete.add(preferKeepCurrent ? duplicate.get() : subfield);
-        subfields.remove(subfield);
-      }
-    }
-
-    var variableFields = marcRecord.getVariableFields(tag);
-    subfieldsToDelete.forEach(subfieldToDelete ->
-      variableFields.forEach(field -> removeSubfieldIfExist(marcRecord, field, subfieldToDelete)));
-  }
-
-  /**
-   * Returns true when {@code subfield} is the only subfield of its code in its parent DataField
-   * and the parent has other subfields of different codes. Removing such a subfield would leave
-   * the parent without its primary marker (e.g. $a) while other subfields ($z, $b, …) remain,
-   * which creates an incomplete 035 field.
-   */
-  private static boolean isSoleOfCodeInMultiSubfieldField(Subfield subfield,
-                                                           Map<Subfield, DataField> parentMap) {
-    var parent = parentMap.get(subfield);
-    return parent != null
-      && parent.getSubfields(subfield.getCode()).size() == 1
-      && parent.getSubfields().size() > 1;
-  }
-
-  private static boolean isOclcSubfieldDuplicated(Subfield s1, Subfield s2) {
-    return s1 != s2 && s1.getData().equals(s2.getData()) && s1.getCode() == s2.getCode();
-  }
-
-  private static void removeSubfieldIfExist(org.marc4j.marc.Record marcRecord, VariableField field, Subfield subfieldToDelete) {
-    if (field instanceof DataField dataField && dataField.getSubfields().contains(subfieldToDelete)) {
-      if (dataField.getSubfields().size() > 1) {
-        dataField.removeSubfield(subfieldToDelete);
-      } else {
-        marcRecord.removeVariableField(dataField);
-      }
     }
   }
 
@@ -661,10 +564,10 @@ public final class AdditionalFieldsUtil {
     if (!value.trim().startsWith(OCLC_PREFIX)) {
       return false;
     }
-    var normalizedValue = normalizeOclcValue(value);
+    var normalizedValue = MarcRecordNormalizer.normalizeOclcValue(value);
     return get035SubfieldOclcValues(marcRecord, TAG_035).stream()
       .filter(sf -> sf.getCode() == HR_ID_FIELD_SUB)
-      .anyMatch(sf -> normalizeOclcValue(sf.getData()).equals(normalizedValue));
+      .anyMatch(sf -> MarcRecordNormalizer.normalizeOclcValue(sf.getData()).equals(normalizedValue));
   }
 
   private static String mergeFieldsFor035(String valueFrom003, String valueFrom001) {

@@ -26,7 +26,7 @@
 
     <raml-module-builder.version>36.0.1</raml-module-builder.version>
     <data-import-utils.version>3.0.0-SNAPSHOT</data-import-utils.version>
-    <data-import-processing-core.version>5.1.0-SNAPSHOT</data-import-processing-core.version>
+    <data-import-processing-core.version>6.0.0-SNAPSHOT</data-import-processing-core.version>
     <folio-kafka-wrapper.version>4.1.0-SNAPSHOT</folio-kafka-wrapper.version>
     <folio-di-support.version>4.0.0</folio-di-support.version>
     <folio-liquibase-util.version>1.11.0</folio-liquibase-util.version>

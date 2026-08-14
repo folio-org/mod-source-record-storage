@@ -21,8 +21,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.commons.lang.StringUtils.isBlank;
-import static org.apache.commons.lang.StringUtils.isNotBlank;
+import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.springframework.beans.factory.config.BeanDefinition.SCOPE_PROTOTYPE;
 
 /**

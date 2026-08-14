@@ -1,8 +1,8 @@
 package org.folio.services.handlers;
 
 import static java.lang.String.format;
-import static org.apache.commons.lang.StringUtils.isEmpty;
-import static org.apache.commons.lang.StringUtils.isNotEmpty;
+import static org.apache.commons.lang3.StringUtils.isEmpty;
+import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;

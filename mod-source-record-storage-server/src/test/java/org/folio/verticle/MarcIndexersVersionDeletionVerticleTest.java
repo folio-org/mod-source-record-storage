@@ -97,20 +97,12 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    var queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
-    // old_records_tracking has no FK to records_lb, so rows are never cascade-deleted;
-    // delete them explicitly to prevent leftover rows from polluting subsequent test runs.
-    queryExecutor.execute(dslContext -> dslContext
-        .deleteFrom(table(name(OLD_RECORDS_TRACKING_TABLE))))
-      .compose(v -> queryExecutor.execute(dslContext -> dslContext
-        .deleteFrom(MARC_RECORDS_TRACKING)))
-      .compose(v -> SnapshotDaoUtil.deleteAll(queryExecutor))
-      .onComplete(delete -> {
-        if (delete.failed()) {
-          context.fail(delete.cause());
-        }
-        async.complete();
-      });
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
+      if (delete.failed()) {
+        context.fail(delete.cause());
+      }
+      async.complete();
+    });
   }
 
   @Test

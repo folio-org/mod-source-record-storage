@@ -142,6 +142,7 @@ public class DataImportKafkaHandlerTest {
   @After
   public void tearDown() throws Exception {
     mocksCloseable.close();
+    EventManager.clearEventHandlers();
   }
 
   @Test

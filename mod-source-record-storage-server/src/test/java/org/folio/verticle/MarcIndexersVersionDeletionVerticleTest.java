@@ -44,6 +44,9 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   private static final String MARC_INDEXERS_TABLE = "marc_indexers";
   private static final String MARC_ID_FIELD = "marc_id";
   private static final String VERSION_FIELD = "version";
+  // Use same batch size as the production default value so remaining rows from other test
+  // classes cannot fill the batch before reaching this test's records.
+  private static final int DELETE_BATCH_SIZE = 100_000;
 
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
@@ -110,7 +113,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Future<Boolean> future = recordService.updateRecord(record, okapiHeaders)
       .compose(v -> existOldMarcIndexersVersions())
       .onSuccess(context::assertTrue)
-      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(2))
+      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(DELETE_BATCH_SIZE))
       .compose(deleteRes -> existOldMarcIndexersVersions());
 
     future.onComplete(ar -> {
@@ -128,7 +131,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Future<Boolean> future = recordService.updateRecord(record.withState(OLD), okapiHeaders)
       .compose(v -> existMarcIndexersByRecordId(record.getId()))
       .onSuccess(context::assertTrue)
-      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(2))
+      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(DELETE_BATCH_SIZE))
       .compose(deleteRes -> existMarcIndexersByRecordId(record.getId()));
 
     future.onComplete(ar -> {

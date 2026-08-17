@@ -42,8 +42,13 @@ import org.mockito.MockitoAnnotations;
 public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTest {
 
   private static final String MARC_INDEXERS_TABLE = "marc_indexers";
+  private static final String OLD_RECORDS_TRACKING_TABLE = "old_records_tracking";
   private static final String MARC_ID_FIELD = "marc_id";
   private static final String VERSION_FIELD = "version";
+  // Use same batch size as the production default so leftover rows from other test
+  // classes (old_records_tracking has no FK → no cascade delete) cannot fill the
+  // batch before reaching this test's records.
+  private static final int DELETE_BATCH_SIZE = 100_000;
 
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
@@ -92,12 +97,20 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   @After
   public void cleanUp(TestContext context) {
     Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
+    var queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
+    // old_records_tracking has no FK to records_lb, so rows are never cascade-deleted;
+    // delete them explicitly to prevent leftover rows from polluting subsequent test runs.
+    queryExecutor.execute(dslContext -> dslContext
+        .deleteFrom(table(name(OLD_RECORDS_TRACKING_TABLE))))
+      .compose(v -> queryExecutor.execute(dslContext -> dslContext
+        .deleteFrom(MARC_RECORDS_TRACKING)))
+      .compose(v -> SnapshotDaoUtil.deleteAll(queryExecutor))
+      .onComplete(delete -> {
+        if (delete.failed()) {
+          context.fail(delete.cause());
+        }
+        async.complete();
+      });
   }
 
   @Test
@@ -110,7 +123,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Future<Boolean> future = recordService.updateRecord(record, okapiHeaders)
       .compose(v -> existOldMarcIndexersVersions())
       .onSuccess(context::assertTrue)
-      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(2))
+      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(DELETE_BATCH_SIZE))
       .compose(deleteRes -> existOldMarcIndexersVersions());
 
     future.onComplete(ar -> {
@@ -128,7 +141,7 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
     Future<Boolean> future = recordService.updateRecord(record.withState(OLD), okapiHeaders)
       .compose(v -> existMarcIndexersByRecordId(record.getId()))
       .onSuccess(context::assertTrue)
-      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(2))
+      .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(DELETE_BATCH_SIZE))
       .compose(deleteRes -> existMarcIndexersByRecordId(record.getId()));
 
     future.onComplete(ar -> {

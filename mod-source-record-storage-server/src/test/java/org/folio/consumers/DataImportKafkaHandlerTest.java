@@ -50,7 +50,7 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import static org.apache.commons.lang.StringUtils.EMPTY;
+import static org.apache.commons.lang3.StringUtils.EMPTY;
 import static org.folio.consumers.DataImportKafkaHandler.CHUNK_ID_HEADER;
 import static org.folio.consumers.DataImportKafkaHandler.JOB_EXECUTION_ID_HEADER;
 import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
@@ -141,6 +141,7 @@ public class DataImportKafkaHandlerTest {
 
   @After
   public void tearDown() throws Exception {
+    EventManager.clearEventHandlers();
     mocksCloseable.close();
   }
 

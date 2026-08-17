@@ -27,7 +27,7 @@
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
-      <artifactId>data-import-utils</artifactId>
+      <artifactId>data-import-support</artifactId>
       <version>${data-import-utils.version}</version>
     </dependency>
     <dependency>

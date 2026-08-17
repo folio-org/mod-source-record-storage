@@ -41,6 +41,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.testcontainers.kafka.KafkaContainer;
 
+import org.jooq.impl.DSL;
+
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 import static org.junit.Assert.assertEquals;
@@ -209,6 +211,8 @@ public abstract class AbstractLBServiceTest {
    */
   private static void cleanUpExistingData(Async async) {
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .compose(v -> postgresClientFactory.getQueryExecutor(TENANT_ID)
+        .execute(dsl -> dsl.deleteFrom(DSL.table("old_records_tracking"))))
       .onComplete(ar -> async.complete());
   }
 

@@ -77,7 +77,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private static final String ERROR_INSTANCE_ID = UUID.randomUUID().toString();
   private static final String ERROR_HR_ID = "errorHRID";
   private static final String ERROR_RECORD_DESCRIPTION = "test error";
-  private static final Integer LINK_ID = RandomUtils.nextInt();
+  private static final Integer LINK_ID = RandomUtils.secure().randomInt();
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final ObjectMapper objectMapper = new ObjectMapper();
   private static final Map<String, String> OKAPI_HEADERS = Map.of(

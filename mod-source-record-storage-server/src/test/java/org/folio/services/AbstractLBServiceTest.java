@@ -113,6 +113,9 @@ public abstract class AbstractLBServiceTest {
     System.setProperty(KAFKA_ENV, KAFKA_ENV_ID);
     System.setProperty(KAFKA_MAX_REQUEST_SIZE, String.valueOf(KAFKA_MAX_REQUEST_SIZE_VAL));
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
+    // Reduce metadata refresh interval so pattern-subscribed consumers discover newly-created
+    // topics quickly in tests rather than waiting the default 30 s.
+    System.setProperty(KafkaConfig.KAFKA_CONSUMER_METADATA_MAX_AGE_CONFIG, "1000");
 
     kafkaConfig = KafkaConfig.builder()
       .kafkaHost(kafkaContainer.getHost())

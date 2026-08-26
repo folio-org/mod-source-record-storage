@@ -313,7 +313,7 @@ public class RecordDaoImpl implements RecordDao {
             .and(MARC_RECORDS_TRACKING.VERSION
               .eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
       }
-      return query.where(
+      var finalQuery = query.where(
           filterRecordByType(typeConnection.getRecordType().value())
             .and(filterRecordByMultipleIds(matchedRecordIds))
             .and(filterRecordByState(Record.State.ACTUAL.value()))
@@ -322,6 +322,8 @@ public class RecordDaoImpl implements RecordDao {
         )
         .offset(offset)
         .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
+      LOG.info("getMatchedRecords:: SQL: {}", finalQuery);
+      return finalQuery;
     }).map(rowSet -> rowSet.stream()
       .map(this::toRecord)
       .toList());
@@ -349,6 +351,7 @@ public class RecordDaoImpl implements RecordDao {
       sql = qualifierSearch ? StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER, params, "{", "}")
         : StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
     }
+    LOG.info("getMatchedFieldCondition:: SQL: {}", sql);
     return condition(sql);
   }
 

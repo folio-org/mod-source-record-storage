@@ -600,7 +600,7 @@ public class RecordServiceImpl implements RecordService {
     String ind2 = filter.getIndicator2() != null ? filter.getIndicator2() : StringUtils.EMPTY;
     String subfield = filter.getSubfield() != null ? filter.getSubfield() : StringUtils.EMPTY;
     MatchField.QualifierMatch qualifier = null;
-    if (filter.getQualifier() != null && filter.getQualifierValue() != null) {
+    if (filter.getQualifier() != null && StringUtils.isNotEmpty(filter.getQualifierValue())) {
       qualifier = new MatchField.QualifierMatch(filter.getQualifier(), filter.getQualifierValue());
     }
 

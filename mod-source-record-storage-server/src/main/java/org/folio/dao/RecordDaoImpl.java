@@ -191,17 +191,19 @@ public class RecordDaoImpl implements RecordDao {
   private static final int RECORDS_LIMIT = Integer.parseInt(System.getProperty("RECORDS_READING_LIMIT", "999"));
   static final int INDEXERS_DELETION_LOCK_NAMESPACE_ID = "delete_marc_indexers".hashCode();
 
-  public static final String CONTROL_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value})";
-  public static final String CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER =
-    "\"{partition}\".\"value\" LIKE {qualifier}" +
-      " AND {comparisonValue} IN ({value}) ";
-  public static final String DATA_FIELD_CONDITION_TEMPLATE = "\"{partition}\".\"value\" in ({value}) and \"{partition}\".\"ind1\" LIKE '{ind1}' and \"{partition}\".\"ind2\" LIKE '{ind2}' and \"{partition}\".\"subfield_no\" = '{subfield}'";
-  public static final String DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER =
-    "\"{partition}\".\"value\" LIKE {qualifier} " +
-      "AND {comparisonValue} IN ({value}) " +
-      "AND \"{partition}\".\"ind1\" LIKE '{ind1}' " +
-      "AND \"{partition}\".\"ind2\" LIKE '{ind2}' " +
-      "AND \"{partition}\".\"subfield_no\" = '{subfield}'";
+  /*
+   * Qualifier and comparison part are independent match profile options: either, both or neither may be set.
+   * {qualifierCondition} expands to an empty string when no qualifier is configured, and {comparisonValue}
+   * expands to the bare value column when no comparison part is configured
+   */
+  public static final String QUALIFIER_CONDITION_TEMPLATE = "\"{partition}\".\"value\" LIKE {qualifier} AND ";
+  public static final String CONTROL_FIELD_CONDITION_TEMPLATE =
+    "{qualifierCondition}{comparisonValue} in ({value})";
+  public static final String DATA_FIELD_CONDITION_TEMPLATE =
+    "{qualifierCondition}{comparisonValue} in ({value})"
+      + " and \"{partition}\".\"ind1\" LIKE '{ind1}'"
+      + " and \"{partition}\".\"ind2\" LIKE '{ind2}'"
+      + " and \"{partition}\".\"subfield_no\" = '{subfield}'";
   private static final String VALUE_IN_SINGLE_QUOTES = "'%s'";
   private static final String RECORD_NOT_FOUND_BY_ID_TYPE = "Record with %s id: %s was not found";
   private static final String INVALID_PARSED_RECORD_MESSAGE_TEMPLATE = "Record %s has invalid parsed record; %s";
@@ -286,7 +288,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<List<Record>> getMatchedRecords(MatchField matchedField, Filter.ComparisonPartType comparisonPartType,
+  public Future<List<Record>> getMatchedRecords(MatchField matchedField,
                                                 List<String> matchedRecordIds, TypeConnection typeConnection,
                                                 boolean externalIdRequired, int offset, int limit, String tenantId) {
     Name prt = name(typeConnection.getDbType().getTableName());
@@ -318,7 +320,7 @@ public class RecordDaoImpl implements RecordDao {
             .and(filterRecordByMultipleIds(matchedRecordIds))
             .and(filterRecordByState(Record.State.ACTUAL.value()))
             .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-            .and(getMatchedFieldCondition(matchedField, comparisonPartType, marcIndexersPartitionTable.getName()))
+            .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
         )
         .offset(offset)
         .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
@@ -327,32 +329,43 @@ public class RecordDaoImpl implements RecordDao {
       .toList());
   }
 
-  private Condition getMatchedFieldCondition(MatchField matchedField, Filter.ComparisonPartType comparisonPartType, String partition) {
+  private Condition getMatchedFieldCondition(MatchField matchedField, String partition) {
     Map<String, String> params = new HashMap<>();
-    var qualifierSearch = false;
     params.put("partition", partition);
     params.put("value", getValueInSqlFormat(matchedField.getValue()));
+    params.put("comparisonValue", getComparisonValue(matchedField.getComparisonPartType()));
+    params.put("qualifierCondition", getQualifierCondition(matchedField.getQualifierMatch()));
     if (matchedField.getQualifierMatch() != null) {
-      qualifierSearch = true;
       params.put("qualifier", getSqlQualifier(matchedField.getQualifierMatch()));
     }
-    params.put("comparisonValue", getComparisonValue(comparisonPartType));
 
     String sql;
     if (matchedField.isControlField()) {
-      sql = qualifierSearch ? StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER, params, "{", "}")
-        : StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
+      sql = StrSubstitutor.replace(CONTROL_FIELD_CONDITION_TEMPLATE, params, "{", "}");
     } else {
       params.put("ind1", getSqlInd(matchedField.getInd1()));
       params.put("ind2", getSqlInd(matchedField.getInd2()));
       params.put("subfield", matchedField.getSubfield());
-      sql = qualifierSearch ? StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE_WITH_QUALIFIER, params, "{", "}")
-        : StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
+      sql = StrSubstitutor.replace(DATA_FIELD_CONDITION_TEMPLATE, params, "{", "}");
     }
     return condition(sql);
   }
 
-  @SuppressWarnings("squid:S125")
+  private static String getQualifierCondition(MatchField.QualifierMatch qualifierMatch) {
+    return qualifierMatch == null ? StringUtils.EMPTY : QUALIFIER_CONDITION_TEMPLATE;
+  }
+
+  /*
+   * The regular expressions below are indexed by the marc_indexers comparison part expression indexes
+   * (liquibase scripts/v-6.1.0/2026-08-27--12-00-create-marc-indexers-comparison-part-indexes.xml).
+   * Postgres only uses an expression index when the expression in the query is identical to the indexed
+   * one, so editing a pattern here without editing the index leaves matching correct but silently
+   * degraded to a sequential scan over the whole field partition.
+   *
+   * Note these follow Postgres character class semantics: \d is [[:digit:]], which is ASCII-only, and
+   * \w is [[:alnum:]_], hence the extra |_ to drop underscores. MatchExpressionUtil in
+   * data-import-processing-core normalizes the incoming value and is kept aligned with this.
+   */
   private static String getComparisonValue(Filter.ComparisonPartType comparisonPartType) {
 
     String defaultValue = "\"{partition}\".\"value\"";
@@ -361,9 +374,7 @@ public class RecordDaoImpl implements RecordDao {
     }
 
     return switch (comparisonPartType) {
-      //case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:alnum:]]', '', 'g')";
       case ALPHANUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\w]|_', '', 'g')";
-      // case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^[:digit:]]', '', 'g')";
       case NUMERICS_ONLY -> "regexp_replace(\"{partition}\".\"value\", '[^\\d]', '', 'g')";
       default -> defaultValue;
     };
@@ -597,7 +608,7 @@ public class RecordDaoImpl implements RecordDao {
 
       Condition matchFieldCondition = matchField.isDefaultField()
         ? getDefaultMatchFieldCondition(matchField)
-        : getMatchedFieldCondition(matchField, matchField.getComparisonPartType(), marcIndexersPartitionTable.getName());
+        : getMatchedFieldCondition(matchField, marcIndexersPartitionTable.getName());
 
       condition = logicalOperator == AND ? condition.and(matchFieldCondition) : condition.or(matchFieldCondition);
     }

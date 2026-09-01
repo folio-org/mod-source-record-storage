@@ -1,3 +1,6 @@
+## 2026-09-02 v6.0.2
+* [MODSOURCE-1014](https://folio-org.atlassian.net/browse/MODSOURCE-1014) Fix 035 being split on update when same $a in incoming and existing
+
 ## 2026-06-19 v6.0.1
 * [MODSOURCE-987](https://folio-org.atlassian.net/browse/MODSOURCE-987) MARC authority record from a cancelled DI job appears in MARC authority search but cannot be opened
 * [MODSOURCE-1002](https://folio-org.atlassian.net/browse/MODSOURCE-1002) Fix timeout issues

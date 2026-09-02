@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>mod-source-record-storage</artifactId>
-    <version>6.0.2-SNAPSHOT</version>
+    <version>6.0.3-SNAPSHOT</version>
   </parent>
 
   <dependencies>
@@ -177,7 +177,7 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>5.0.0</version>
+      <version>5.0.1</version>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>

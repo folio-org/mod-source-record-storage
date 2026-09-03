@@ -300,29 +300,29 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldMatchMarcBibRecordByComparisonPartWithoutQualifier(TestContext context) {
-    Record record = postRecordWith035Sample(context);
+    Record marcRecord = postRecordWith035Sample(context);
 
-    matchOnSingleField(record, "035", "a", List.of("OCoLC63611770"), null, null, ALPHANUMERICS_ONLY);
+    matchOnSingleField(marcRecord, "035", "a", List.of("OCoLC63611770"), null, null, ALPHANUMERICS_ONLY);
   }
 
   @Test
   public void shouldMatchMarcBibRecordBy010FieldDifferingOnlyInWhitespace(TestContext context) {
-    Record record = postRecordWith035Sample(context);
+    Record marcRecord = postRecordWith035Sample(context);
 
-    matchOnSingleField(record, "010", "a", List.of("55001156M"), null, null, ALPHANUMERICS_ONLY);
+    matchOnSingleField(marcRecord, "010", "a", List.of("55001156M"), null, null, ALPHANUMERICS_ONLY);
   }
 
   @Test
   public void shouldIgnoreEmptyQualifierValueAndStillApplyComparisonPart(TestContext context) {
-    Record record = postRecordWith035Sample(context);
+    Record marcRecord = postRecordWith035Sample(context);
 
-    matchOnSingleField(record, "035", "a", List.of("OCoLC63611770"), CONTAINS, "", ALPHANUMERICS_ONLY);
+    matchOnSingleField(marcRecord, "035", "a", List.of("OCoLC63611770"), CONTAINS, "", ALPHANUMERICS_ONLY);
   }
 
   private Record postRecordWith035Sample(TestContext context) {
     String content = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     String recordId = UUID.randomUUID().toString();
-    Record record = new Record()
+    Record marcRecord = new Record()
       .withId(recordId)
       .withMatchedId(recordId)
       .withSnapshotId(snapshot.getJobExecutionId())
@@ -334,8 +334,8 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(HR_ID));
 
-    postRecords(context, record);
-    return record;
+    postRecords(context, marcRecord);
+    return marcRecord;
   }
 
   private void matchOnSingleField(Record sourceRecord, String field, String subfield, List<String> values,

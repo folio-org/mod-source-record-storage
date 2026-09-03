@@ -193,7 +193,7 @@ public class RecordDaoImpl implements RecordDao {
 
   /*
    * Qualifier and comparison part are independent match profile options: either, both or neither may be set.
-   * {qualifierCondition} expands to an empty string when no qualifier is configured, and {comparisonValue}
+   * qualifierCondition expands to an empty string when no qualifier is configured, and comparisonValue
    * expands to the bare value column when no comparison part is configured
    */
   public static final String QUALIFIER_CONDITION_TEMPLATE = "\"{partition}\".\"value\" LIKE {qualifier} AND ";

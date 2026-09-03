@@ -1,0 +1,41 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <!--
+    Expression indexes backing the "Only compare part of the value" match profile option.
+
+    Matching on a comparison part wraps the indexed value in regexp_replace, which the plain
+    marc_indexers_NNN_value_idx b-tree cannot serve, so without these indexes such a match point
+    sequentially scans the whole partition.
+
+    The indexed expressions MUST stay character-for-character identical to the ones built by
+    RecordDaoImpl#getComparisonValue - Postgres will not use the index otherwise, and the only
+    symptom is a silent fall back to a sequential scan. Change one, change the other.
+
+    Only the identifier fields that are realistic comparison part match points are covered:
+    010 (LCCN) and 035 (system control number / OCLC), which are also the only two tags carrying
+    a dedicated value index today. Adding another tag means adding another pair of statements here.
+  -->
+  <changeSet id="2026-08-27--12-00-create-marc-indexers-comparison-part-indexes" author="KaterynaSenchenko">
+    <sql>
+      CREATE INDEX IF NOT EXISTS marc_indexers_010_numerics_only_idx
+        ON ${database.defaultSchemaName}.marc_indexers_010 ((regexp_replace(value, '[^\d]', '', 'g')));
+    </sql>
+    <sql>
+      CREATE INDEX IF NOT EXISTS marc_indexers_010_alphanumerics_only_idx
+        ON ${database.defaultSchemaName}.marc_indexers_010 ((regexp_replace(value, '[^\w]|_', '', 'g')));
+    </sql>
+    <sql>
+      CREATE INDEX IF NOT EXISTS marc_indexers_035_numerics_only_idx
+        ON ${database.defaultSchemaName}.marc_indexers_035 ((regexp_replace(value, '[^\d]', '', 'g')));
+    </sql>
+    <sql>
+      CREATE INDEX IF NOT EXISTS marc_indexers_035_alphanumerics_only_idx
+        ON ${database.defaultSchemaName}.marc_indexers_035 ((regexp_replace(value, '[^\w]|_', '', 'g')));
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

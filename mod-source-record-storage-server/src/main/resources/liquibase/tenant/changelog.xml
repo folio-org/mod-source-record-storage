@@ -80,4 +80,6 @@
   <include file="scripts/v-5.10.0/2025-22-04--15-00-update-composite-index-immutable-to-date-with-marc-id.xml" relativeToChangelogFile="true"/>
   <include file="scripts/v-5.10.0/2025-05-02--11-00-create-index-external-id-covering.xml" relativeToChangelogFile="true"/>
 
+  <include file="scripts/v-6.1.0/2026-08-27--12-00-create-marc-indexers-comparison-part-indexes.xml" relativeToChangelogFile="true"/>
+
 </databaseChangeLog>

@@ -152,7 +152,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
 
     Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), copyRecordSnapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
-      .compose(v -> recordDao.getMatchedRecords(matchField, null, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
+      .compose(v -> recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
@@ -186,7 +186,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
 
     Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), copyRecordSnapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
-      .compose(v -> recordDao.getMatchedRecords(matchField, null, List.of(record.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()), TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
+      .compose(v -> recordDao.getMatchedRecords(matchField, List.of(record.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()), TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());
@@ -216,7 +216,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     var async = context.async();
     var matchField = new MatchField("010", "1", "", "a", MissingValue.getInstance());
 
-    var future = recordDao.getMatchedRecords(matchField, null, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
+    var future = recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
 
     future.onComplete(ar -> {
       context.assertTrue(ar.succeeded());

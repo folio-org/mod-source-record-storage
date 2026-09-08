@@ -15,7 +15,6 @@ import org.folio.dao.util.CompositeMatchField;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordType;
-import org.folio.rest.jaxrs.model.Filter;
 import org.folio.rest.jaxrs.model.MarcBibCollection;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ParsedRecordsBatchResponse;
@@ -82,8 +81,7 @@ public interface RecordDao {
   /**
    * Searches for {@link Record} by {@link MatchField} with offset and limit
    *
-   * @param matchField          Marc field that needs to be matched
-   * @param comparisonPartType  describes type of comparison part
+   * @param matchField          Marc field that needs to be matched, including its qualifier and comparison part
    * @param matchedRecordIds    list of records IDs that will be used as additional criteria for filtering records
    *                            that match the specified {@code MatchField} criteria
    * @param recordType          record type
@@ -93,7 +91,7 @@ public interface RecordDao {
    * @param tenantId            tenant id
    * @return  {@link Future} of {@link RecordCollection}
    */
-  Future<List<Record>> getMatchedRecords(MatchField matchField, Filter.ComparisonPartType comparisonPartType,
+  Future<List<Record>> getMatchedRecords(MatchField matchField,
                                          List<String> matchedRecordIds, TypeConnection recordType, boolean externalIdRequired,
                                          int offset, int limit, String tenantId);
 

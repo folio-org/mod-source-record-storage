@@ -298,6 +298,71 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
     shouldMatchRecordByExternalIdField(record, containsAlphaNumeric, ALPHANUMERICS_ONLY, "Case 6");
   }
 
+  @Test
+  public void shouldMatchMarcBibRecordByComparisonPartWithoutQualifier(TestContext context) {
+    Record marcRecord = postRecordWith035Sample(context);
+
+    matchOnSingleField(marcRecord, "035", "a", List.of("OCoLC63611770"), null, null, ALPHANUMERICS_ONLY);
+  }
+
+  @Test
+  public void shouldMatchMarcBibRecordBy010FieldDifferingOnlyInWhitespace(TestContext context) {
+    Record marcRecord = postRecordWith035Sample(context);
+
+    matchOnSingleField(marcRecord, "010", "a", List.of("55001156M"), null, null, ALPHANUMERICS_ONLY);
+  }
+
+  @Test
+  public void shouldIgnoreEmptyQualifierValueAndStillApplyComparisonPart(TestContext context) {
+    Record marcRecord = postRecordWith035Sample(context);
+
+    matchOnSingleField(marcRecord, "035", "a", List.of("OCoLC63611770"), CONTAINS, "", ALPHANUMERICS_ONLY);
+  }
+
+  private Record postRecordWith035Sample(TestContext context) {
+    String content = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
+    String recordId = UUID.randomUUID().toString();
+    Record marcRecord = new Record()
+      .withId(recordId)
+      .withMatchedId(recordId)
+      .withSnapshotId(snapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(MARC_BIB)
+      .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
+      .withParsedRecord(new ParsedRecord().withId(recordId).withContent(content))
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withInstanceId(UUID.randomUUID().toString())
+        .withInstanceHrid(HR_ID));
+
+    postRecords(context, marcRecord);
+    return marcRecord;
+  }
+
+  private void matchOnSingleField(Record sourceRecord, String field, String subfield, List<String> values,
+                                  Filter.Qualifier qualifier, String qualifierValue,
+                                  ComparisonPartType comparisonPartType) {
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(new RecordMatchingDto()
+        .withRecordType(RecordMatchingDto.RecordType.valueOf(sourceRecord.getRecordType().name()))
+        .withFilters(List.of(new Filter()
+          .withValues(values)
+          .withField(field)
+          .withIndicator1("")
+          .withIndicator2("")
+          .withSubfield(subfield)
+          .withQualifier(qualifier)
+          .withQualifierValue(qualifierValue)
+          .withComparisonPartType(comparisonPartType))))
+      .post(RECORDS_MATCHING_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1))
+      .body("identifiers.size()", is(1))
+      .body("identifiers[0].recordId", is(sourceRecord.getId()));
+  }
+
   private void shouldMatchRecordByExternalIdField(Record sourceRecord, MatchField.QualifierMatch qualifier,
                                                   ComparisonPartType comparisonPartType, String testName) {
     var externalId = RecordDaoUtil.getExternalId(sourceRecord.getExternalIdsHolder(), sourceRecord.getRecordType());

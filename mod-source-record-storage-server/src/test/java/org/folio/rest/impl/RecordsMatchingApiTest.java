@@ -319,8 +319,20 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
     matchOnSingleField(marcRecord, "035", "a", List.of("OCoLC63611770"), CONTAINS, "", ALPHANUMERICS_ONLY);
   }
 
+  @Test
+  public void shouldMatchMarcBibRecordBy001FieldWithComparisonPartWithoutQualifier(TestContext context) {
+    String content = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH)
+      .replace("\"001\": \"393893\"", "\"001\": \"n 393893 \"");
+    Record record = postRecordWithParsedContent(context, content);
+
+    matchOnSingleField(record, "001", "", List.of("n393893"), null, null, ALPHANUMERICS_ONLY);
+  }
+
   private Record postRecordWith035Sample(TestContext context) {
-    String content = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
+    return postRecordWithParsedContent(context, TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH));
+  }
+
+  private Record postRecordWithParsedContent(TestContext context, String content) {
     String recordId = UUID.randomUUID().toString();
     Record marcRecord = new Record()
       .withId(recordId)

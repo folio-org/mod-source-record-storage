@@ -357,7 +357,8 @@ public class RecordDaoImpl implements RecordDao {
 
   /*
    * The regular expressions below are indexed by the marc_indexers comparison part expression indexes
-   * (liquibase scripts/v-6.1.0/2026-08-27--12-00-create-marc-indexers-comparison-part-indexes.xml).
+   * (liquibase scripts/v-6.1.0/2026-08-27--12-00-create-marc-indexers-comparison-part-indexes.xml for
+   * 010 and 035, and 2026-09-16--12-00-create-marc-indexers-001-comparison-part-indexes.xml for 001).
    * Postgres only uses an expression index when the expression in the query is identical to the indexed
    * one, so editing a pattern here without editing the index leaves matching correct but silently
    * degraded to a sequential scan over the whole field partition.
@@ -580,7 +581,7 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   private void joinOnTablesForSearchByMarcFields(SelectJoinStep<?> selectJoinStep, CompositeMatchField compositeMatchField) {
-    if (compositeMatchField.isDefaultField()) {
+    if (compositeMatchField.isMatchedByRecordColumn()) {
       return;
     }
 
@@ -589,7 +590,7 @@ public class RecordDaoImpl implements RecordDao {
       .on(RECORDS_LB.ID.eq(field(MARC_RECORDS_TRACKING.MARC_ID)));
 
     for (MatchField matchField : compositeMatchField.getMatchFields()) {
-      if (!matchField.isDefaultField() && !processedFields.contains(matchField.getTag())) {
+      if (!matchField.isMatchedByRecordColumn() && !processedFields.contains(matchField.getTag())) {
         processedFields.add(matchField.getTag());
         Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchField.getTag()));
         selectJoinStep = selectJoinStep.innerJoin(marcIndexersPartitionTable)
@@ -606,7 +607,7 @@ public class RecordDaoImpl implements RecordDao {
     for (MatchField matchField : compositeMatchField.getMatchFields()) {
       Table<org.jooq.Record> marcIndexersPartitionTable = table(name(MARC_INDEXERS_PARTITION_PREFIX + matchField.getTag()));
 
-      Condition matchFieldCondition = matchField.isDefaultField()
+      Condition matchFieldCondition = matchField.isMatchedByRecordColumn()
         ? getDefaultMatchFieldCondition(matchField)
         : getMatchedFieldCondition(matchField, marcIndexersPartitionTable.getName());
 

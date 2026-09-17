@@ -78,6 +78,10 @@ public class MatchField {
     return isMatchedId() || isExternalId() || isExternalHrid();
   }
 
+  public boolean isMatchedByRecordColumn() {
+    return isDefaultField() && comparisonPartType == null;
+  }
+
   public boolean isMatchedId() {
     return MATCHED_ID_MARC_FIELD.equals(fieldPath);
   }

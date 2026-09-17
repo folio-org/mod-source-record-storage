@@ -916,6 +916,32 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
         }));
   }
 
+  @Test
+  public void shouldMatchBy001FieldWithIdenticalPaddedValuesUsingAlphanumericsOnly(TestContext context) {
+    Qualifier alphanumerics = new Qualifier().withComparisonPart(Qualifier.ComparisonPart.ALPHANUMERICS_ONLY);
+    match001(context, "n 79139501 ", "n 79139501 ", alphanumerics, alphanumerics, DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value());
+  }
+
+  @Test
+  public void shouldMatchBy001FieldDifferingOnlyInWhitespaceUsingAlphanumericsOnly(TestContext context) {
+    Qualifier alphanumerics = new Qualifier().withComparisonPart(Qualifier.ComparisonPart.ALPHANUMERICS_ONLY);
+    match001(context, "n 79139501 ", "n79139501", alphanumerics, alphanumerics, DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value());
+  }
+
+  @Test
+  public void shouldMatchBy001FieldWithQualifierAndNumericsOnly(TestContext context) {
+    Qualifier qualifierAndNumerics = new Qualifier()
+      .withQualifierType(Qualifier.QualifierType.BEGINS_WITH)
+      .withQualifierValue("n")
+      .withComparisonPart(Qualifier.ComparisonPart.NUMERICS_ONLY);
+    match001(context, "n 79139501 ", "n79139501", qualifierAndNumerics, qualifierAndNumerics, DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value());
+  }
+
+  @Test
+  public void shouldNotMatchBy001FieldDifferingOnlyInWhitespaceWhenComparisonPartIsNotSet(TestContext context) {
+    match001(context, "n 79139501 ", "n79139501", null, null, DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED.value());
+  }
+
   private Record incomingRecordWithParsedContent(String parsedContent) {
     String id = UUID.randomUUID().toString();
     return new Record()
@@ -931,6 +957,11 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
 
   private DataImportEventPayload payloadMatchingOn010a(Record incoming, Qualifier incomingQualifier,
                                                        Qualifier existingQualifier) {
+    return payloadMatchingOn("010", "a", incoming, incomingQualifier, existingQualifier);
+  }
+
+  private DataImportEventPayload payloadMatchingOn(String field, String subfield, Record incoming,
+                                                   Qualifier incomingQualifier, Qualifier existingQualifier) {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incoming));
 
@@ -946,20 +977,55 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
           .withMatchDetails(singletonList(new MatchDetail()
             .withMatchCriterion(EXACTLY_MATCHES)
             .withExistingRecordType(EntityType.MARC_AUTHORITY)
-            .withExistingMatchExpression(matchExpressionOn010a(existingQualifier))
+            .withExistingMatchExpression(matchExpressionOn(field, subfield, existingQualifier))
             .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-            .withIncomingMatchExpression(matchExpressionOn010a(incomingQualifier))))));
+            .withIncomingMatchExpression(matchExpressionOn(field, subfield, incomingQualifier))))));
   }
 
-  private MatchExpression matchExpressionOn010a(Qualifier qualifier) {
+  private MatchExpression matchExpressionOn(String field, String subfield, Qualifier qualifier) {
     return new MatchExpression()
       .withDataValueType(VALUE_FROM_RECORD)
       .withFields(Lists.newArrayList(
-        new Field().withLabel("field").withValue("010"),
+        new Field().withLabel("field").withValue(field),
         new Field().withLabel("indicator1").withValue(""),
         new Field().withLabel("indicator2").withValue(""),
-        new Field().withLabel("recordSubfield").withValue("a")
+        new Field().withLabel("recordSubfield").withValue(subfield)
       ))
       .withQualifier(qualifier);
+  }
+
+  private Record existingAuthorityWith001(String value) {
+    String id = UUID.randomUUID().toString();
+    return new Record()
+      .withId(id)
+      .withMatchedId(id)
+      .withSnapshotId(existingRecordSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(MARC_AUTHORITY)
+      .withRawRecord(new RawRecord().withId(id).withContent(rawRecordContent))
+      .withParsedRecord(new ParsedRecord().withId(id).withContent(PARSED_CONTENT.replace("\"001\": \"1000649\"", "\"001\": \"" + value + "\"")))
+      .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityHrid(value))
+      .withState(Record.State.ACTUAL);
+  }
+
+  private void match001(TestContext context, String existingValue, String incomingValue,
+                        Qualifier incomingQualifier, Qualifier existingQualifier, String expectedEventType) {
+    Async async = context.async();
+    Record existing = existingAuthorityWith001(existingValue);
+    Record incoming = incomingRecordWithParsedContent(PARSED_CONTENT.replace("\"001\": \"1000649\"", "\"001\": \"" + incomingValue + "\""));
+    DataImportEventPayload payload = payloadMatchingOn("001", "", incoming, incomingQualifier, existingQualifier);
+
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    recordDao.saveRecord(existing, okapiHeaders)
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(existingSavedRecord -> handler.handle(payload)
+        .whenComplete((updatedEventPayload, throwable) -> {
+          context.assertNull(throwable);
+          context.assertEquals(expectedEventType, updatedEventPayload.getEventType());
+          if (DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value().equals(expectedEventType)) {
+            context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
+          }
+          async.complete();
+        }));
   }
 }

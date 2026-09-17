@@ -1,0 +1,32 @@
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.0.xsd">
+
+  <!--
+    Expression indexes for "Only compare part of the value" on 001.
+
+    001 is normally matched directly against records_lb.external_hrid, which is indexed. That column
+    holds the value as-is, so when a comparison part is configured the match is routed through
+    marc_indexers_001 instead (MatchField#isMatchedByRecordColumn), where the comparison part is
+    applied to the indexed value - and that needs the same expression indexes 010 and 035 already have.
+
+    For MARC authorities the external hrid is the raw incoming 001 including LCCN-style padding, which
+    is exactly what this option exists to absorb, so 001 is a realistic match point here.
+
+    The expressions MUST stay identical to RecordDaoImpl#getComparisonValue; see the 2026-08-27
+    changeset for why.
+  -->
+  <changeSet id="2026-09-16--12-00-create-marc-indexers-001-comparison-part-indexes" author="KaterynaSenchenko">
+    <sql>
+      CREATE INDEX IF NOT EXISTS marc_indexers_001_numerics_only_idx
+        ON ${database.defaultSchemaName}.marc_indexers_001 ((regexp_replace(value, '[^\d]', '', 'g')));
+    </sql>
+    <sql>
+      CREATE INDEX IF NOT EXISTS marc_indexers_001_alphanumerics_only_idx
+        ON ${database.defaultSchemaName}.marc_indexers_001 ((regexp_replace(value, '[^\w]|_', '', 'g')));
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

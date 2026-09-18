@@ -142,7 +142,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private Future<List<Record>> retrieveMarcRecords(MatchField matchField, DataImportEventPayload payload,
                                                    String tenant) {
     List<String> matchedRecordIds = getMatchedRecordIds(payload);
-    if (matchField.isDefaultField()) {
+    if (matchField.isMatchedByRecordColumn()) {
       LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}", matchField.getTag(), tenant);
       return processDefaultMatchField(matchField, matchedRecordIds, tenant).map(RecordCollection::getRecords);
     }

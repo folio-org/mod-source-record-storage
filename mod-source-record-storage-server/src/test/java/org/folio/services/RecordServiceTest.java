@@ -4,6 +4,7 @@ import static java.util.Comparator.comparing;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.services.RecordServiceImpl.INDICATOR;
 import static org.folio.services.RecordServiceImpl.SUBFIELD_S;
+import static org.folio.services.RecordServiceImpl.UPDATE_RECORD_DUPLICATE_EXCEPTION;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 import static org.folio.services.util.AdditionalFieldsUtil.getFieldFromMarcRecord;
 import static org.junit.Assert.assertThrows;
@@ -803,6 +804,95 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         });
       });
     });
+  }
+
+  @Test
+  public void shouldFailUpdateRecordGenerationIfAnotherIncomingRecordOfSameJobAlreadyUpdatedRecord(TestContext context) {
+    Async async = context.async();
+    String matchedId = UUID.randomUUID().toString();
+    Record existingRecord = buildRecordToUpdateGeneration(matchedId, TestMocks.getMarcBibRecord().getSnapshotId(), null)
+      .withId(matchedId);
+    Snapshot snapshot = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
+    Record firstIncomingRecord = buildRecordToUpdateGeneration(matchedId, snapshot.getJobExecutionId(), 1);
+    Record secondIncomingRecord = buildRecordToUpdateGeneration(matchedId, snapshot.getJobExecutionId(), 2);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+
+    recordService.saveRecord(existingRecord, okapiHeaders)
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot))
+      .compose(v -> recordService.updateRecordGeneration(matchedId, firstIncomingRecord, okapiHeaders))
+      .onComplete(context.asyncAssertSuccess(firstUpdated -> {
+        context.assertEquals(1, firstUpdated.getGeneration());
+        context.assertEquals(snapshot.getJobExecutionId(), firstUpdated.getSnapshotId());
+
+        recordService.updateRecordGeneration(matchedId, secondIncomingRecord, okapiHeaders).onComplete(secondUpdate -> {
+          context.assertTrue(secondUpdate.failed());
+          context.assertTrue(secondUpdate.cause() instanceof BadRequestException);
+          context.assertEquals(UPDATE_RECORD_DUPLICATE_EXCEPTION, secondUpdate.cause().getMessage());
+          recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(context.asyncAssertSuccess(get -> {
+            context.assertTrue(get.isPresent());
+            context.assertEquals(1, get.get().getGeneration());
+            context.assertEquals(firstUpdated.getId(), get.get().getId());
+            async.complete();
+          }));
+        });
+      }));
+  }
+
+  @Test
+  public void shouldUpdateRecordGenerationTwiceWithinSameJobForSameIncomingRecord(TestContext context) {
+    Async async = context.async();
+    String matchedId = UUID.randomUUID().toString();
+    Record existingRecord = buildRecordToUpdateGeneration(matchedId, TestMocks.getMarcBibRecord().getSnapshotId(), null)
+      .withId(matchedId);
+    Snapshot snapshot = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
+    Record incomingRecord = buildRecordToUpdateGeneration(matchedId, snapshot.getJobExecutionId(), 1);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+
+    recordService.saveRecord(existingRecord, okapiHeaders)
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot))
+      .compose(v -> recordService.updateRecordGeneration(matchedId, incomingRecord, okapiHeaders))
+      .compose(firstUpdated -> {
+        context.assertEquals(1, firstUpdated.getGeneration());
+        Record sameRecordNextAction = buildRecordToUpdateGeneration(matchedId, snapshot.getJobExecutionId(), 2)
+          .withId(firstUpdated.getId());
+        return recordService.updateRecordGeneration(matchedId, sameRecordNextAction, okapiHeaders);
+      })
+      .onComplete(context.asyncAssertSuccess(secondUpdated -> {
+        context.assertEquals(2, secondUpdated.getGeneration());
+        context.assertEquals(matchedId, secondUpdated.getMatchedId());
+        recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(context.asyncAssertSuccess(get -> {
+          context.assertTrue(get.isPresent());
+          context.assertEquals(2, get.get().getGeneration());
+          async.complete();
+        }));
+      }));
+  }
+
+  private Record buildRecordToUpdateGeneration(String matchedId, String snapshotId, Integer generation) {
+    Record original = TestMocks.getMarcBibRecord();
+    ParsedRecord parsedRecord = new ParsedRecord().withId(UUID.randomUUID().toString())
+      .withContent(new JsonObject().put("leader", "01542ccm a2200361   4500")
+        .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
+          .put("subfields",
+            new JsonArray().add(new JsonObject().put("s", matchedId)))
+          .put("ind1", "f")
+          .put("ind2", "f"))).add(new JsonObject().put("001", HR_ID))).encode());
+    return new Record()
+      .withId(UUID.randomUUID().toString())
+      .withSnapshotId(snapshotId)
+      .withRecordType(original.getRecordType())
+      .withState(State.ACTUAL)
+      .withGeneration(generation)
+      .withOrder(original.getOrder())
+      .withRawRecord(original.getRawRecord())
+      .withParsedRecord(parsedRecord)
+      .withAdditionalInfo(original.getAdditionalInfo())
+      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID))
+      .withMetadata(original.getMetadata());
   }
 
   @Test

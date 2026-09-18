@@ -257,17 +257,38 @@ public class RecordServiceImpl implements RecordService {
     if (!matchedId.equals(marcField999s)) {
       return Future.failedFuture(new BadRequestException(format(MATCHED_ID_NOT_EQUAL_TO_999_FIELD, matchedId, marcField999s)));
     }
-    rec.setId(UUID.randomUUID().toString());
 
     return recordDao.getRecordByMatchedId(matchedId, okapiHeaders.get(XOkapiHeaders.TENANT))
       .map(r -> r.orElseThrow(() -> new NotFoundException(format(RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND, matchedId))))
-      .compose(v -> saveRecord(rec, okapiHeaders))
+      .compose(existingRecord -> {
+        if (isDuplicateWithinSameJob(existingRecord, rec)) {
+          LOG.warn("updateRecordGeneration:: Record with matchedId: '{}' was already updated by job '{}' from another incoming record, "
+            + "incoming record id: '{}', existing record id: '{}'", matchedId, rec.getSnapshotId(), rec.getId(), existingRecord.getId());
+          return Future.failedFuture(new BadRequestException(UPDATE_RECORD_DUPLICATE_EXCEPTION));
+        }
+        rec.setId(UUID.randomUUID().toString());
+        return saveRecord(rec, okapiHeaders);
+      })
       .recover(throwable -> {
         if (throwable instanceof DuplicateRecordException) {
           return Future.failedFuture(new BadRequestException(UPDATE_RECORD_DUPLICATE_EXCEPTION));
         }
         return Future.failedFuture(throwable);
       });
+  }
+
+  /**
+   * Checks whether the incoming record is a duplicate of a record that the same job has already processed.
+   * The current generation of the record having been produced by the same job (snapshot) means the job has
+   * already updated this record.
+   *
+   * @param existingRecord current generation of the record to update
+   * @param incomingRecord incoming record carrying the next generation
+   * @return true if the incoming record should be rejected as a duplicate
+   */
+  private static boolean isDuplicateWithinSameJob(Record existingRecord, Record incomingRecord) {
+    return Objects.equals(existingRecord.getSnapshotId(), incomingRecord.getSnapshotId())
+      && !Objects.equals(existingRecord.getId(), incomingRecord.getId());
   }
 
   @Override

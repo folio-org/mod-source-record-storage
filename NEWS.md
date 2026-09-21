@@ -1,7 +1,7 @@
 ## xxxx-xx-xx 6.1.0
 * [MODSOURCE-1014](https://folio-org.atlassian.net/browse/MODSOURCE-1014) Fix 035 being split on update when same $a in incoming and existing
 * [MODSOURCE-1019](https://folio-org.atlassian.net/browse/MODSOURCE-1019) Fix MARC-MARC matching when comparison part is used without a qualifier
-* [APPDI-3](https://folio-org.atlassian.net/browse/APPDI-3) Reject duplicate records within one import job on record generation update regardless of timing
+* [MODSOURCE-1021](https://folio-org.atlassian.net/browse/MODSOURCE-1021) Reject duplicate records within one import job on record generation update regardless of timing
 
 ## 2026-04-15 6.0.0
 * [MODSOURCE-917](https://folio-org.atlassian.net/browse/MODSOURCE-917) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching

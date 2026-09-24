@@ -148,7 +148,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     }
 
     LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}", matchField.getTag(), tenant);
-    return recordDao.getMatchedRecords(matchField, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
+    return recordDao.getMatchedRecords(matchField, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 10, tenant);
   }
 
   abstract boolean isConsortiumAvailable();

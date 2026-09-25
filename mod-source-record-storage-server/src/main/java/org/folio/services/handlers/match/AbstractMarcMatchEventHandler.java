@@ -75,8 +75,10 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   @org.springframework.beans.factory.annotation.Value("${srs.records-matching.fetch.records.limit:1000}")
   private int fetchRecordsLimit = 1000;
 
-  protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType,
-                                          DataImportEventTypes notMatchedEventType, ConsortiumConfigurationCache consortiumConfigurationCache) {
+  protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao,
+                                          DataImportEventTypes matchedEventType,
+                                          DataImportEventTypes notMatchedEventType,
+                                          ConsortiumConfigurationCache consortiumConfigurationCache) {
     this.typeConnection = typeConnection;
     this.recordDao = recordDao;
     this.matchedEventType = matchedEventType;

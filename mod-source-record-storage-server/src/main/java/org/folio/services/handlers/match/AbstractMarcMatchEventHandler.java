@@ -8,6 +8,7 @@ import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import org.folio.DataImportEventPayload;
 import org.folio.MatchDetail;
 import org.folio.MatchProfile;
@@ -70,6 +71,9 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private final DataImportEventTypes matchedEventType;
   private final DataImportEventTypes notMatchedEventType;
   private final ConsortiumConfigurationCache consortiumConfigurationCache;
+
+  @org.springframework.beans.factory.annotation.Value("${srs.records-matching.fetch.records.limit:1000}")
+  private int fetchRecordsLimit = 1000;
 
   protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType,
                                           DataImportEventTypes notMatchedEventType, ConsortiumConfigurationCache consortiumConfigurationCache) {
@@ -143,12 +147,15 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
                                                    String tenant) {
     List<String> matchedRecordIds = getMatchedRecordIds(payload);
     if (matchField.isMatchedByRecordColumn()) {
-      LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}", matchField.getTag(), tenant);
+      LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}",
+        matchField.getTag(), tenant);
       return processDefaultMatchField(matchField, matchedRecordIds, tenant).map(RecordCollection::getRecords);
     }
 
-    LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}", matchField.getTag(), tenant);
-    return recordDao.getMatchedRecords(matchField, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
+    LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}",
+      matchField.getTag(), tenant);
+    return recordDao.getMatchedRecords(
+      matchField, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, fetchRecordsLimit, tenant);
   }
 
   abstract boolean isConsortiumAvailable();
@@ -198,7 +205,8 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     } else if (matchField.isExternalHrid()) {
       condition = condition.and(filterRecordByExternalHrid(valueAsString));
     }
-    return recordDao.getRecords(condition, typeConnection.getDbType(), new ArrayList<>(), 0, 2, tenantId);
+    return recordDao.getRecords(
+      condition, typeConnection.getDbType(), new ArrayList<>(), 0, fetchRecordsLimit, tenantId);
   }
 
   private String getStringValue(Value value) {

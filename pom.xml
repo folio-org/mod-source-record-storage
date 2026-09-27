@@ -32,13 +32,13 @@
     <folio-liquibase-util.version>1.11.0</folio-liquibase-util.version>
 
     <log4j.version>2.26.1</log4j.version>
-    <vertx.version>5.1.8</vertx.version>
+    <vertx.version>5.2.0</vertx.version>
     <spring.version>7.0.9</spring.version>
     <commons-lang3.version>3.20.0</commons-lang3.version>
     <marc4j.version>2.9.8</marc4j.version>
     <staedi.version>1.26.3</staedi.version>
     <jsqlparser.version>5.4</jsqlparser.version>
-    <caffeine.version>3.2.4</caffeine.version>
+    <caffeine.version>3.3.0</caffeine.version>
     <hikari-cp.version>7.1.0</hikari-cp.version>
     <jooq.version>3.21.8</jooq.version>
     <postgres.version>42.7.13</postgres.version>

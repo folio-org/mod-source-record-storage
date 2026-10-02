@@ -68,6 +68,8 @@ import org.folio.rest.jaxrs.model.StrippedParsedRecord;
 import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
+import org.folio.services.exceptions.DuplicateRecordException;
+import org.folio.services.exceptions.RecordOptimisticLockingException;
 import org.jooq.Condition;
 import org.jooq.OrderField;
 import org.jooq.SortOrder;
@@ -870,6 +872,100 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           async.complete();
         }));
       }));
+  }
+
+  @Test
+  public void shouldFailSaveRecordWithOptimisticLockingError_whenRecordWasModifiedByAnotherProcess(TestContext context) {
+    // given: record generation 1 was saved by another process (e.g. quickMARC) after the import job matched generation 0
+    Async async = context.async();
+    String matchedId = UUID.randomUUID().toString();
+    Record existingRecord = buildRecordToUpdateGeneration(matchedId, TestMocks.getMarcBibRecord().getSnapshotId(), null)
+      .withId(matchedId);
+    Snapshot anotherProcessSnapshot = buildInProgressSnapshot();
+    Snapshot importJobSnapshot = buildInProgressSnapshot();
+    Record anotherProcessRecord = buildRecordToUpdateGeneration(matchedId, anotherProcessSnapshot.getJobExecutionId(), 1);
+    Record importJobRecord = buildRecordToUpdateGeneration(matchedId, importJobSnapshot.getJobExecutionId(), 1);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+
+    recordService.saveRecord(existingRecord, okapiHeaders)
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), anotherProcessSnapshot))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), importJobSnapshot))
+      .compose(v -> recordService.updateRecordGeneration(matchedId, anotherProcessRecord, okapiHeaders))
+      .onComplete(context.asyncAssertSuccess(anotherProcessSaved ->
+
+        // when: the import job saves the generation it calculated from the previously matched record
+        recordService.saveRecord(importJobRecord, okapiHeaders).onComplete(context.asyncAssertFailure(throwable -> {
+
+          // then: the conflict is reported as optimistic locking error and the concurrent change is preserved
+          context.assertEquals(RecordOptimisticLockingException.class, throwable.getClass());
+          context.assertTrue(throwable.getMessage().startsWith("Optimistic locking"));
+          recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(context.asyncAssertSuccess(actual -> {
+            context.assertEquals(anotherProcessSaved.getId(), actual.orElseThrow().getId());
+            async.complete();
+          }));
+        }))));
+  }
+
+  @Test
+  public void shouldFailSaveRecordWithDuplicateError_whenRecordWasModifiedBySameJob(TestContext context) {
+    // given: record generation 1 was already saved by the same job from another incoming record
+    Async async = context.async();
+    String matchedId = UUID.randomUUID().toString();
+    Record existingRecord = buildRecordToUpdateGeneration(matchedId, TestMocks.getMarcBibRecord().getSnapshotId(), null)
+      .withId(matchedId);
+    Snapshot importJobSnapshot = buildInProgressSnapshot();
+    Record firstIncomingRecord = buildRecordToUpdateGeneration(matchedId, importJobSnapshot.getJobExecutionId(), 1);
+    Record secondIncomingRecord = buildRecordToUpdateGeneration(matchedId, importJobSnapshot.getJobExecutionId(), 1);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+
+    recordService.saveRecord(existingRecord, okapiHeaders)
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), importJobSnapshot))
+      .compose(v -> recordService.saveRecord(firstIncomingRecord, okapiHeaders))
+      .onComplete(context.asyncAssertSuccess(firstSaved ->
+
+        // when
+        recordService.saveRecord(secondIncomingRecord, okapiHeaders).onComplete(context.asyncAssertFailure(throwable -> {
+
+          // then
+          context.assertEquals(DuplicateRecordException.class, throwable.getClass());
+          async.complete();
+        }))));
+  }
+
+  @Test
+  public void shouldFailUpdateRecordGenerationWithOptimisticLockingError_whenRecordWasModifiedByAnotherJob(TestContext context) {
+    // given: record generation 1 was saved by an import job after quickMARC loaded generation 0
+    Async async = context.async();
+    String matchedId = UUID.randomUUID().toString();
+    Record existingRecord = buildRecordToUpdateGeneration(matchedId, TestMocks.getMarcBibRecord().getSnapshotId(), null)
+      .withId(matchedId);
+    Snapshot importJobSnapshot = buildInProgressSnapshot();
+    Snapshot quickMarcSnapshot = buildInProgressSnapshot();
+    Record importJobRecord = buildRecordToUpdateGeneration(matchedId, importJobSnapshot.getJobExecutionId(), 1);
+    Record quickMarcRecord = buildRecordToUpdateGeneration(matchedId, quickMarcSnapshot.getJobExecutionId(), 1);
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+
+    recordService.saveRecord(existingRecord, okapiHeaders)
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), importJobSnapshot))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), quickMarcSnapshot))
+      .compose(v -> recordService.saveRecord(importJobRecord, okapiHeaders))
+      .onComplete(context.asyncAssertSuccess(importJobSaved ->
+
+        // when
+        recordService.updateRecordGeneration(matchedId, quickMarcRecord, okapiHeaders)
+          .onComplete(context.asyncAssertFailure(throwable -> {
+
+            // then
+            context.assertEquals(BadRequestException.class, throwable.getClass());
+            context.assertTrue(throwable.getMessage().startsWith("Optimistic locking"));
+            async.complete();
+          }))));
+  }
+
+  private Snapshot buildInProgressSnapshot() {
+    return new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
+      .withProcessingStartedDate(new Date())
+      .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
   }
 
   private Record buildRecordToUpdateGeneration(String matchedId, String snapshotId, Integer generation) {

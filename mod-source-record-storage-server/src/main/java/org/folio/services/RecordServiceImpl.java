@@ -96,9 +96,6 @@ public class RecordServiceImpl implements RecordService {
 
   private static final String DUPLICATE_CONSTRAINT = "idx_records_matched_id_gen";
   private static final String DUPLICATE_RECORD_MSG = "Incoming file may contain duplicates";
-  private static final String OPTIMISTIC_LOCKING_MSG = "Optimistic locking: record with matchedId '%s' was modified by another "
-    + "process (snapshot '%s') while it was being processed by the current operation (snapshot '%s'). Generation %s cannot be "
-    + "saved, please repeat the operation to apply changes to the latest version of the record";
   private static final String MATCHED_ID_NOT_EQUAL_TO_999_FIELD = "Matched id (%s) not equal to 999ff$s (%s) field";
   private static final String RECORD_WITH_GIVEN_MATCHED_ID_NOT_FOUND = "Record with given matched id (%s) not found";
   private static final String NOT_FOUND_MESSAGE = "%s with id '%s' was not found";
@@ -584,10 +581,10 @@ public class RecordServiceImpl implements RecordService {
       .transform(ar -> {
         if (ar.succeeded() && ar.result().isPresent()
           && !Objects.equals(ar.result().get().getSnapshotId(), rec.getSnapshotId())) {
-          String message = format(OPTIMISTIC_LOCKING_MSG, rec.getMatchedId(), ar.result().get().getSnapshotId(),
+          var exception = new RecordOptimisticLockingException(rec.getMatchedId(), ar.result().get().getSnapshotId(),
             rec.getSnapshotId(), rec.getGeneration());
-          LOG.warn("mapGenerationConflictIfNeeded:: {}", message);
-          return Future.failedFuture(new RecordOptimisticLockingException(message));
+          LOG.warn("mapGenerationConflictIfNeeded:: {}", exception.getMessage());
+          return Future.failedFuture(exception);
         }
         return Future.failedFuture(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
       });

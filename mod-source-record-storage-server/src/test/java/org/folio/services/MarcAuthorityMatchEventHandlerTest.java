@@ -15,6 +15,7 @@ import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.MU
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
+import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -382,8 +383,6 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
 
   @Test
   public void shouldMatchMultipleRecordsIfMatchProfileIsNextInProfileSnapshot(TestContext context) {
-    Async async = context.async();
-
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incomingRecord2));
 
@@ -438,25 +437,40 @@ public class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
       )
       .withState(Record.State.ACTUAL);
 
+    String existingRecord4Id = UUID.randomUUID().toString();
+    Record existingRecord4 = new Record()
+      .withId(existingRecord4Id)
+      .withMatchedId(existingRecord4Id)
+      .withSnapshotId(existingRecordSnapshot.getJobExecutionId())
+      .withState(Record.State.ACTUAL)
+      .withGeneration(0)
+      .withRecordType(MARC_AUTHORITY)
+      .withRawRecord(new RawRecord().withId(existingRecord4Id).withContent(rawRecordContent))
+      .withParsedRecord(new ParsedRecord().withId(existingRecord4Id).withContent(PARSED_CONTENT2))
+      .withExternalIdsHolder(new ExternalIdsHolder()
+        .withAuthorityHrid("1000651")
+      );
+
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
-    recordDao.saveRecord(existingRecord2, okapiHeaders)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(existingSavedRecord -> recordDao.saveRecord(existingRecord3, okapiHeaders)
-        .onComplete(context.asyncAssertSuccess())
-        .onSuccess(existingSavedRecord2 -> handler.handle(dataImportEventPayload)
-        .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value());
-          context.assertTrue(updatedEventPayload.getContext().containsKey(MULTI_MATCH_IDS));
-          List<String> multiIds = new JsonArray(updatedEventPayload.getContext().get(MULTI_MATCH_IDS))
-            .stream().map(o -> (String) o)
-            .toList();
-          context.assertEquals(multiIds.size(), 2);
-          context.assertTrue(multiIds.contains(existingRecord2.getId()));
-          context.assertTrue(multiIds.contains(existingRecord3.getId()));
-          async.complete();
-        })));
+    Future<DataImportEventPayload> future = recordDao.saveRecord(existingRecord2, okapiHeaders)
+      .compose(r -> recordDao.saveRecord(existingRecord3, okapiHeaders))
+      .compose(r -> recordDao.saveRecord(existingRecord4, okapiHeaders))
+      .compose(r -> Future.fromCompletionStage(handler.handle(dataImportEventPayload)));
+
+    future.onComplete(context.asyncAssertSuccess(updatedEventPayload -> {
+        context.assertEquals(1, updatedEventPayload.getEventsChain().size());
+        context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value());
+        context.assertTrue(updatedEventPayload.getContext().containsKey(MULTI_MATCH_IDS));
+
+        List<String> multiIds = new JsonArray(updatedEventPayload.getContext().get(MULTI_MATCH_IDS))
+          .stream()
+          .map(Object::toString)
+          .toList();
+        context.assertEquals(3, multiIds.size());
+        context.assertTrue(multiIds.contains(existingRecord2.getId()));
+        context.assertTrue(multiIds.contains(existingRecord3.getId()));
+        context.assertTrue(multiIds.contains(existingRecord4.getId()));
+    }));
   }
 
   @Test

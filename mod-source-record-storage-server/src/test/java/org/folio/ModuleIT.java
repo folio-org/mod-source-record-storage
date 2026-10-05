@@ -4,7 +4,6 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
 
 import io.restassured.RestAssured;
@@ -25,12 +24,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
 /**
@@ -65,8 +65,8 @@ class ModuleIT {
 
   @Container
   @SuppressWarnings("resource")
-  private static final PostgreSQLContainer<?> postgres =
-      new PostgreSQLContainer<>(PostgresTesterContainer.getImageName())
+  private static final PostgreSQLContainer postgres =
+      new PostgreSQLContainer(PostgresTesterContainer.getImageName())
       .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server.key", 0444), "/server.key")
       .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server.crt", 0444), "/server.crt")
       .withCopyFileToContainer(MountableFile.forClasspathResource("tls/init.sh", 0555), "/docker-entrypoint-initdb.d/init.sh")
@@ -94,7 +94,7 @@ class ModuleIT {
       .withEnv("DB_SERVER_PEM", SERVER_PEM)
       .withEnv("KAFKA_HOST", "ourkafka")
       .withEnv("KAFKA_PORT", "9092")
-      .withEnv("JAVA_OPTIONS", "-DLOG_LEVEL=DEBUG");
+      .waitingFor(Wait.forHttp("/").forStatusCode(404));
 
   @BeforeAll
   static void beforeAll() {
@@ -124,31 +124,24 @@ class ModuleIT {
       .body(is("\"OK\""));
   }
 
+
   /**
    * Test logging. It broke several times caused by dependency order in pom.xml or by configuration:
    * <a href="https://folio-org.atlassian.net/browse/EDGPATRON-90">https://folio-org.atlassian.net/browse/EDGPATRON-90</a>
    * <a href="https://folio-org.atlassian.net/browse/CIRCSTORE-263">https://folio-org.atlassian.net/browse/CIRCSTORE-263</a>
    * <a href="https://folio-org.atlassian.net/browse/MODINVUP-91">https://folio-org.atlassian.net/browse/MODINVUP-91</a>
    */
-  @Test
-  @DisplayName("Test can log module")
-  void canLog() {
-    setTenant("logtenant");
-
-    var path = "/source-storage/records/85ce8fe9-8e89-48f9-bdcc-764b8cf5c968";
-
+  void testLogging() {
     when()
-      .get(path)
+      .delete("/source-storage/records/85ce8fe9-8e89-48f9-bdcc-764b8cf5c968")
       .then()
-      .statusCode(greaterThanOrEqualTo(400));
+      .statusCode(404);
 
-    // The test requires setting the module logging level to DEBUG because since RMB v36.0.0
-    // the expected message is logged at DEBUG level
-    assertThat(mod.getLogs(), containsString("GET " + path));
+    assertThat(mod.getLogs(), containsString("invoking deleteSourceStorageRecordsById"));
   }
 
   @Test
-  @DisplayName("Install the module")
+  @DisplayName("Install the module and check logging")
   void install() {
     setTenant("install");
 
@@ -159,6 +152,8 @@ class ModuleIT {
           .add(new JsonObject().put("key", "loadSample").put("value", "true")));
 
     postTenant(body);
+
+    testLogging();
   }
 
   private void setTenant(String tenant) {

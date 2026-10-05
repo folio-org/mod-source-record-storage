@@ -77,6 +77,7 @@ import org.folio.rest.jooq.enums.RecordState;
 import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.exceptions.DuplicateRecordException;
+import org.folio.services.exceptions.RecordOptimisticLockingException;
 import org.folio.services.exceptions.RecordUpdateException;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.folio.services.util.TypeConnection;
@@ -171,7 +172,7 @@ public class RecordServiceImpl implements RecordService {
         }), tenantId)
       .recover(throwable -> {
         LOG.error("saveRecord:: Error saving record with id: '{}'", rec.getId(), throwable);
-        return mapToDuplicateExceptionIfNeeded(throwable);
+        return mapGenerationConflictIfNeeded(throwable, rec, tenantId);
       });
   }
 
@@ -272,6 +273,9 @@ public class RecordServiceImpl implements RecordService {
       .recover(throwable -> {
         if (throwable instanceof DuplicateRecordException) {
           return Future.failedFuture(new BadRequestException(UPDATE_RECORD_DUPLICATE_EXCEPTION));
+        }
+        if (throwable instanceof RecordOptimisticLockingException) {
+          return Future.failedFuture(new BadRequestException(throwable.getMessage()));
         }
         return Future.failedFuture(throwable);
       });
@@ -557,10 +561,37 @@ public class RecordServiceImpl implements RecordService {
   }
 
   private static <T> Future<T> mapToDuplicateExceptionIfNeeded(Throwable throwable) {
-    if (throwable instanceof PgException pgException && DUPLICATE_CONSTRAINT.equals(pgException.getConstraint())) {
+    if (isGenerationConflict(throwable)) {
       return Future.failedFuture(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
     }
     return Future.failedFuture(throwable);
+  }
+
+  /**
+   * Maps violation of the matched_id + generation unique constraint to a meaningful exception.
+   * If the current generation of the record was produced by the same snapshot (job), the incoming file contains
+   * duplicates. Otherwise, the record was modified concurrently by another process (e.g. quickMARC or another job)
+   * after it had been matched, which is reported as an optimistic locking error.
+   */
+  private <T> Future<T> mapGenerationConflictIfNeeded(Throwable throwable, Record rec, String tenantId) {
+    if (!isGenerationConflict(throwable) || rec.getMatchedId() == null) {
+      return mapToDuplicateExceptionIfNeeded(throwable);
+    }
+    return recordDao.getRecordByMatchedId(rec.getMatchedId(), tenantId)
+      .transform(ar -> {
+        if (ar.succeeded() && ar.result().isPresent()
+          && !Objects.equals(ar.result().get().getSnapshotId(), rec.getSnapshotId())) {
+          var exception = new RecordOptimisticLockingException(rec.getMatchedId(), ar.result().get().getSnapshotId(),
+            rec.getSnapshotId(), rec.getGeneration());
+          LOG.warn("mapGenerationConflictIfNeeded:: {}", exception.getMessage());
+          return Future.failedFuture(exception);
+        }
+        return Future.failedFuture(new DuplicateRecordException(DUPLICATE_RECORD_MSG));
+      });
+  }
+
+  private static boolean isGenerationConflict(Throwable throwable) {
+    return throwable instanceof PgException pgException && DUPLICATE_CONSTRAINT.equals(pgException.getConstraint());
   }
 
   private Record formatMarcRecord(Record rec) {

@@ -1,14 +1,5 @@
 package org.folio.services;
 
-import org.folio.services.util.parser.ParseFieldsResult;
-import org.folio.services.util.parser.ParseLeaderResult;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.BlockJUnit4ClassRunner;
-
-import java.util.Arrays;
-import java.util.HashSet;
-
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
@@ -16,19 +7,24 @@ import static java.util.Collections.singletonList;
 import static org.folio.rest.jooq.Tables.RECORDS_LB;
 import static org.folio.services.util.parser.SearchExpressionParser.parseFieldsSearchExpression;
 import static org.folio.services.util.parser.SearchExpressionParser.parseLeaderSearchExpression;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(BlockJUnit4ClassRunner.class)
+import java.util.Arrays;
+import java.util.HashSet;
+import org.folio.services.util.parser.ParseFieldsResult;
+import org.folio.services.util.parser.ParseLeaderResult;
+import org.junit.jupiter.api.Test;
+
 public class SearchExpressionParserUnitTest {
 
   /* - TESTING SearchExpressionParser#parseFieldsSearchExpression */
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_isBlank() {
+  void shouldThrowException_if_fieldsSearchExpression_isBlank() {
     // given
     String fieldsSearchExpression = "     ";
     // when
@@ -42,7 +38,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_isEmpty() {
+  void shouldThrowException_if_fieldsSearchExpression_isEmpty() {
     // given
     String fieldsSearchExpression = "";
     // when
@@ -56,7 +52,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasWrongBrackets() {
+  void shouldThrowException_if_fieldsSearchExpression_hasWrongBrackets() {
     // given
     String fieldsSearchExpression = "(035.a = '0' or (035.a = '1')";
     // when
@@ -70,7 +66,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasWrongQuotes() {
+  void shouldThrowException_if_fieldsSearchExpression_hasWrongQuotes() {
     // given
     String fieldsSearchExpression = "(035.a = '0') or (035.a = 1')";
     // when
@@ -84,7 +80,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasEmptyValue() {
+  void shouldThrowException_if_fieldsSearchExpression_hasEmptyValue() {
     // given
     String fieldsSearchExpression = "(035.a = '')";
     // when
@@ -98,7 +94,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldReturnParseResult_if_fieldsSearchExpression_isNull() {
+  void shouldReturnParseResult_if_fieldsSearchExpression_isNull() {
     // given
     String fieldsSearchExpression = null;
     // when
@@ -111,7 +107,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldReturnParseResult_if_fieldsSearchExpression_hasWrongOperator() {
+  void shouldReturnParseResult_if_fieldsSearchExpression_hasWrongOperator() {
     // given
     String fieldsSearchExpression = "035.a none '1'";
     // when
@@ -125,7 +121,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasWrongOperand() {
+  void shouldThrowException_if_fieldsSearchExpression_hasWrongOperand() {
     // given
     String fieldsSearchExpression = "xxx.a = '1'";
     // when
@@ -139,7 +135,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_SubFieldOperand_EqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_SubFieldOperand_EqualsOperator() {
     // given
     String fieldsSearchExpression = "035.a = '(OCoLC)63611770'";
     // when
@@ -152,7 +148,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_SubFieldOperand_LeftAnchoredEqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_SubFieldOperand_LeftAnchoredEqualsOperator() {
     // given
     String fieldsSearchExpression = "035.a ^= '(OCoLC)'";
     // when
@@ -165,7 +161,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_SubFieldOperand_NotEqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_SubFieldOperand_NotEqualsOperator() {
     // given
     String fieldsSearchExpression = "035.a not= '(OCoLC)'";
     // when
@@ -178,7 +174,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_SubFieldOperand_IsPresentOperator() {
+  void shouldParseFieldsSearchExpression_for_SubFieldOperand_IsPresentOperator() {
     // given
     String fieldsSearchExpression = "035.a is 'present'";
     // when
@@ -191,7 +187,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_SubFieldOperand_IsAbsentOperator() {
+  void shouldParseFieldsSearchExpression_for_SubFieldOperand_IsAbsentOperator() {
     // given
     String fieldsSearchExpression = "035.z is 'absent'";
     // when
@@ -204,7 +200,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_EqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_IndicatorOperand_EqualsOperator() {
     // given
     String fieldsSearchExpression = "036.ind1 = '1'";
     // when
@@ -217,7 +213,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_LeftAnchoredEqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_IndicatorOperand_LeftAnchoredEqualsOperator() {
     // given
     String fieldsSearchExpression = "036.ind1 ^= '1'";
     // when
@@ -230,7 +226,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_NotEqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_IndicatorOperand_NotEqualsOperator() {
     // given
     String fieldsSearchExpression = "036.ind1 not= '1'";
     // when
@@ -243,7 +239,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_ValueOperand_EqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_ValueOperand_EqualsOperator() {
     // given
     String fieldsSearchExpression = "005.value = '20141107001016.0'";
     // when
@@ -256,7 +252,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_ValueOperand_LeftAnchoredEqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_ValueOperand_LeftAnchoredEqualsOperator() {
     // given
     String fieldsSearchExpression = "005.value ^= '20141107'";
     // when
@@ -269,7 +265,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_ValueOperand_NotEqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_ValueOperand_NotEqualsOperator() {
     // given
     String fieldsSearchExpression = "005.value not= '20141107'";
     // when
@@ -282,7 +278,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_ValueOperand_IsPresentOperator() {
+  void shouldParseFieldsSearchExpression_for_ValueOperand_IsPresentOperator() {
     // given
     String fieldsSearchExpression = "035.value is 'present'";
     // when
@@ -295,7 +291,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_ValueOperand_IsAbsentOperator() {
+  void shouldParseFieldsSearchExpression_for_ValueOperand_IsAbsentOperator() {
     // given
     String fieldsSearchExpression = "035.value is 'absent'";
     // when
@@ -308,7 +304,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForPositionOperand() {
+  void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForPositionOperand() {
     // given
     String fieldsSearchExpression = "001.08_01 = 'abc'";
     // when
@@ -322,7 +318,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForPositionOperand() {
+  void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForPositionOperand() {
     // given
     String fieldsSearchExpression = "001.08_01 ^= 'a'";
     // when
@@ -336,7 +332,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_PositionOperand_EqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_PositionOperand_EqualsOperator() {
     // given
     String fieldsSearchExpression = "005.00_04 = '2014'";
     // when
@@ -349,7 +345,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_PositionOperand_NotEqualsOperator() {
+  void shouldParseFieldsSearchExpression_for_PositionOperand_NotEqualsOperator() {
     // given
     String fieldsSearchExpression = "005.00_04 not= '2014'";
     // when
@@ -362,7 +358,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForDateRangeOperand() {
+  void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForDateRangeOperand() {
     // given
     String fieldsSearchExpression = "005.date in 'wrong date'";
     // when
@@ -376,7 +372,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForDateRangeOperand() {
+  void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForDateRangeOperand() {
     // given
     String fieldsSearchExpression = "005.date ^= '201701025'";
     // when
@@ -390,7 +386,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasNonSupportedExpressionForDateRangeOperand() {
+  void shouldThrowException_if_fieldsSearchExpression_hasNonSupportedExpressionForDateRangeOperand() {
     // given
     String fieldsSearchExpression = "005.date in '201701025'";
     // when
@@ -404,7 +400,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_forDateRangeOperand_EqualsOperator() {
+  void shouldParseFieldsSearchExpression_forDateRangeOperand_EqualsOperator() {
     // given
     String fieldsSearchExpression = "005.date = '201701025'";
     // when
@@ -417,7 +413,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_forDateRangeOperand_NotEqualsOperator() {
+  void shouldParseFieldsSearchExpression_forDateRangeOperand_NotEqualsOperator() {
     // given
     String fieldsSearchExpression = "005.date not= '201701025'";
     // when
@@ -430,7 +426,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_forDateRangeOperand_FromOperator() {
+  void shouldParseFieldsSearchExpression_forDateRangeOperand_FromOperator() {
     // given
     String fieldsSearchExpression = "005.date from '201701025'";
     // when
@@ -443,7 +439,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_forDateRangeOperand_ToOperator() {
+  void shouldParseFieldsSearchExpression_forDateRangeOperand_ToOperator() {
     // given
     String fieldsSearchExpression = "005.date to '201701025'";
     // when
@@ -456,7 +452,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_forDateRangeOperand_InOperator() {
+  void shouldParseFieldsSearchExpression_forDateRangeOperand_InOperator() {
     // given
     String fieldsSearchExpression = "005.date in '201701025-20200213'";
     // when
@@ -469,7 +465,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_with_boolean_operators() {
+  void shouldParseFieldsSearchExpression_with_boolean_operators() {
     // given
     String fieldsSearchExpression = "(035.a = '(OCoLC)63611770' and 036.ind1 not= '1') or (036.ind1 ^= '1' and 005.value ^= '20141107') or (001.01_03 = 'abc' and 005.date in '20171128-20200114')";
     // when
@@ -482,7 +478,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_IsPresentOperator() {
+  void shouldParseFieldsSearchExpression_for_IndicatorOperand_IsPresentOperator() {
     // given
     String fieldsSearchExpression = "050.ind1 is 'present'";
     // when
@@ -495,7 +491,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseFieldsSearchExpression_for_IndicatorOperand_IsAbsentOperator() {
+  void shouldParseFieldsSearchExpression_for_IndicatorOperand_IsAbsentOperator() {
     // given
     String fieldsSearchExpression = "050.ind2 is 'absent'";
     // when
@@ -508,7 +504,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForIndicatorOperand() {
+  void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForIndicatorOperand() {
     // given
     String fieldsSearchExpression = "050.ind2 is 'empty'";
     // when
@@ -523,7 +519,7 @@ public class SearchExpressionParserUnitTest {
   /* - TESTING SearchExpressionParser#parseLeaderSearchExpression */
 
   @Test
-  public void shouldThrowException_if_leaderSearchExpression_isBlank() {
+  void shouldThrowException_if_leaderSearchExpression_isBlank() {
     // given
     String leaderSearchExpression = "     ";
     // when
@@ -537,7 +533,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_leaderSearchExpression_isEmpty() {
+  void shouldThrowException_if_leaderSearchExpression_isEmpty() {
     // given
     String leaderSearchExpression = "";
     // when
@@ -551,7 +547,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_leaderSearchExpression_hasWrongBrackets() {
+  void shouldThrowException_if_leaderSearchExpression_hasWrongBrackets() {
     // given
     String leaderSearchExpression = "(p_05 = 'a') and (p_06 = 'c'";
     // when
@@ -565,7 +561,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_leaderSearchExpression_hasWrongQuotes() {
+  void shouldThrowException_if_leaderSearchExpression_hasWrongQuotes() {
     // given
     String leaderSearchExpression = "(p_05 = '0') or (p_06 = 1')";
     // when
@@ -579,7 +575,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_leaderSearchExpression_hasEmptyValue() {
+  void shouldThrowException_if_leaderSearchExpression_hasEmptyValue() {
     // given
     String leaderSearchExpression = "(p_05 = '')";
     // when
@@ -593,7 +589,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldReturnParseResult_if_leaderSearchExpression_isNull() {
+  void shouldReturnParseResult_if_leaderSearchExpression_isNull() {
     // given
     String leaderSearchExpression = null;
     // when
@@ -605,7 +601,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldReturnParseResult_if_leaderSearchExpression_hasWrongOperator() {
+  void shouldReturnParseResult_if_leaderSearchExpression_hasWrongOperator() {
     // given
     String leaderSearchExpression = "p_05 ^= 'a'";
     // when
@@ -619,7 +615,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldThrowException_if_leaderSearchExpression_hasWrongOperand() {
+  void shouldThrowException_if_leaderSearchExpression_hasWrongOperand() {
     // given
     String leaderSearchExpression = "xxx.a = '1'";
     // when
@@ -633,7 +629,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseLeaderSearchExpression_for_EqualsOperator() {
+  void shouldParseLeaderSearchExpression_for_EqualsOperator() {
     // given
     String leaderSearchExpression = "p_05 = 'a'";
     String expectedWhereExpression = String.format("%s = ?", RECORDS_LB.LEADER_RECORD_STATUS.getName());
@@ -646,7 +642,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseLeaderSearchExpression_for_NotEqualsOperator() {
+  void shouldParseLeaderSearchExpression_for_NotEqualsOperator() {
     // given
     String leaderSearchExpression = "p_06 not= 'd'";
     // when
@@ -658,7 +654,7 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  public void shouldParseLeaderSearchExpression_with_boolean_operators() {
+  void shouldParseLeaderSearchExpression_with_boolean_operators() {
     // given
     String fieldsSearchExpression = "(p_05 = 'a' and p_06 = 'b') or (p_07 = '1' and p_08 not= '2')";
     String expectedWhereExpression = String.format("(%s = ? and p_06 = ?) or (p_07 = ? and p_08 <> ?)", RECORDS_LB.LEADER_RECORD_STATUS.getName());

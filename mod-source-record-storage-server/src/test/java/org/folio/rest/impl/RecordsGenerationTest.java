@@ -4,13 +4,15 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
@@ -21,18 +23,9 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.hamcrest.MatcherAssert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-
-@RunWith(VertxUnitRunner.class)
 public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
   private static final String HR_ID01 = "hrid00001";
@@ -65,22 +58,21 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     .withJobExecutionId(UUID.randomUUID().toString())
     .withStatus(Snapshot.Status.NEW);
 
-  @Before
-  public void setUp(TestContext context) {
-    Async async = context.async();
+  @BeforeEach
+  void setUp(VertxTestContext testContext) {
     SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
-        context.fail(delete.cause());
+        testContext.failNow(delete.cause());
+      } else {
+        testContext.completeNow();
       }
-      async.complete();
     });
   }
 
   @Test
-  public void shouldCalculateRecordsGeneration(TestContext testContext) {
+  void shouldCalculateRecordsGeneration() {
     List<Snapshot> snapshots = Arrays.asList(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
     for (int i = 0; i < snapshots.size(); i++) {
-      Async async = testContext.async();
       RestAssured.given()
         .spec(spec)
         .body(snapshots.get(i).withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -88,9 +80,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
         .then()
         .statusCode(HttpStatus.SC_CREATED);
-      async.complete();
-
-      async = testContext.async();
 
       Record record = new Record()
         .withId(matchedId)
@@ -117,9 +106,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshots.get(i).getJobExecutionId())
         .then()
         .statusCode(HttpStatus.SC_OK);
-      async.complete();
 
-      async = testContext.async();
       RestAssured.given()
         .spec(spec)
         .when()
@@ -130,13 +117,11 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .body("rawRecord.content", is(rawRecord.getContent()))
         .body("matchedId", is(matchedId))
         .body("generation", is(i));
-      async.complete();
     }
   }
 
   @Test
-  public void shouldNotCalculateRecordGeneration(TestContext testContext){
-    Async async = testContext.async();
+  void shouldNotCalculateRecordGeneration(){
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -144,9 +129,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
-
-    async = testContext.async();
 
     Record record = new Record()
       .withId(matchedId)
@@ -174,9 +156,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .put(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_1.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_OK);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -184,12 +164,10 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("generation", is(5));
-    async.complete();
   }
 
   @Test
-  public void shouldUpdateRecordsGenerationIfSnapshotStatusIsParsingInProgress(TestContext testContext) {
-    Async async = testContext.async();
+  void shouldUpdateRecordsGenerationIfSnapshotStatusIsParsingInProgress() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -229,9 +207,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .body("rawRecord.content", is(rawRecord.getContent()))
       .body("matchedId", is(matchedId))
       .body("generation", is(0));
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(snapshot_2.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -267,12 +243,10 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .body("rawRecord.content", is(rawRecord.getContent()))
       .body("matchedId", is(matchedId))
       .body("generation", is(1));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnNotFoundIfSnapshotDoesNotExist(TestContext testContext) {
-    Async async = testContext.async();
+  void shouldReturnNotFoundIfSnapshotDoesNotExist() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -280,9 +254,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
 
-    async = testContext.async();
     Record record_1 = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -300,9 +272,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
 
-    async = testContext.async();
     Record record_2 = new Record()
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -320,12 +290,10 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
-    async.complete();
   }
 
   @Test
-  public void shouldReturnBadRequestIfProcessingDateIsNull(TestContext testContext) {
-    Async async = testContext.async();
+  void shouldReturnBadRequestIfProcessingDateIsNull() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1.withStatus(Snapshot.Status.NEW))
@@ -333,9 +301,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
 
-    async = testContext.async();
     Record record_1 = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -350,11 +316,10 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
-    async.complete();
   }
 
   @Test
-  public void shouldReturnNotFoundOnGetFormattedBySRSIdWhenRecordDoesNotExist() {
+  void shouldReturnNotFoundOnGetFormattedBySRSIdWhenRecordDoesNotExist() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -364,7 +329,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnNotFoundOnGetFormattedByInstanceIdWhenRecordDoesNotExist() {
+  void shouldReturnNotFoundOnGetFormattedByInstanceIdWhenRecordDoesNotExist() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -374,8 +339,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSameRecordOnGetByIdAndGetBySRSId(TestContext testContext) {
-    Async async = testContext.async();
+  void shouldReturnSameRecordOnGetByIdAndGetBySRSId() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -383,9 +347,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
 
-    async = testContext.async();
     String srsId = UUID.randomUUID().toString();
 
     ParsedRecord parsedRecord = new ParsedRecord().withId(srsId)
@@ -417,9 +379,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .body("id", is(srsId));
-    async.complete();
 
-    async = testContext.async();
     Record getByIdRecord = RestAssured.given()
       .spec(spec)
       .when()
@@ -436,12 +396,10 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
     MatcherAssert.assertThat(getByIdRecord.getRawRecord().getContent(), is(getBySRSIdRecord.getRawRecord().getContent()));
     MatcherAssert.assertThat(getBySRSIdRecord.getParsedRecord().getFormattedContent(), notNullValue());
     MatcherAssert.assertThat(getBySRSIdRecord.getParsedRecord().getFormattedContent(), containsString("LEADER 01542ccm a2200361   4500"));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnRecordOnGetByInstanceId(TestContext testContext) {
-    Async async = testContext.async();
+  void shouldReturnRecordOnGetByInstanceId() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1.withStatus(Snapshot.Status.PARSING_IN_PROGRESS))
@@ -449,9 +407,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_SNAPSHOTS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
-    async.complete();
 
-    async = testContext.async();
     String srsId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
 
@@ -485,9 +441,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .body("id", is(srsId));
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -495,7 +449,6 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("parsedRecord.content", notNullValue());
-    async.complete();
   }
 
 }

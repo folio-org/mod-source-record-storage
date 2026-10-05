@@ -9,6 +9,10 @@ import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -17,10 +21,7 @@ import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
@@ -47,16 +48,9 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
 import org.folio.services.util.AdditionalFieldsUtil;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
-@RunWith(VertxUnitRunner.class)
 public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcessingEventHandlerTest {
-
-  @Rule
-  public RunTestOnContext rule = new RunTestOnContext();
 
   @Override
   protected Record.RecordType getMarcType() {
@@ -69,9 +63,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
   }
 
   @Test
-  public void shouldSetAuthorityIdToRecord(TestContext context) {
-    Async async = context.async();
-
+  void shouldSetAuthorityIdToRecord(VertxTestContext testContext) {
     String expectedAuthorityId = UUID.randomUUID().toString();
 
     JsonObject authority = createExternalEntity(expectedAuthorityId, null);
@@ -94,28 +86,30 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     future.whenComplete((payload, e) -> {
       if (e != null) {
-        context.fail(e);
+        testContext.failNow(e);
+        return;
       }
       recordDao.getRecordByMatchedId(RECORD_ID, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
 
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        context.assertNotNull(updatedRecord.getExternalIdsHolder());
-        context.assertEquals(expectedAuthorityId, updatedRecord.getExternalIdsHolder().getAuthorityId());
+        assertNotNull(updatedRecord.getExternalIdsHolder());
+        assertEquals(expectedAuthorityId, updatedRecord.getExternalIdsHolder().getAuthorityId());
 
-        context.assertNotNull(updatedRecord.getParsedRecord());
-        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
+        assertNotNull(updatedRecord.getParsedRecord());
+        assertNotNull(updatedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
-        context.assertTrue(!fields.isEmpty());
+        assertTrue(!fields.isEmpty());
 
         String actualAuthorityId = getInventoryId(fields);
-        context.assertEquals(expectedAuthorityId, actualAuthorityId);
+        assertEquals(expectedAuthorityId, actualAuthorityId);
 
         String recordForUdateId = UUID.randomUUID().toString();
         Record recordForUpdate = JsonObject.mapFrom(record).mapTo(Record.class)
@@ -137,26 +131,28 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         CompletableFuture<DataImportEventPayload> future2 = new CompletableFuture<>();
         recordDao.saveRecord(recordForUpdate, okapiHeaders)
           .onFailure(future2::completeExceptionally)
-          .onSuccess(record -> handler.handle(dataImportEventPayloadForUpdate)
+          .onSuccess(rec -> handler.handle(dataImportEventPayloadForUpdate)
             .thenApply(future2::complete)
             .exceptionally(future2::completeExceptionally));
 
         future2.whenComplete((payload2, ex) -> {
           if (ex != null) {
-            context.fail(ex);
+            testContext.failNow(ex);
+            return;
           }
           recordDao.getRecordByMatchedId(RECORD_ID, TENANT_ID).onComplete(recordAr -> {
             if (recordAr.failed()) {
-              context.fail(recordAr.cause());
+              testContext.failNow(recordAr.cause());
+              return;
             }
-            context.assertTrue(recordAr.result().isPresent());
+            assertTrue(recordAr.result().isPresent());
             Record rec = recordAr.result().get();
-            context.assertTrue(rec.getState().equals(Record.State.ACTUAL));
-            context.assertNotNull(rec.getExternalIdsHolder());
-            context.assertTrue(expectedAuthorityId.equals(rec.getExternalIdsHolder().getAuthorityId()));
-            context.assertNotEquals(rec.getId(), record.getId());
-            context.assertNotNull(rec.getMetadata().getUpdatedByUserId());
-            async.complete();
+            assertTrue(rec.getState().equals(Record.State.ACTUAL));
+            assertNotNull(rec.getExternalIdsHolder());
+            assertTrue(expectedAuthorityId.equals(rec.getExternalIdsHolder().getAuthorityId()));
+            assertTrue(!rec.getId().equals(record.getId()));
+            assertNotNull(rec.getMetadata().getUpdatedByUserId());
+            testContext.completeNow();
           });
         });
       });
@@ -164,9 +160,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
   }
 
   @Test
-  public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) throws IOException {
-    Async async = context.async();
-
+  void shouldSaveRecordWhenRecordDoesntExist(VertxTestContext testContext) throws IOException {
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
       .withContent(
@@ -192,42 +186,42 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
-
-    future.whenComplete((payload, e) -> {
+    vertx.runOnContext(v -> handler.handle(dataImportEventPayload)
+      .whenComplete((payload, e) -> {
       if (e != null) {
-        context.fail(e);
+        testContext.failNow(e);
+        return;
       }
-      context.assertTrue(new JsonObject(payload.getContext().get(MARC_AUTHORITY.value())).containsKey("matchedId"));
+      assertTrue(new JsonObject(payload.getContext().get(MARC_AUTHORITY.value())).containsKey("matchedId"));
       recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
 
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record savedRecord = getAr.result().get();
 
-        context.assertNotNull(savedRecord.getExternalIdsHolder());
-        context.assertEquals(expectedAuthorityId, savedRecord.getExternalIdsHolder().getAuthorityId());
+        assertNotNull(savedRecord.getExternalIdsHolder());
+        assertEquals(expectedAuthorityId, savedRecord.getExternalIdsHolder().getAuthorityId());
 
-        context.assertNotNull(savedRecord.getParsedRecord());
-        context.assertNotNull(savedRecord.getParsedRecord().getContent());
+        assertNotNull(savedRecord.getParsedRecord());
+        assertNotNull(savedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(savedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
-        context.assertTrue(!fields.isEmpty());
+        assertTrue(!fields.isEmpty());
 
         String actualAuthorityId = getInventoryId(fields);
-        context.assertEquals(expectedAuthorityId, actualAuthorityId);
-        context.assertNotNull(savedRecord.getMetadata().getUpdatedByUserId());
-        async.complete();
+        assertEquals(expectedAuthorityId, actualAuthorityId);
+        assertNotNull(savedRecord.getMetadata().getUpdatedByUserId());
+        testContext.completeNow();
       });
-    });
+    }));
   }
 
   @Test
-  public void shouldSetAuthorityIdToParsedRecordWhenContentHasField999(TestContext context) {
-    Async async = context.async();
+  void shouldSetAuthorityIdToParsedRecordWhenContentHasField999(VertxTestContext testContext) {
     String expectedAuthorityId = UUID.randomUUID().toString();
 
     record.withParsedRecord(new ParsedRecord()
@@ -252,35 +246,35 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     future.whenComplete((payload, throwable) -> {
       if (throwable != null) {
-        context.fail(throwable);
+        testContext.failNow(throwable);
+        return;
       }
       recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        context.assertNotNull(updatedRecord.getExternalIdsHolder());
-        context.assertTrue(expectedAuthorityId.equals(updatedRecord.getExternalIdsHolder().getAuthorityId()));
+        assertNotNull(updatedRecord.getExternalIdsHolder());
+        assertTrue(expectedAuthorityId.equals(updatedRecord.getExternalIdsHolder().getAuthorityId()));
 
-        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
+        assertNotNull(updatedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
-        context.assertTrue(!fields.isEmpty());
+        assertTrue(!fields.isEmpty());
 
         String actualAuthorityId = getInventoryId(fields);
-        context.assertEquals(expectedAuthorityId, actualAuthorityId);
-        async.complete();
+        assertEquals(expectedAuthorityId, actualAuthorityId);
+        testContext.completeNow();
       });
     });
   }
 
   @Test
-  public void shouldUpdateField005WhenThisFiledIsNotProtected(TestContext context) throws IOException {
-    Async async = context.async();
-
+  void shouldUpdateField005WhenThisFiledIsNotProtected(VertxTestContext testContext) throws IOException {
     String expectedDate = get005FieldExpectedDate();
 
     String recordId = UUID.randomUUID().toString();
@@ -308,31 +302,30 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
-
-    future.whenComplete((payload, throwable) -> {
+    vertx.runOnContext(v -> handler.handle(dataImportEventPayload)
+      .whenComplete((payload, throwable) -> {
       if (throwable != null) {
-        context.fail(throwable);
+        testContext.failNow(throwable);
+        return;
       }
       recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
 
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        validate005Field(context, expectedDate, updatedRecord);
+        validate005Field(expectedDate, updatedRecord);
 
-        async.complete();
+        testContext.completeNow();
       });
-    });
+    }));
   }
 
   @Test
-  public void shouldUpdateField005WhenThisFiledIsProtected(TestContext context) throws IOException {
-    Async async = context.async();
-
+  void shouldUpdateField005WhenThisFiledIsProtected(VertxTestContext testContext) throws IOException {
     MappingParameters mappingParameters = new MappingParameters()
       .withMarcFieldProtectionSettings(List.of(new MarcFieldProtectionSetting()
         .withField(TAG_005)
@@ -369,31 +362,31 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
-
-    future.whenComplete((payload, throwable) -> {
+    vertx.runOnContext(v -> handler.handle(dataImportEventPayload)
+      .whenComplete((payload, throwable) -> {
       if (throwable != null) {
-        context.fail(throwable);
+        testContext.failNow(throwable);
+        return;
       }
       recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
 
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
         String actualDate = AdditionalFieldsUtil.getValueFromControlledField(updatedRecord, TAG_005);
-        Assert.assertEquals(expectedDate, actualDate);
+        assertEquals(expectedDate, actualDate);
 
-        async.complete();
+        testContext.completeNow();
       });
-    });
+    }));
   }
 
   @Test
-  public void shouldReturnFailedFutureWhenAuthorityOrRecordDoesNotExist(TestContext context) {
-    Async async = context.async();
+  void shouldReturnFailedFutureWhenAuthorityOrRecordDoesNotExist(VertxTestContext testContext) {
     HashMap<String, String> payloadContext = new HashMap<>();
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING.value())
@@ -405,14 +398,13 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
     CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
 
     future.whenComplete((payload, throwable) -> {
-      context.assertNotNull(throwable);
-      async.complete();
+      assertNotNull(throwable);
+      testContext.completeNow();
     });
   }
 
   @Test
-  public void shouldReturnFailedFutureWhenParsedRecordHasNoFields(TestContext context) {
-    Async async = context.async();
+  void shouldReturnFailedFutureWhenParsedRecordHasNoFields(VertxTestContext testContext) {
     record.withParsedRecord(new ParsedRecord()
       .withId(record.getId())
       .withContent("{\"leader\":\"01240cas a2200397\"}"));
@@ -438,13 +430,13 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         .exceptionally(future::completeExceptionally));
 
     future.whenComplete((payload, throwable) -> {
-      context.assertNotNull(throwable);
-      async.complete();
+      assertNotNull(throwable);
+      testContext.completeNow();
     });
   }
 
   @Test
-  public void shouldReturnTrueWhenHandlerIsEligibleForProfile() {
+  void shouldReturnTrueWhenHandlerIsEligibleForProfile() {
     MappingProfile mappingProfile = new MappingProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Create authority")
@@ -465,11 +457,11 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
-    Assert.assertTrue(isEligible);
+    assertTrue(isEligible);
   }
 
   @Test
-  public void shouldReturnFalseWhenRecordTypeIsNotAuthority() {
+  void shouldReturnFalseWhenRecordTypeIsNotAuthority() {
     MappingProfile mappingProfile = new MappingProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Create authority")
@@ -490,11 +482,11 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
-    Assert.assertFalse(isEligible);
+    assertFalse(isEligible);
   }
 
   @Test
-  public void shouldReturnFalseWhenHandlerIsNotEligibleForProfile() {
+  void shouldReturnFalseWhenHandlerIsNotEligibleForProfile() {
     ActionProfile actionProfile = new ActionProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Create authority")
@@ -516,11 +508,11 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
-    Assert.assertFalse(isEligible);
+    assertFalse(isEligible);
   }
 
   @Test
-  public void shouldReturnFalseWhenCurrentNodeIsNull() {
+  void shouldReturnFalseWhenCurrentNodeIsNull() {
     ActionProfile actionProfile = new ActionProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Create authority")
@@ -541,7 +533,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
-    Assert.assertFalse(isEligible);
+    assertFalse(isEligible);
   }
 
 }

@@ -1,9 +1,13 @@
 package org.folio.services.caches;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.vertx.core.Future;
@@ -11,47 +15,42 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import java.util.Map;
+import java.util.Optional;
 import org.folio.dataimport.util.ConnectionParams;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.services.entities.ConsortiumConfiguration;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import java.util.Map;
-import java.util.Optional;
-
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(VertxExtension.class)
 public class ConsortiumConfigurationCacheTest {
   private static final String TENANT_ID = "diku";
   private static final String CENTRAL_TENANT_ID = "centralTenantId";
   private static final String CONSORTIUM_ID = "consortiumId";
   private static final String USER_TENANTS_ENDPOINT = "/user-tenants";
-  private final Vertx vertx = Vertx.vertx();
-  private final ConsortiumConfigurationCache consortiumConfigurationCache =
-    new ConsortiumConfigurationCache(vertx, 3600);
+  private Vertx vertx;
+  private ConsortiumConfigurationCache consortiumConfigurationCache;
   private ConnectionParams params;
   private final JsonObject consortiumConfiguration = new JsonObject()
     .put("userTenants", new JsonArray().add(new JsonObject().put("centralTenantId", CENTRAL_TENANT_ID).put("consortiumId", CONSORTIUM_ID)));
 
-  @Rule
-  public RunTestOnContext rule = new RunTestOnContext();
-
-  @Rule
-  public WireMockRule mockServer = new WireMockRule(
-    WireMockConfiguration.wireMockConfig()
+  @RegisterExtension
+  WireMockExtension mockServer = WireMockExtension.newInstance()
+    .configureStaticDsl(true)
+    .options(WireMockConfiguration.wireMockConfig()
       .dynamicPort()
-      .notifier(new Slf4jNotifier(true)));
+      .notifier(new Slf4jNotifier(true)))
+    .build();
 
-  @Before
-  public void setUp() {
+  @BeforeEach
+  void setUp(Vertx vertx) {
+    this.vertx = vertx;
+    this.consortiumConfigurationCache = new ConsortiumConfigurationCache(vertx, 3600);
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_ENDPOINT), true))
       .willReturn(WireMock.ok().withBody(consortiumConfiguration.encode())));
 
@@ -63,47 +62,47 @@ public class ConsortiumConfigurationCacheTest {
   }
 
   @Test
-  public void shouldReturnConsortiumConfiguration(TestContext context) {
-    Async async = context.async();
+  void shouldReturnConsortiumConfiguration(VertxTestContext testContext) {
+    vertx.runOnContext(v -> {
+      Future<Optional<ConsortiumConfiguration>> optionalFuture = consortiumConfigurationCache.get(this.params);
 
-    Future<Optional<ConsortiumConfiguration>> optionalFuture = consortiumConfigurationCache.get(this.params);
-
-    optionalFuture.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertTrue(ar.result().isPresent());
-      ConsortiumConfiguration actualConsortiumConfiguration = ar.result().get();
-      context.assertEquals(actualConsortiumConfiguration.getCentralTenantId(), CENTRAL_TENANT_ID);
-      context.assertEquals(actualConsortiumConfiguration.getConsortiumId(), CONSORTIUM_ID);
-      async.complete();
+      optionalFuture.onComplete(testContext.succeeding(result -> {
+        assertTrue(result.isPresent());
+        ConsortiumConfiguration actualConsortiumConfiguration = result.get();
+        assertEquals(actualConsortiumConfiguration.getCentralTenantId(), CENTRAL_TENANT_ID);
+        assertEquals(actualConsortiumConfiguration.getConsortiumId(), CONSORTIUM_ID);
+        testContext.completeNow();
+      }));
     });
   }
 
   @Test
-  public void shouldReturnEmptyOptionalWhenGetNotFoundOnConfigurationLoading(TestContext context) {
-    Async async = context.async();
+  void shouldReturnEmptyOptionalWhenGetNotFoundOnConfigurationLoading(VertxTestContext testContext) {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_ENDPOINT), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new JsonObject().put("userTenants", new JsonArray())))));
 
-    Future<Optional<ConsortiumConfiguration>> optionalFuture = consortiumConfigurationCache.get(this.params);
+    vertx.runOnContext(v -> {
+      Future<Optional<ConsortiumConfiguration>> optionalFuture = consortiumConfigurationCache.get(this.params);
 
-    optionalFuture.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertTrue(ar.result().isEmpty());
-      async.complete();
+      optionalFuture.onComplete(testContext.succeeding(result -> {
+        assertTrue(result.isEmpty());
+        testContext.completeNow();
+      }));
     });
   }
 
   @Test
-  public void shouldReturnFailedFutureWhenGetServerErrorOnConfigurationLoading(TestContext context) {
-    Async async = context.async();
+  void shouldReturnFailedFutureWhenGetServerErrorOnConfigurationLoading(VertxTestContext testContext) {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_ENDPOINT), true))
       .willReturn(WireMock.serverError()));
 
-    Future<Optional<ConsortiumConfiguration>> optionalFuture = consortiumConfigurationCache.get(this.params);
+    vertx.runOnContext(v -> {
+      Future<Optional<ConsortiumConfiguration>> optionalFuture = consortiumConfigurationCache.get(this.params);
 
-    optionalFuture.onComplete(ar -> {
-      context.assertTrue(ar.failed());
-      async.complete();
+      optionalFuture.onComplete(ar -> {
+        assertTrue(ar.failed());
+        testContext.completeNow();
+      });
     });
   }
 }

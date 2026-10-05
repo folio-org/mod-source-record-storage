@@ -12,16 +12,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
-
-import java.io.IOException;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Stream;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -31,25 +22,25 @@ import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.client.WebClient;
+import io.vertx.junit5.VertxTestContext;
+import java.io.IOException;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.http.HttpStatus;
-import org.folio.dao.util.IdType;
-import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.client.TenantClient;
-import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.rest.jaxrs.model.TenantJob;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
 import org.folio.rest.jaxrs.model.ErrorRecord;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
@@ -60,8 +51,12 @@ import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.folio.rest.jaxrs.model.SourceRecordCollection;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.jaxrs.model.TenantJob;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-@RunWith(VertxUnitRunner.class)
 public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
   private static final String FIRST_UUID = UUID.randomUUID().toString();
@@ -253,39 +248,45 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withHoldingsHrid("12345"));
   }
 
-  @BeforeClass
-  public static void setUpBeforeClass(TestContext context) {
-    Async async = context.async();
+  @BeforeAll
+  static void setUpBeforeClass(VertxTestContext testContext) {
     TenantClient tenantClient =
       new TenantClient(OKAPI_URL, CENTRAL_TENANT_ID, OKAPI_TOKEN, WebClient.create(vertx.getDelegate()));
 
     try {
       tenantClient.postTenant(new TenantAttributes().withModuleTo(getFullModuleName()), ar -> {
-        context.assertTrue(ar.succeeded());
+        if (!ar.succeeded()) {
+          testContext.failNow(ar.cause());
+          return;
+        }
         if (ar.result().statusCode() == 204) {
-          async.complete();
+          testContext.completeNow();
           return;
         }
         if (ar.result().statusCode() == 201) {
-          tenantClient.getTenantByOperationId(ar.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(resp -> {
-            context.assertTrue(resp.bodyAsJson(TenantJob.class).getComplete());
-            String error = resp.bodyAsJson(TenantJob.class).getError();
-            if (error != null) {
-              context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
+          tenantClient.getTenantByOperationId(ar.result().bodyAsJson(TenantJob.class).getId(), 60000, resp -> {
+            if (!resp.succeeded()) {
+              testContext.failNow(resp.cause());
+              return;
             }
-          }));
+            String error = resp.result().bodyAsJson(TenantJob.class).getError();
+            if (error != null && !error.contains("EventDescriptor was not registered for eventType")) {
+              testContext.failNow(new RuntimeException(error));
+              return;
+            }
+            testContext.completeNow();
+          });
         } else {
-          context.assertEquals("Failed to make post tenant. Received status code 400", ar.result().bodyAsString());
+          testContext.failNow(new RuntimeException("Failed to make post tenant. Received status code 400"));
         }
-        async.complete();
       });
     } catch (Exception e) {
-      context.fail(e);
+      testContext.failNow(e);
     }
   }
 
-  @Before
-  public void setUp(TestContext context) {
+  @BeforeEach
+  void setUp(VertxTestContext testContext) {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_PATH), false))
       .willReturn(WireMock.ok()
         .withBody(new JsonObject()
@@ -298,14 +299,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
       .compose(v -> SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, CENTRAL_TENANT_ID)))
-      .onComplete(context.asyncAssertSuccess());
+      .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  public void shouldReturnSpecificMarcSourceRecordOnGetByRecordId(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
+  void shouldReturnSpecificMarcSourceRecordOnGetByRecordId() {
+    postSnapshots(snapshot_1, snapshot_2, snapshot_3);
 
-    postRecords(testContext, record_1, record_3, record_7);
+    postRecords(record_1, record_3, record_7);
 
     Record createdRecord = RestAssured.given()
       .spec(spec)
@@ -314,7 +315,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -323,24 +323,23 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", is(1));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByRecordId(TestContext testContext) {
-    shouldReturnSpecificMarcRecordSourceRecordOnGetByRecordId(testContext, RecordType.MARC_AUTHORITY, record_8, snapshot_4);
+  void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByRecordId() {
+    shouldReturnSpecificMarcRecordSourceRecordOnGetByRecordId(RecordType.MARC_AUTHORITY, record_8, snapshot_4);
   }
 
   @Test
-  public void shouldReturnSpecificMarcHoldingsSourceRecordOnGetByRecordId(TestContext testContext) {
-    shouldReturnSpecificMarcRecordSourceRecordOnGetByRecordId(testContext, RecordType.MARC_HOLDING, record_9, snapshot_5);
+  void shouldReturnSpecificMarcHoldingsSourceRecordOnGetByRecordId() {
+    shouldReturnSpecificMarcRecordSourceRecordOnGetByRecordId(RecordType.MARC_HOLDING, record_9, snapshot_5);
   }
 
   @Test
-  public void shouldReturnSpecificEdifactSourceRecordOnGetByRecordId(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
+  void shouldReturnSpecificEdifactSourceRecordOnGetByRecordId() {
+    postSnapshots(snapshot_1, snapshot_2, snapshot_3);
 
-    postRecords(testContext, record_1, record_3);
+    postRecords(record_1, record_3);
 
     Record createdRecord = RestAssured.given()
       .spec(spec)
@@ -349,7 +348,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -359,92 +357,91 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", is(1));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnSpecificMarcBibSourceRecordOnGetByDefaultExternalId(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByDefaultExternalId(testContext, snapshot_2, RecordType.MARC_BIB);
+  void shouldReturnSpecificMarcBibSourceRecordOnGetByDefaultExternalId() {
+    returnSpecificMarcSourceRecordOnGetByDefaultExternalId(snapshot_2, RecordType.MARC_BIB);
   }
 
   @Test
-  public void shouldReturnSpecificMarcHoldingsSourceRecordOnGetByDefaultExternalId(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByDefaultExternalId(testContext, snapshot_5, RecordType.MARC_HOLDING);
+  void shouldReturnSpecificMarcHoldingsSourceRecordOnGetByDefaultExternalId() {
+    returnSpecificMarcSourceRecordOnGetByDefaultExternalId(snapshot_5, RecordType.MARC_HOLDING);
   }
 
   @Test
-  public void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByDefaultExternalId(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByDefaultExternalId(testContext, snapshot_4, RecordType.MARC_AUTHORITY);
+  void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByDefaultExternalId() {
+    returnSpecificMarcSourceRecordOnGetByDefaultExternalId(snapshot_4, RecordType.MARC_AUTHORITY);
   }
 
   @Test
-  public void shouldReturnSpecificSourceRecordOnGetByInstanceExternalId(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByExternalId(testContext, snapshot_2, RecordType.MARC_BIB);
+  void shouldReturnSpecificSourceRecordOnGetByInstanceExternalId() {
+    returnSpecificMarcSourceRecordOnGetByExternalId(snapshot_2, RecordType.MARC_BIB);
   }
 
   @Test
-  public void shouldReturnSpecificMarcHoldingsSourceRecordOnGetByHoldingsExternalId(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByExternalId(testContext, snapshot_5, RecordType.MARC_HOLDING);
+  void shouldReturnSpecificMarcHoldingsSourceRecordOnGetByHoldingsExternalId() {
+    returnSpecificMarcSourceRecordOnGetByExternalId(snapshot_5, RecordType.MARC_HOLDING);
   }
 
   @Test
-  public void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByHoldingsExternalId(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByExternalId(testContext, snapshot_4, RecordType.MARC_AUTHORITY);
+  void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByHoldingsExternalId() {
+    returnSpecificMarcSourceRecordOnGetByExternalId(snapshot_4, RecordType.MARC_AUTHORITY);
   }
 
   @Test
-  public void shouldReturnSpecificNumberOfMarcBibSourceRecordsOnGetByInstanceExternalHrid(TestContext testContext) {
-    returnSpecificNumberOfMarcSourceRecordsOnGetByExternalHrid(testContext, snapshot_2, RecordType.MARC_BIB,
+  void shouldReturnSpecificNumberOfMarcBibSourceRecordsOnGetByInstanceExternalHrid() {
+    returnSpecificNumberOfMarcSourceRecordsOnGetByExternalHrid(snapshot_2, RecordType.MARC_BIB,
       "?instanceHrid=");
   }
 
   @Test
-  public void shouldReturnSpecificNumberOfMarcHoldingsSourceRecordsOnGetByHoldingsExternalHrid(TestContext testContext) {
-    returnSpecificNumberOfMarcSourceRecordsOnGetByExternalHrid(testContext, snapshot_5,
+  void shouldReturnSpecificNumberOfMarcHoldingsSourceRecordsOnGetByHoldingsExternalHrid() {
+    returnSpecificNumberOfMarcSourceRecordsOnGetByExternalHrid(snapshot_5,
       RecordType.MARC_HOLDING, "?recordType=MARC_HOLDING&holdingsHrid=");
   }
 
   @Test
-  public void shouldReturnSpecificNumberOfMarcHoldingsSourceRecordsOnGetByInstanceExternalHrid(TestContext testContext) {
-    returnSpecificNumberOfMarcSourceRecordsOnGetByExternalHrid(testContext, snapshot_5,
+  void shouldReturnSpecificNumberOfMarcHoldingsSourceRecordsOnGetByInstanceExternalHrid() {
+    returnSpecificNumberOfMarcSourceRecordsOnGetByExternalHrid(snapshot_5,
       RecordType.MARC_HOLDING, "?recordType=MARC_HOLDING&externalHrid=");
   }
 
   @Test
-  public void shouldReturnSpecificMarcBibSourceRecordOnGetByRecordExternalId(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByRecordExternalId(testContext, snapshot_2, RecordType.MARC_BIB);
+  void shouldReturnSpecificMarcBibSourceRecordOnGetByRecordExternalId() {
+    returnSpecificMarcSourceRecordOnGetByRecordExternalId(snapshot_2, RecordType.MARC_BIB);
   }
 
   @Test
-  public void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByRecordExternalId(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByRecordExternalId(testContext, snapshot_4, RecordType.MARC_AUTHORITY);
+  void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByRecordExternalId() {
+    returnSpecificMarcSourceRecordOnGetByRecordExternalId(snapshot_4, RecordType.MARC_AUTHORITY);
   }
 
   @Test
-  public void shouldReturnSpecificMarcHoldingSourceRecordOnGetByRecordExternalId(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByRecordExternalId(testContext, snapshot_5, RecordType.MARC_HOLDING);
+  void shouldReturnSpecificMarcHoldingSourceRecordOnGetByRecordExternalId() {
+    returnSpecificMarcSourceRecordOnGetByRecordExternalId(snapshot_5, RecordType.MARC_HOLDING);
   }
 
   @Test
-  public void shouldReturnSpecificMarcBibSourceRecordOnGetByRecordExternalIdAndRecordState(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(testContext, snapshot_2, RecordType.MARC_BIB, Record.State.DELETED);
+  void shouldReturnSpecificMarcBibSourceRecordOnGetByRecordExternalIdAndRecordState() {
+    returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(snapshot_2, RecordType.MARC_BIB, Record.State.DELETED);
   }
 
   @Test
-  public void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByRecordExternalIdAndRecordState(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(testContext, snapshot_4, RecordType.MARC_AUTHORITY, Record.State.DRAFT);
+  void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByRecordExternalIdAndRecordState() {
+    returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(snapshot_4, RecordType.MARC_AUTHORITY, Record.State.DRAFT);
   }
 
   @Test
-  public void shouldReturnSpecificMarcHoldingSourceRecordOnGetByRecordExternalIdAndRecordState(TestContext testContext) {
-    returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(testContext, snapshot_5, RecordType.MARC_HOLDING, Record.State.OLD);
+  void shouldReturnSpecificMarcHoldingSourceRecordOnGetByRecordExternalIdAndRecordState() {
+    returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(snapshot_5, RecordType.MARC_HOLDING, Record.State.OLD);
   }
 
   @Test
-  public void shouldReturnSpecificMarcBibSourceRecordOnGetByRecordLeaderRecordStatus(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnSpecificMarcBibSourceRecordOnGetByRecordLeaderRecordStatus() {
+    postSnapshots(snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_3);
+    postRecords(record_1, record_3);
 
     Record createdRecord = RestAssured.given()
       .spec(spec)
@@ -455,7 +452,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     String leaderStatus = ParsedRecordDaoUtil.getLeaderStatus(createdRecord.getParsedRecord());
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -464,26 +460,24 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", is(1));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByRecordLeaderRecordStatus(TestContext testContext) {
-    shouldReturnSpecificMarcSourceRecordOnGetByRecordLeaderRecordStatus(testContext, RecordType.MARC_AUTHORITY, record_8,
+  void shouldReturnSpecificMarcAuthoritySourceRecordOnGetByRecordLeaderRecordStatus() {
+    shouldReturnSpecificMarcSourceRecordOnGetByRecordLeaderRecordStatus(RecordType.MARC_AUTHORITY, record_8,
       snapshot_4);
   }
 
   @Test
-  public void shouldReturnSpecificMarcHoldingsSourceRecordOnGetByRecordLeaderRecordStatus(TestContext testContext) {
-    shouldReturnSpecificMarcSourceRecordOnGetByRecordLeaderRecordStatus(testContext, RecordType.MARC_HOLDING, record_9,
+  void shouldReturnSpecificMarcHoldingsSourceRecordOnGetByRecordLeaderRecordStatus() {
+    shouldReturnSpecificMarcSourceRecordOnGetByRecordLeaderRecordStatus(RecordType.MARC_HOLDING, record_9,
       snapshot_5);
   }
 
   @Test
-  public void shouldReturnBadRequestOnGetIfInvalidExternalIdType(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnBadRequestOnGetIfInvalidExternalIdType() {
+    postSnapshots(snapshot_1, snapshot_2);
 
-    Async async = testContext.async();
     Record firstRecord = new Record().withId(FIRST_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -536,23 +530,19 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + SECOND_UUID + "?idType=invalidrecordtype")
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
-    async.complete();
   }
 
   @Test
-  public void shouldNotReturnSpecificSourceRecordOnGetIfItIsNotExists(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldNotReturnSpecificSourceRecordOnGetIfItIsNotExists() {
+    postSnapshots(snapshot_1, snapshot_2);
 
-    Async async = testContext.async();
     Record firstRecord = new Record().withId(FIRST_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -605,21 +595,18 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "/" + FIFTH_UUID + "?idType=INSTANCE")
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
-    async.complete();
   }
 
   @Test
-  public void shouldReturnDeletedRecordByExternalIdIfStateIsEmpty(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnDeletedRecordByExternalIdIfStateIsEmpty() {
+    postSnapshots(snapshot_1, snapshot_2);
 
     Record firstRecord = new Record().withId(FIRST_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
@@ -654,35 +641,27 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withLeaderRecordStatus("d")
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(THIRD_UUID).withInstanceHrid(THIRD_HRID));
 
-    Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(firstRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    async.complete();
 
-
-    async = testContext.async();
     createResponse = RestAssured.given()
       .spec(spec)
       .body(secondRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    async.complete();
 
-    async = testContext.async();
     createResponse = RestAssured.given()
       .spec(spec)
       .body(thirdRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -693,15 +672,13 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("recordType", is(Record.RecordType.MARC_BIB.value()))
       .body("externalIdsHolder.instanceId", is(FIRST_UUID))
       .body("order", is(11));
-
-    async.complete();
   }
 
   @Test
-  public void shouldReturnEmptyCollectionOnGetByRecordIdIfParsedRecordIsIncorrect(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnEmptyCollectionOnGetByRecordIdIfParsedRecordIsIncorrect() {
+    postSnapshots(snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_5);
+    postRecords(record_1, record_5);
 
     Record createdRecord = RestAssured.given()
       .spec(spec)
@@ -710,7 +687,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -719,16 +695,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(0))
       .body("totalRecords", is(0));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnEmptyCollectionOnGetByRecordIdIfThereIsNoSuchRecord(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnEmptyCollectionOnGetByRecordIdIfThereIsNoSuchRecord() {
+    postSnapshots(snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_2, record_3);
+    postRecords(record_1, record_2, record_3);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -737,14 +711,12 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(0))
       .body("totalRecords", is(0));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnEmptyCollectionOnGetByRecordIdAndRecordStateActualIfRecordWasDeleted(TestContext testContext) {
-    postSnapshots(testContext, snapshot_2);
+  void shouldReturnEmptyCollectionOnGetByRecordIdAndRecordStateActualIfRecordWasDeleted() {
+    postSnapshots(snapshot_2);
 
-    Async async = testContext.async();
     Response createParsed = RestAssured.given()
       .spec(spec)
       .body(record_2)
@@ -752,18 +724,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
     Record parsed = createParsed.body().as(Record.class);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsed.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -772,14 +740,13 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(0))
       .body("totalRecords", is(0));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnBadRequestOnGetByRecordIdIfInvalidUUID(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnBadRequestOnGetByRecordIdIfInvalidUUID() {
+    postSnapshots(snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_2);
+    postRecords(record_1, record_2);
 
     Record createdRecord = RestAssured.given()
       .spec(spec)
@@ -788,7 +755,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -796,12 +762,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         + "&limit=1&offset=0")
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
-    async.complete();
   }
 
   @Test
-  public void shouldReturnSortedSourceRecordsOnGetWhenSortByIsSpecified(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
+  void shouldReturnSortedSourceRecordsOnGetWhenSortByIsSpecified() {
+    postSnapshots(snapshot_1, snapshot_2, snapshot_3);
 
     String firstMatchedId = UUID.randomUUID().toString();
 
@@ -829,9 +794,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(SECOND_HRID));
 
-    postRecords(testContext, record_2, tmpRecord2, record_4, tmpRecord4, record_7);
+    postRecords(record_2, tmpRecord2, record_4, tmpRecord4, record_7);
 
-    Async async = testContext.async();
     List<SourceRecord> sourceRecordList = RestAssured.given()
       .spec(spec)
       .when()
@@ -844,22 +808,20 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
-    testContext.assertTrue(
+    assertTrue(
       sourceRecordList.get(0).getMetadata().getCreatedDate().after(sourceRecordList.get(1).getMetadata().getCreatedDate()));
-    testContext.assertTrue(
+    assertTrue(
       sourceRecordList.get(1).getMetadata().getCreatedDate().after(sourceRecordList.get(2).getMetadata().getCreatedDate()));
-    testContext.assertTrue(
+    assertTrue(
       sourceRecordList.get(2).getMetadata().getCreatedDate().after(sourceRecordList.get(3).getMetadata().getCreatedDate()));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnSortedMarcBibSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
-    postSnapshots(testContext, snapshot_2, snapshot_3);
+  void shouldReturnSortedMarcBibSourceRecordsOnGetWhenSortByOrderIsSpecified() {
+    postSnapshots(snapshot_2, snapshot_3);
 
-    postRecords(testContext, record_2, record_3, record_5, record_6, record_7);
+    postRecords(record_2, record_3, record_5, record_6, record_7);
 
-    Async async = testContext.async();
     // NOTE: get source records will not return if there is no associated parsed record
     List<SourceRecord> sourceRecordList = RestAssured.given()
       .spec(spec)
@@ -873,30 +835,28 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
-    testContext.assertEquals(11, sourceRecordList.get(0).getOrder());
-    testContext.assertEquals(101, sourceRecordList.get(1).getOrder());
-    async.complete();
+    assertThat(sourceRecordList.get(0).getOrder(), is(11));
+    assertThat(sourceRecordList.get(1).getOrder(), is(101));
   }
 
   @Test
-  public void shouldReturnSortedMarcAuthoritySourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
-    shouldReturnSortedMarcSourceRecordsOnGetWhenSortByOrderIsSpecified(testContext, RecordType.MARC_AUTHORITY, record_8,
+  void shouldReturnSortedMarcAuthoritySourceRecordsOnGetWhenSortByOrderIsSpecified() {
+    shouldReturnSortedMarcSourceRecordsOnGetWhenSortByOrderIsSpecified(RecordType.MARC_AUTHORITY, record_8,
       snapshot_4);
   }
 
   @Test
-  public void shouldReturnSortedMarcHoldingSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
-    shouldReturnSortedMarcSourceRecordsOnGetWhenSortByOrderIsSpecified(testContext, RecordType.MARC_HOLDING, record_9,
+  void shouldReturnSortedMarcHoldingSourceRecordsOnGetWhenSortByOrderIsSpecified() {
+    shouldReturnSortedMarcSourceRecordsOnGetWhenSortByOrderIsSpecified(RecordType.MARC_HOLDING, record_9,
       snapshot_5);
   }
 
   @Test
-  public void shouldReturnSortedEdifactSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext) {
-    postSnapshots(testContext, snapshot_2, snapshot_3);
+  void shouldReturnSortedEdifactSourceRecordsOnGetWhenSortByOrderIsSpecified() {
+    postSnapshots(snapshot_2, snapshot_3);
 
-    postRecords(testContext, record_2, record_3, record_5, record_6, record_7);
+    postRecords(record_2, record_3, record_5, record_6, record_7);
 
-    Async async = testContext.async();
     // NOTE: get source records will not return if there is no associated parsed record
     List<SourceRecord> sourceRecordList = RestAssured.given()
       .spec(spec)
@@ -911,15 +871,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
-    testContext.assertEquals(0, sourceRecordList.getFirst().getOrder());
-    async.complete();
+    assertThat(sourceRecordList.getFirst().getOrder(), is(0));
   }
 
   @Test
-  public void shouldReturnSourceRecordsForPeriod(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnSourceRecordsForPeriod() {
+    postSnapshots(snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1);
+    postRecords(record_1);
 
     DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
 
@@ -927,14 +886,12 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     String from = dateTimeFormatter.format(ZonedDateTime.ofInstant(fromDate.toInstant(), ZoneId.systemDefault()));
 
     // NOTE: record_5 saves but fails parsed record content validation and does not save parsed record
-    postRecords(testContext, record_2, record_3, record_4, record_5);
+    postRecords(record_2, record_3, record_4, record_5);
 
     Date toDate = new Date();
     String to = dateTimeFormatter.format(ZonedDateTime.ofInstant(toDate.toInstant(), ZoneId.systemDefault()));
 
-    postRecords(testContext, record_6);
-
-    Async async = testContext.async();
+    postRecords(record_6);
 
     List<SourceRecord> sourceRecordList = RestAssured.given()
       .spec(spec)
@@ -948,15 +905,13 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
     // NOTE: we do not expect record_5 as they do not have a parsed record
-    testContext.assertTrue(sourceRecordList.stream().map(SourceRecord::getRecordId).noneMatch(id -> id.equals(record_5.getId())));
+    assertTrue(sourceRecordList.stream().map(SourceRecord::getRecordId).noneMatch(id -> id.equals(record_5.getId())));
 
-    testContext.assertTrue(sourceRecordList.get(0).getMetadata().getUpdatedDate().after(fromDate));
-    testContext.assertTrue(sourceRecordList.get(1).getMetadata().getUpdatedDate().after(fromDate));
-    testContext.assertTrue(sourceRecordList.get(0).getMetadata().getUpdatedDate().before(toDate));
-    testContext.assertTrue(sourceRecordList.get(1).getMetadata().getUpdatedDate().before(toDate));
-    async.complete();
+    assertTrue(sourceRecordList.get(0).getMetadata().getUpdatedDate().after(fromDate));
+    assertTrue(sourceRecordList.get(1).getMetadata().getUpdatedDate().after(fromDate));
+    assertTrue(sourceRecordList.get(0).getMetadata().getUpdatedDate().before(toDate));
+    assertTrue(sourceRecordList.get(1).getMetadata().getUpdatedDate().before(toDate));
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -966,9 +921,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4))
       .body("sourceRecords*.deleted", everyItem(is(false)));
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -978,10 +931,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", is(1))
       .body("sourceRecords*.deleted", everyItem(is(false)));
-    async.complete();
 
     // NOTE: we do not expect record_5 id does not have a parsed record
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -991,13 +942,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords.size()", is(4))
       .body("totalRecords", is(4))
       .body("sourceRecords*.deleted", everyItem(is(false)));
-    async.complete();
 
-    testContext.assertTrue(sourceRecordList.stream()
+    assertTrue(sourceRecordList.stream()
       .map(SourceRecord::getRecordId)
       .noneMatch(id -> id.equals(record_5.getId()) || id.equals(record_6.getId())));
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1006,12 +955,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", is(1));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnSourceRecordsByListOfId(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnSourceRecordsByListOfId() {
+    postSnapshots(snapshot_1, snapshot_2);
 
     String firstSrsId = UUID.randomUUID().toString();
     String firstInstanceId = UUID.randomUUID().toString();
@@ -1057,13 +1005,12 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withInstanceHrid(secondHrId));
 
     Record[] records = new Record[] {record_1, record_2, record_3, record_4, record_6, deletedRecord1, deletedRecord2};
-    postRecords(testContext, records);
+    postRecords(records);
 
     List<String> ids = Arrays.stream(records)
       .map(Record::getId)
       .toList();
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(ids)
@@ -1074,9 +1021,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords.size()", is(6))
       .body("totalRecords", is(6))
       .body("sourceRecords*.deleted", everyItem(is(false)));
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(ids)
@@ -1086,13 +1031,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(7))
       .body("totalRecords", is(7));
-    async.complete();
 
     List<String> externalIds = Arrays.stream(records)
       .map(rec -> rec.getExternalIdsHolder().getInstanceId())
       .toList();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(externalIds)
@@ -1103,9 +1046,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords.size()", is(6))
       .body("totalRecords", is(6))
       .body("sourceRecords*.deleted", everyItem(is(false)));
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(externalIds)
@@ -1115,9 +1056,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(7))
       .body("totalRecords", is(7));
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .body(ids)
@@ -1127,19 +1066,18 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(6))
       .body("totalRecords", is(6));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnRecordsFromLocalAndCentralTenantsExcludeShadowRecordsByIdsListIfDeletedAndIncludeSharedParamsAreTrue(TestContext testContext) {
+  void shouldReturnRecordsFromLocalAndCentralTenantsExcludeShadowRecordsByIdsListIfDeletedAndIncludeSharedParamsAreTrue() {
     Record shadowRecord = JsonObject.mapFrom(record_2).copy().mapTo(Record.class)
       .withId(UUID.randomUUID().toString())
       .withSnapshotId(snapshot_3.getJobExecutionId())
       .withState(Record.State.DELETED);
 
-    postSnapshots(testContext, snapshot_1, snapshot_3);
+    postSnapshots(snapshot_1, snapshot_3);
     postSnapshots(CENTRAL_TENANT_ID, snapshot_2);
-    postRecords(testContext, record_1, shadowRecord);
+    postRecords(record_1, shadowRecord);
     postRecords(CENTRAL_TENANT_ID, record_2, record_6);
 
     List<String> externalIds = Stream.of(record_1, shadowRecord, record_2, record_6)
@@ -1163,10 +1101,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnRecordsOnlyFromLocalTenantByIdsListIfIncludeSharedIsFalseOrAbsent(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1);
+  void shouldReturnRecordsOnlyFromLocalTenantByIdsListIfIncludeSharedIsFalseOrAbsent() {
+    postSnapshots(snapshot_1);
     postSnapshots(CENTRAL_TENANT_ID, snapshot_2);
-    postRecords(testContext, record_1, record_4);
+    postRecords(record_1, record_4);
     postRecords(CENTRAL_TENANT_ID, record_2);
 
     List<String> externalIds = Stream.of(record_1, record_4, record_2)
@@ -1192,13 +1130,13 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnRecordOnlyFromLocalTenantByIdsListIfIncludeSharedIsTrueAndTenantIsNotInConsortium(TestContext testContext) {
+  void shouldReturnRecordOnlyFromLocalTenantByIdsListIfIncludeSharedIsTrueAndTenantIsNotInConsortium() {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(USER_TENANTS_PATH), false))
       .willReturn(WireMock.ok().withBody(new JsonObject().put("userTenants", JsonArray.of()).encode())));
 
-    postSnapshots(testContext, snapshot_1);
+    postSnapshots(snapshot_1);
     postSnapshots(CENTRAL_TENANT_ID, snapshot_2);
-    postRecords(testContext, record_1);
+    postRecords(record_1);
     postRecords(CENTRAL_TENANT_ID, record_2);
 
     List<String> externalIds = Stream.of(record_1, record_2)
@@ -1223,7 +1161,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnRecordsFromCentralTenantByIdsListIfCentralTenantSpecified() {
+  void shouldReturnRecordsFromCentralTenantByIdsListIfCentralTenantSpecified() {
     postSnapshots(CENTRAL_TENANT_ID, snapshot_1);
     postRecords(CENTRAL_TENANT_ID, record_1, record_4);
 
@@ -1247,7 +1185,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnMarcAuthorityRecordsFromLocalAndCentralTenantsByIdsListIfIncludeSharedParamsIsTrue(TestContext testContext) {
+  void shouldReturnMarcAuthorityRecordsFromLocalAndCentralTenantsByIdsListIfIncludeSharedParamsIsTrue() {
     Record centralTenantRecord = new Record()
       .withId(FIRST_UUID)
       .withMatchedId(FIRST_UUID)
@@ -1261,9 +1199,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withAuthorityId(UUID.randomUUID().toString())
         .withAuthorityHrid("12345"));
 
-    postSnapshots(testContext, snapshot_4);
+    postSnapshots(snapshot_4);
     postSnapshots(CENTRAL_TENANT_ID, snapshot_1);
-    postRecords(testContext, record_8);
+    postRecords(record_8);
     postRecords(CENTRAL_TENANT_ID, centralTenantRecord);
 
     List<String> externalIds = Stream.of(record_8, centralTenantRecord)
@@ -1286,7 +1224,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnEmptyListOnGetResultsIfNoRecordsExist() {
+  void shouldReturnEmptyListOnGetResultsIfNoRecordsExist() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1298,29 +1236,29 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnMarcBibParsedResultsOnGetWhenNoQueryIsSpecified(TestContext testContext) {
-    shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(testContext, snapshot_3, record_7, 4, RecordType.MARC_BIB);
+  void shouldReturnMarcBibParsedResultsOnGetWhenNoQueryIsSpecified() {
+    shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(snapshot_3, record_7, 4, RecordType.MARC_BIB);
   }
 
   @Test
-  public void shouldReturnMarcAuthorityParsedResultsOnGetWhenNoQueryIsSpecified(TestContext testContext) {
-    shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(testContext, snapshot_4, record_8, 1,
+  void shouldReturnMarcAuthorityParsedResultsOnGetWhenNoQueryIsSpecified() {
+    shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(snapshot_4, record_8, 1,
       RecordType.MARC_AUTHORITY);
   }
 
   @Test
-  public void shouldReturnMarcHoldingsParsedResultsOnGetWhenNoQueryIsSpecified(TestContext testContext) {
-    shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(testContext, snapshot_5, record_9, 1, RecordType.MARC_HOLDING);
+  void shouldReturnMarcHoldingsParsedResultsOnGetWhenNoQueryIsSpecified() {
+    shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(snapshot_5, record_9, 1, RecordType.MARC_HOLDING);
   }
 
   @Test
-  public void shouldReturnEdifactParsedResultsOnGetWhenReturnTypeQueryIsSpecified(TestContext testContext) {
-    shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(testContext, snapshot_3, record_7, 1, RecordType.EDIFACT);
+  void shouldReturnEdifactParsedResultsOnGetWhenReturnTypeQueryIsSpecified() {
+    shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(snapshot_3, record_7, 1, RecordType.EDIFACT);
   }
 
   @Test
-  public void shouldUnDeletedRecord(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1);
+  void shouldUnDeletedRecord() {
+    postSnapshots(snapshot_1);
     var deletedRecord = new Record()
       .withId(FIRST_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
@@ -1331,18 +1269,15 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withOrder(0)
       .withState(Record.State.DELETED)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID).withInstanceHrid(FIRST_UUID));
-    postRecords(testContext, deletedRecord);
+    postRecords(deletedRecord);
 
-    var async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH + "/" + deletedRecord.getId() + "/un-delete")
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1350,12 +1285,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("deleted", is(false));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnParsedResultsWithAnyStateWithNoParametersSpecified(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnParsedResultsWithAnyStateWithNoParametersSpecified() {
+    postSnapshots(snapshot_1, snapshot_2);
 
     Record recordWithOldState = new Record()
       .withId(SECOND_UUID)
@@ -1390,9 +1324,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FOURTH_UUID).withInstanceHrid(FIRST_HRID));
 
-    postRecords(testContext, recordWithOldState, recordWithoutDeletedState, recordWithActualState);
+    postRecords(recordWithOldState, recordWithoutDeletedState, recordWithActualState);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1401,16 +1334,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
       .body("sourceRecords*.parsedRecord", notNullValue());
-    async.complete();
   }
 
   @Test
-  public void shouldReturnResultsOnGetBySpecifiedSnapshotId(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnResultsOnGetBySpecifiedSnapshotId() {
+    postSnapshots(snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_2, record_3, record_4);
+    postRecords(record_1, record_2, record_3, record_4);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1421,16 +1352,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.snapshotId", everyItem(is(record_2.getSnapshotId())))
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .body("sourceRecords*.additionalInfo.suppressDiscovery", everyItem(is(false)));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnLimitedResultCollectionOnGetWithLimit(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2);
+  void shouldReturnLimitedResultCollectionOnGetWithLimit() {
+    postSnapshots(snapshot_1, snapshot_2);
 
-    postRecords(testContext, record_1, record_2, record_3, record_4);
+    postRecords(record_1, record_2, record_3, record_4);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1440,12 +1369,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", greaterThanOrEqualTo(1))
       .body("sourceRecords*.deleted", everyItem(is(false)));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnAllSourceRecordsMarkedAsDeletedOnFindByRecordStateDeleted(TestContext testContext) {
-    postSnapshots(testContext, snapshot_2);
+  void shouldReturnAllSourceRecordsMarkedAsDeletedOnFindByRecordStateDeleted() {
+    postSnapshots(snapshot_2);
 
     Response createParsed = RestAssured.given()
       .spec(spec)
@@ -1457,14 +1385,12 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     Record parsedRecord = createParsed.body().as(Record.class);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsedRecord.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
-    async.complete();
 
     String matchedId = UUID.randomUUID().toString();
 
@@ -1481,7 +1407,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withInstanceId(matchedId)
         .withInstanceHrid("12345"));
 
-    async = testContext.async();
     createParsed = RestAssured.given()
       .spec(spec)
       .body(record3)
@@ -1489,18 +1414,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
     parsedRecord = createParsed.body().as(Record.class);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsedRecord.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1509,16 +1430,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", greaterThanOrEqualTo(2))
       .body("sourceRecords*.deleted", everyItem(is(true)));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnOnlyUnmarkedAsDeletedSourceRecordOnGetWhenParameterDeletedIsNotPassed(TestContext testContext) {
-    postSnapshots(testContext, snapshot_2);
+  void shouldReturnOnlyUnmarkedAsDeletedSourceRecordOnGetWhenParameterDeletedIsNotPassed() {
+    postSnapshots(snapshot_2);
 
-    postRecords(testContext, record_2);
+    postRecords(record_2);
 
-    Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(record_3)
@@ -1526,18 +1445,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
     Record recordToDelete = createResponse.body().as(Record.class);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + recordToDelete.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1546,11 +1461,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", greaterThanOrEqualTo(1))
       .body("sourceRecords*.deleted", everyItem(is(false)));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnBadRequestOnInvalidQueryParameters() {
+  void shouldReturnBadRequestOnInvalidQueryParameters() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1574,8 +1488,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSourceRecordWithAdditionalInfoOnGetBySpecifiedSnapshotId(TestContext testContext) {
-    postSnapshots(testContext, snapshot_2);
+  void shouldReturnSourceRecordWithAdditionalInfoOnGetBySpecifiedSnapshotId() {
+    postSnapshots(snapshot_2);
 
     String matchedId = UUID.randomUUID().toString();
 
@@ -1590,7 +1504,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withAdditionalInfo(
         new AdditionalInfo().withSuppressDiscovery(true));
 
-    Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(newRecord)
@@ -1598,9 +1511,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
     Record createdRecord = createResponse.body().as(Record.class);
-    async.complete();
 
-    async = testContext.async();
     Response getResponse = RestAssured.given()
       .spec(spec)
       .when()
@@ -1615,12 +1526,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     // assertThat(sourceRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     assertThat(sourceRecord.getAdditionalInfo().getSuppressDiscovery(),
       is(createdRecord.getAdditionalInfo().getSuppressDiscovery()));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnActualRecordsOnFilteringByDeleted(TestContext testContext) {
-    postSnapshots(testContext, snapshot_2);
+  void shouldReturnActualRecordsOnFilteringByDeleted() {
+    postSnapshots(snapshot_2);
 
     Record record1 = new Record()
       .withId(UUID.randomUUID().toString())
@@ -1655,9 +1565,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(THIRD_UUID).withInstanceHrid(THIRD_HRID))
       .withState(Record.State.DELETED);
 
-    postRecords(testContext, record1, record2, record3);
+    postRecords(record1, record2, record3);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1666,14 +1575,13 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(2))
       .body("totalRecords", is(2));
-    async.complete();
   }
 
-  private void shouldReturnSpecificMarcRecordSourceRecordOnGetByRecordId(TestContext testContext, RecordType recordType,
+  private void shouldReturnSpecificMarcRecordSourceRecordOnGetByRecordId(RecordType recordType,
                                                                          Record aRecord, Snapshot snapshot) {
-    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3, snapshot);
+    postSnapshots(snapshot_1, snapshot_2, snapshot_3, snapshot);
 
-    postRecords(testContext, record_1, record_3, record_7);
+    postRecords(record_1, record_3, record_7);
 
     Record createdRecord = RestAssured.given()
       .spec(spec)
@@ -1682,7 +1590,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -1692,14 +1599,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", is(1));
-    async.complete();
   }
 
-  private void returnSpecificMarcSourceRecordOnGetByDefaultExternalId(TestContext testContext, Snapshot snapshot,
+  private void returnSpecificMarcSourceRecordOnGetByDefaultExternalId(Snapshot snapshot,
                                                                       RecordType recordType) {
-    postSnapshots(testContext, snapshot_1, snapshot);
-
-    Async async = testContext.async();
+    postSnapshots(snapshot_1, snapshot);
 
     Record firstRecord = new Record().withId(FIRST_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
@@ -1734,8 +1638,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
-    async.complete();
-    async = testContext.async();
+
     var validatableResponse = RestAssured.given()
       .spec(spec)
       .when()
@@ -1753,14 +1656,12 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       validatableResponse
         .body("externalIdsHolder.authorityId", is(SECOND_UUID));
     }
-    async.complete();
   }
 
-  private void returnSpecificMarcSourceRecordOnGetByExternalId(TestContext testContext, Snapshot snapshot,
+  private void returnSpecificMarcSourceRecordOnGetByExternalId(Snapshot snapshot,
                                                                RecordType recordType) {
-    postSnapshots(testContext, snapshot_1, snapshot);
+    postSnapshots(snapshot_1, snapshot);
 
-    Async async = testContext.async();
     Record firstRecord = new Record().withId(FIRST_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
@@ -1831,9 +1732,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
-    async.complete();
 
-    async = testContext.async();
     var idType = getIdType(recordType);
     var validatableResponse = RestAssured.given()
       .spec(spec)
@@ -1852,7 +1751,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       validatableResponse
         .body("externalIdsHolder.authorityId", is(externalId));
     }
-    async.complete();
   }
 
   private String getIdType(RecordType recordType){
@@ -1867,12 +1765,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     }
   }
 
-  private void returnSpecificNumberOfMarcSourceRecordsOnGetByExternalHrid(TestContext testContext,
-                                                                          Snapshot snapshot, RecordType recordType,
+  private void returnSpecificNumberOfMarcSourceRecordsOnGetByExternalHrid(Snapshot snapshot, RecordType recordType,
                                                                           String url) {
-    postSnapshots(testContext, snapshot_1, snapshot);
-
-    Async async = testContext.async();
+    postSnapshots(snapshot_1, snapshot);
 
     String firstHrid = "123";
     String secondHrid = "1234";
@@ -1945,9 +1840,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
-    async.complete();
 
-    async = testContext.async();
     var validatableResponse = RestAssured.given()
       .spec(spec)
       .when()
@@ -1964,8 +1857,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       validatableResponse
         .body("sourceRecords*.externalIdsHolder.holdingsHrid", everyItem(is(secondHrid)));
     }
-
-    async.complete();
   }
 
   private void setExternalIds(Record record, RecordType recordType, String id, String hrid) {
@@ -1978,11 +1869,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     }
   }
 
-  private void returnSpecificMarcSourceRecordOnGetByRecordExternalId(TestContext testContext, Snapshot snapshot,
+  private void returnSpecificMarcSourceRecordOnGetByRecordExternalId(Snapshot snapshot,
                                                                      RecordType recordType) {
-    postSnapshots(testContext, snapshot_1, snapshot);
+    postSnapshots(snapshot_1, snapshot);
 
-    Async async = testContext.async();
     Record firstRecord = new Record().withId(FIRST_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
@@ -2052,9 +1942,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
-    async.complete();
 
-    async = testContext.async();
     var validatableResponse = RestAssured.given()
       .spec(spec)
       .when()
@@ -2074,14 +1962,12 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .body("externalIdsHolder.holdingsId", nullValue());
 
     }
-    async.complete();
   }
 
-  private void returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(TestContext testContext,
-                                                                                   Snapshot snapshot,
+  private void returnSpecificMarcSourceRecordOnGetByRecordExternalIdAndRecordState(Snapshot snapshot,
                                                                                    RecordType recordType,
                                                                                    Record.State state) {
-    postSnapshots(testContext, snapshot_1, snapshot);
+    postSnapshots(snapshot_1, snapshot);
 
     Record recordWithState = new Record().withId(FIRST_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
@@ -2100,7 +1986,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
 
-    Async async = testContext.async();
     var validatableResponse = RestAssured.given()
       .spec(spec)
       .when()
@@ -2119,15 +2004,13 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .body("externalIdsHolder.instanceId", nullValue())
         .body("externalIdsHolder.holdingsId", nullValue());
     }
-    async.complete();
   }
 
-  private void shouldReturnSpecificMarcSourceRecordOnGetByRecordLeaderRecordStatus(TestContext testContext,
-                                                                                   RecordType recordType, Record record,
+  private void shouldReturnSpecificMarcSourceRecordOnGetByRecordLeaderRecordStatus(RecordType recordType, Record record,
                                                                                    Snapshot snapshot) {
-    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot);
+    postSnapshots(snapshot_1, snapshot_2, snapshot);
 
-    postRecords(testContext, record_1, record_3);
+    postRecords(record_1, record_3);
 
     Record createdRecord = RestAssured.given()
       .spec(spec)
@@ -2138,7 +2021,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     String leaderStatus = ParsedRecordDaoUtil.getLeaderStatus(createdRecord.getParsedRecord());
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -2148,17 +2030,14 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("sourceRecords.size()", is(1))
       .body("totalRecords", is(1));
-    async.complete();
   }
 
-  private void shouldReturnSortedMarcSourceRecordsOnGetWhenSortByOrderIsSpecified(TestContext testContext,
-                                                                                  RecordType recordType, Record record,
+  private void shouldReturnSortedMarcSourceRecordsOnGetWhenSortByOrderIsSpecified(RecordType recordType, Record record,
                                                                                   Snapshot snapshot) {
-    postSnapshots(testContext, snapshot_2, snapshot_3, snapshot);
+    postSnapshots(snapshot_2, snapshot_3, snapshot);
 
-    postRecords(testContext, record_2, record_3, record_5, record_6, record_7, record);
+    postRecords(record_2, record_3, record_5, record_6, record_7, record);
 
-    Async async = testContext.async();
     // NOTE: get source records will not return if there is no associated parsed record
     List<SourceRecord> sourceRecordList = RestAssured.given()
       .spec(spec)
@@ -2173,18 +2052,16 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.deleted", everyItem(is(false)))
       .extract().response().body().as(SourceRecordCollection.class).getSourceRecords();
 
-    testContext.assertEquals(0, sourceRecordList.getFirst().getOrder());
-    async.complete();
+    assertThat(sourceRecordList.getFirst().getOrder(), is(0));
   }
 
-  private void shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(TestContext testContext, Snapshot snapshot,
+  private void shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(Snapshot snapshot,
                                                                         Record record, int totalRecords,
                                                                         RecordType recordType) {
-    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot);
+    postSnapshots(snapshot_1, snapshot_2, snapshot);
 
-    postRecords(testContext, record_1, record_2, record_3, record_4, record);
+    postRecords(record_1, record_2, record_3, record_4, record);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -2195,7 +2072,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords*.recordType", everyItem(is(recordType.name())))
       .body("sourceRecords*.parsedRecord", notNullValue())
       .body("sourceRecords*.deleted", everyItem(is(false)));
-    async.complete();
   }
 
 }

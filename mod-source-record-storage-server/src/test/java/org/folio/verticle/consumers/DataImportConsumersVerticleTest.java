@@ -18,36 +18,33 @@ import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 import org.folio.ActionProfile;
 import org.folio.JobProfile;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.dataimport.util.RestUtil;
+import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -68,14 +65,14 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.AbstractLBServiceTest;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT =
@@ -107,19 +104,20 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
 
-  @Rule
-  public WireMockRule mockServer = new WireMockRule(
-    WireMockConfiguration.wireMockConfig()
+  @RegisterExtension
+  WireMockExtension mockServer = WireMockExtension.newInstance()
+    .configureStaticDsl(true)
+    .options(WireMockConfiguration.wireMockConfig()
       .dynamicPort()
-      .notifier(new Slf4jNotifier(true)));
+      .notifier(new Slf4jNotifier(true)))
+    .build();
 
   private Record record;
   private Record incorrectRecord;
 
-  @Before
-  public void setUp(TestContext context) throws IOException {
-    MockitoAnnotations.openMocks(this);
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
+  @BeforeEach
+  void setUp(VertxTestContext testContext) throws IOException {
+    mockServer.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
@@ -174,7 +172,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .compose(v -> recordDao.saveRecord(record, okapiHeaders))
       .compose(v -> recordDao.saveRecord(incorrectRecord, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
-      .onComplete(context.asyncAssertSuccess());
+      .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
@@ -203,10 +201,10 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
                   .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
                   .withMarcMappingDetails(List.of(marcMappingDetail)))).getMap())))));
 
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
+    mockServer.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
 
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/linking-rules/.*"), true))
+    mockServer.stubFor(get(new UrlPathPattern(new RegexPattern("/linking-rules/.*"), true))
       .willReturn(WireMock.ok().withBody("[]")));
 
     String expectedDate = get005FieldExpectedDate();
@@ -283,10 +281,10 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
                   .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
                   .withMarcMappingDetails(List.of(marcMappingDetail)))).getMap())))));
 
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
+    mockServer.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
 
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern("/linking-rules/.*"), true))
+    mockServer.stubFor(get(new UrlPathPattern(new RegexPattern("/linking-rules/.*"), true))
       .willReturn(WireMock.ok().withBody("[]")));
 
     String incomingParsedContent =
@@ -344,7 +342,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
             .withFolioRecord(ActionProfile.FolioRecord.MARC_AUTHORITY)).getMap())
       ));
 
-    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
+    mockServer.stubFor(get(new UrlPathPattern(new RegexPattern(PROFILE_SNAPSHOT_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
 
     HashMap<String, String> payloadContext = new HashMap<>();

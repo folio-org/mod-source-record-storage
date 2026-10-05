@@ -1,21 +1,18 @@
 package org.folio.dao.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.xlate.edi.stream.EDIStreamException;
-import org.folio.TestUtil;
-import org.folio.rest.jaxrs.model.SourceRecord;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.BlockJUnit4ClassRunner;
-
 import java.io.File;
 import java.io.IOException;
+import org.folio.TestUtil;
+import org.folio.rest.jaxrs.model.SourceRecord;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
-@RunWith(BlockJUnit4ClassRunner.class)
 public class EdifactUtilTest {
 
   private static final String SOURCE_RECORD_PATH = "src/test/resources/mock/sourceRecords/e4cfe577-4015-46d8-a54d-7c9b34796955.json";
@@ -50,14 +47,14 @@ public class EdifactUtilTest {
 
   private SourceRecord sourceRecord;
 
-  @Before
-  public void readSourceRecord() throws IOException {
+  @BeforeEach
+  void readSourceRecord() throws IOException {
     File file = new File(SOURCE_RECORD_PATH);
     sourceRecord = new ObjectMapper().readValue(file, SourceRecord.class);
   }
 
   @Test
-  public void shouldFormatEdifact() throws IOException, EDIStreamException {
+  void shouldFormatEdifact() throws IOException, EDIStreamException {
     String rawEdifact = new ObjectMapper().readValue(
       TestUtil.readFileFromPath(RAW_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), String.class);
     String formattedEdifact = EdifactUtil.formatEdifact(rawEdifact);
@@ -66,7 +63,7 @@ public class EdifactUtilTest {
   }
 
   @Test
-  public void shouldFormatEdifactAlreadyFormatted() throws IOException, EDIStreamException {
+  void shouldFormatEdifactAlreadyFormatted() throws IOException, EDIStreamException {
     String rawEdifact = sourceRecord.getParsedRecord().getFormattedContent();
     String formattedEdifact = EdifactUtil.formatEdifact(rawEdifact);
     assertNotNull(formattedEdifact);
@@ -74,7 +71,7 @@ public class EdifactUtilTest {
   }
 
   @Test
-  public void shouldFormatEdifactWithIgnoredCodeValues() throws IOException, EDIStreamException {
+  void shouldFormatEdifactWithIgnoredCodeValues() throws IOException, EDIStreamException {
     SourceRecord sourceRecord = new ObjectMapper().readValue(new File(SOURCE_RECORD_WITH_IGNORED_CODES_PATH), SourceRecord.class);
     String rawEdifact = sourceRecord.getParsedRecord().getFormattedContent();
     String formattedEdifact = EdifactUtil.formatEdifact(rawEdifact);
@@ -82,9 +79,9 @@ public class EdifactUtilTest {
     assertEquals(sourceRecord.getParsedRecord().getFormattedContent(), formattedEdifact);
   }
 
-  @Test(expected = EDIStreamException.class)
-  public void shouldThrowExceptionAttemptingFormatEdifact() throws IOException, EDIStreamException {
-    EdifactUtil.formatEdifact(INVALID_RAW_EDIFACT_RECORD);
+  @Test
+  void shouldThrowExceptionAttemptingFormatEdifact() {
+    assertThrows(EDIStreamException.class, () -> EdifactUtil.formatEdifact(INVALID_RAW_EDIFACT_RECORD));
   }
 
 }

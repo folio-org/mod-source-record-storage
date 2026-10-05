@@ -9,14 +9,16 @@ import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FRO
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_HOLDING;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -46,16 +48,15 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.handlers.match.MarcHoldingsMatchEventHandler;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT = "{ \"leader\": \"01012cz  a2200241n  4500\", \"fields\": [ { \"001\": \"1000649\" }, { \"005\": \"20171119085041.0\" }, { \"008\": \"201001 n acanaaabn           n aaa     d\" }, { \"010\": { \"subfields\": [ { \"a\": \"n   58020553 \" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"024\": { \"subfields\": [ { \"a\": \"0022-0469\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"035\": { \"subfields\": [ { \"a\": \"90c37ff4-2f1e-451f-8822-87241b081617\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"100\": { \"subfields\": [ { \"a\": \"Eimermacher, Karl\" }, { \"d\": \"CtY\" }, { \"d\": \"MBTI\" }, { \"d\": \"CtY\" }, { \"d\": \"MBTI\" }, { \"d\": \"NIC\" }, { \"d\": \"CStRLIN\" }, { \"d\": \"NIC\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"110\": { \"subfields\": [ { \"a\": \"BR140\" }, { \"b\": \".J6\" } ], \"ind1\": \"0\", \"ind2\": \" \" } }, { \"111\": { \"subfields\": [ { \"a\": \"270.05\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"130\": { \"subfields\": [ { \"a\": \"The Journal of ecclesiastical history\" } ], \"ind1\": \"0\", \"ind2\": \"4\" } }, { \"150\": { \"subfields\": [ { \"a\": \"The Journal of ecclesiastical history.\" } ], \"ind1\": \"0\", \"ind2\": \"4\" } }, { \"151\": { \"subfields\": [ { \"a\": \"London,\" }, { \"b\": \"Cambridge University Press [etc.]\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"155\": { \"subfields\": [ { \"a\": \"32 East 57th St., New York, 10022\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"375\": { \"subfields\": [ { \"a\": \"male\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"377\": { \"subfields\": [ { \"a\": \"ger\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"400\": { \"subfields\": [ { \"a\": \"v.\" }, { \"b\": \"25 cm.\" } ], \"ind1\": \"1\", \"ind2\": \" \" } }, { \"410\": { \"subfields\": [ { \"a\": \"Quarterly,\" }, { \"b\": \"1970-\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"411\": { \"subfields\": [ { \"a\": \"Semiannual,\" }, { \"b\": \"1950-69\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"430\": { \"subfields\": [ { \"a\": \"v. 1-   Apr. 1950-\" } ], \"ind1\": \"0\", \"ind2\": \" \" } }, { \"450\": { \"subfields\": [ { \"a\": \"note$a\" }, { \"u\": \"note$u\" }, { \"3\": \"note$3\" }, { \"5\": \"note$5\" }, { \"6\": \"note$6\" }, { \"8\": \"note$8\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"451\": { \"subfields\": [ { \"a\": \"note$a\" }, { \"b\": \"note$b\" }, { \"c\": \"note$c\" }, { \"d\": \"note$d\" }, { \"e\": \"note$e\" }, { \"3\": \"note$3\" }, { \"5\": \"note$5\" }, { \"6\": \"note$6\" }, { \"8\": \"note$8\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"455\": { \"subfields\": [ { \"a\": \"note$a\" }, { \"b\": \"note$b\" }, { \"c\": \"note$c\" }, { \"d\": \"note$d\" }, { \"e\": \"note$e\" }, { \"f\": \"note$f\" }, { \"h\": \"note$h\" }, { \"i\": \"note$i\" }, { \"j\": \"note$j\" }, { \"k\": \"note$k\" }, { \"l\": \"note$l\" }, { \"n\": \"note$n\" }, { \"o\": \"note$o\" }, { \"u\": \"note$u\" }, { \"x\": \"note$x\" }, { \"z\": \"note$z\" }, { \"2\": \"note$2\" }, { \"3\": \"note$3\" }, { \"5\": \"note$5\" }, { \"8\": \"note$8\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"500\": { \"subfields\": [ { \"a\": \"Editor:   C. W. Dugmore.\" } ], \"ind1\": \" \", \"ind2\": \" \" } }, { \"510\": { \"subfields\": [ { \"a\": \"Church history\" }, { \"x\": \"Periodicals.\" } ], \"ind1\": \" \", \"ind2\": \"0\" } }, { \"511\": { \"subfields\": [ { \"a\": \"Church history\" }, { \"2\": \"fast\" }, { \"0\": \"(OCoLC)fst00860740\" } ], \"ind1\": \" \", \"ind2\": \"7\" } }, { \"530\": { \"subfields\": [ { \"a\": \"Periodicals\" }, { \"2\": \"fast\" }, { \"0\": \"(OCoLC)fst01411641\" } ], \"ind1\": \" \", \"ind2\": \"7\" } }, { \"550\": { \"subfields\": [ { \"a\": \"Dugmore, C. W.\" }, { \"q\": \"(Clifford William),\" }, { \"e\": \"ed.\" } ], \"ind1\": \"1\", \"ind2\": \" \" } }, { \"551\": { \"subfields\": [ { \"k\": \"callNumberPrefix\" }, { \"h\": \"callNumber1\" }, { \"i\": \"callNumber2\" }, { \"m\": \"callNumberSuffix\" }, { \"t\": \"copyNumber\" } ], \"ind1\": \"0\", \"ind2\": \"3\" } }, { \"555\": { \"subfields\": [ { \"u\": \"uri\" }, { \"y\": \"linkText\" }, { \"3\": \"materialsSpecification\" }, { \"z\": \"publicNote\" } ], \"ind1\": \"0\", \"ind2\": \"3\" } }, { \"999\": { \"ind1\": \"f\", \"ind2\": \"f\", \"subfields\": [ { \"s\": \"b90cb1bc-601f-45d7-b99e-b11efd281dcd\" } ] } } ] }";
@@ -70,18 +71,15 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
   private Record incomingRecord;
   private EventHandler handler;
 
-  @BeforeClass
+  @BeforeAll
   public static void setUpClass() throws IOException {
     rawRecordContent = new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class);
   }
 
-  @Before
-  public void setUp(TestContext context) {
-    MockitoAnnotations.initMocks(this);
-
+  @BeforeEach
+  void setUp(VertxTestContext testContext) {
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     handler = new MarcHoldingsMatchEventHandler(recordDao, null);
-    Async async = context.async();
 
     Snapshot existingRecordSnapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
@@ -121,27 +119,26 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshots).onComplete(save -> {
       if (save.failed()) {
-        context.fail(save.cause());
+        testContext.failNow(save.cause());
+        return;
       }
-      async.complete();
+      testContext.completeNow();
     });
   }
 
-  @After
-  public void cleanUp(TestContext context) {
-    Async async = context.async();
+  @AfterEach
+  void cleanUp(VertxTestContext testContext) {
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
-        context.fail(delete.cause());
+        testContext.failNow(delete.cause());
+        return;
       }
-      async.complete();
+      testContext.completeNow();
     });
   }
 
   @Test
-  public void shouldMatchBy999ffsField(TestContext context) {
-    Async async = context.async();
-
+  void shouldMatchBy999ffsField(VertxTestContext testContext) {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_HOLDINGS.value(), Json.encode(incomingRecord));
 
@@ -178,21 +175,18 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
+      .onComplete(testContext.succeeding(existingSavedRecord -> handler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value());
-          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
-          async.complete();
-        }));
+          assertNull(throwable);
+          assertEquals(1, updatedEventPayload.getEventsChain().size());
+          assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value());
+          assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
+          testContext.completeNow();
+        })));
   }
 
   @Test
-  public void shouldMatchBy001Field(TestContext context) {
-    Async async = context.async();
-
+  void shouldMatchBy001Field(VertxTestContext testContext) {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_HOLDINGS.value(), Json.encode(existingRecord));
 
@@ -228,21 +222,18 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
+      .onComplete(testContext.succeeding(existingSavedRecord -> handler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value());
-          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
-          async.complete();
-        }));
+          assertNull(throwable);
+          assertEquals(1, updatedEventPayload.getEventsChain().size());
+          assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value());
+          assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
+          testContext.completeNow();
+        })));
   }
 
   @Test
-  public void shouldMatchBy010aField(TestContext context) {
-    Async async = context.async();
-
+  void shouldMatchBy010aField(VertxTestContext testContext) {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_HOLDINGS.value(), Json.encode(incomingRecord));
 
@@ -279,21 +270,18 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
+      .onComplete(testContext.succeeding(existingSavedRecord -> handler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value());
-          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
-          async.complete();
-        }));
+          assertNull(throwable);
+          assertEquals(1, updatedEventPayload.getEventsChain().size());
+          assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value());
+          assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
+          testContext.completeNow();
+        })));
   }
 
   @Test
-  public void shouldNotMatchBy999ffsField(TestContext context) {
-    Async async = context.async();
-
+  void shouldNotMatchBy999ffsField(VertxTestContext testContext) {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_HOLDINGS.value(), Json.encode(existingRecord));
 
@@ -327,21 +315,18 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(existingSavedRecord -> handler.handle(dataImportEventPayload)
+      .onComplete(testContext.succeeding(existingSavedRecord -> handler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value());
-          context.assertNull(updatedEventPayload.getContext().get(MATCHED_MARC_KEY));
-          async.complete();
-        }));
+          assertNull(throwable);
+          assertEquals(1, updatedEventPayload.getEventsChain().size());
+          assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value());
+          assertNull(updatedEventPayload.getContext().get(MATCHED_MARC_KEY));
+          testContext.completeNow();
+        })));
   }
 
   @Test
-  public void shouldNotMatchBy001Field(TestContext context) {
-    Async async = context.async();
-
+  void shouldNotMatchBy001Field(VertxTestContext testContext) {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_HOLDINGS.value(), Json.encode(existingRecord));
 
@@ -373,19 +358,18 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(record -> handler.handle(dataImportEventPayload)
+      .onComplete(testContext.succeeding(record -> handler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(1, updatedEventPayload.getEventsChain().size());
-          context.assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value());
-          context.assertNull(updatedEventPayload.getContext().get(MATCHED_MARC_KEY));
-          async.complete();
-        }));
+          assertNull(throwable);
+          assertEquals(1, updatedEventPayload.getEventsChain().size());
+          assertEquals(updatedEventPayload.getEventType(), DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value());
+          assertNull(updatedEventPayload.getContext().get(MATCHED_MARC_KEY));
+          testContext.completeNow();
+        })));
   }
 
   @Test
-  public void shouldReturnTrueWhenHandlerIsEligibleForProfile() {
+  void shouldReturnTrueWhenHandlerIsEligibleForProfile() {
     MatchProfile matchProfile = new MatchProfile()
       .withId(UUID.randomUUID().toString())
       .withName("MARC-MARC matching")
@@ -406,11 +390,11 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
-    Assert.assertTrue(isEligible);
+    assertTrue(isEligible);
   }
 
   @Test
-  public void shouldReturnFalseWhenHandlerIsNotEligibleForProfile() {
+  void shouldReturnFalseWhenHandlerIsNotEligibleForProfile() {
     MatchProfile matchProfile = new MatchProfile()
       .withId(UUID.randomUUID().toString())
       .withName("MARC-MARC matching")
@@ -431,11 +415,11 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
-    Assert.assertFalse(isEligible);
+    assertFalse(isEligible);
   }
 
   @Test
-  public void shouldReturnFalseWhenNotMatchProfileForProfile() {
+  void shouldReturnFalseWhenNotMatchProfileForProfile() {
     MappingProfile mappingProfile = new MappingProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Create holding")
@@ -456,53 +440,48 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
-    Assert.assertFalse(isEligible);
+    assertFalse(isEligible);
   }
 
   @Test
-  public void shouldReturnFalseWhenCheckingIsPostProcessingNeeded() {
-    Assert.assertFalse(handler.isPostProcessingNeeded());
+  void shouldReturnFalseWhenCheckingIsPostProcessingNeeded() {
+    assertFalse(handler.isPostProcessingNeeded());
   }
 
   @Test
-  public void shouldMatchBy010aFieldDifferingOnlyInWhitespaceWhenComparisonPartIsSetWithoutQualifier(TestContext context) {
-    Async async = context.async();
+  void shouldMatchBy010aFieldDifferingOnlyInWhitespaceWhenComparisonPartIsSetWithoutQualifier(VertxTestContext testContext) {
     Qualifier numericsOnly = new Qualifier().withComparisonPart(Qualifier.ComparisonPart.NUMERICS_ONLY);
     DataImportEventPayload payload = payloadMatchingOn010a(
       incomingRecordWithParsedContent(PARSED_CONTENT_WITH_REPADDED_LCCN), numericsOnly, numericsOnly);
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(existingSavedRecord -> handler.handle(payload)
+      .onComplete(testContext.succeeding(existingSavedRecord -> handler.handle(payload)
         .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value(), updatedEventPayload.getEventType());
-          context.assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
-          async.complete();
-        }));
+          assertNull(throwable);
+          assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_MATCHED.value(), updatedEventPayload.getEventType());
+          assertEquals(new JsonObject(updatedEventPayload.getContext().get(MATCHED_MARC_KEY)).mapTo(Record.class), existingSavedRecord);
+          testContext.completeNow();
+        })));
   }
 
   @Test
-  public void shouldNotMatchBy010aFieldDifferingOnlyInWhitespaceWhenComparisonPartIsNotSet(TestContext context) {
-    Async async = context.async();
+  void shouldNotMatchBy010aFieldDifferingOnlyInWhitespaceWhenComparisonPartIsNotSet(VertxTestContext testContext) {
     DataImportEventPayload payload = payloadMatchingOn010a(
       incomingRecordWithParsedContent(PARSED_CONTENT_WITH_REPADDED_LCCN), null, null);
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(existingSavedRecord -> handler.handle(payload)
+      .onComplete(testContext.succeeding(existingSavedRecord -> handler.handle(payload)
         .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value(), updatedEventPayload.getEventType());
-          async.complete();
-        }));
+          assertNull(throwable);
+          assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value(), updatedEventPayload.getEventType());
+          testContext.completeNow();
+        })));
   }
 
   @Test
-  public void shouldNotMatchBy010aFieldWhenExistingRecordQualifierExcludesTheValue(TestContext context) {
-    Async async = context.async();
+  void shouldNotMatchBy010aFieldWhenExistingRecordQualifierExcludesTheValue(VertxTestContext testContext) {
     Qualifier existingQualifier = new Qualifier()
       .withQualifierType(Qualifier.QualifierType.BEGINS_WITH)
       .withQualifierValue("zzz");
@@ -510,13 +489,12 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
-      .onComplete(context.asyncAssertSuccess())
-      .onSuccess(existingSavedRecord -> handler.handle(payload)
+      .onComplete(testContext.succeeding(existingSavedRecord -> handler.handle(payload)
         .whenComplete((updatedEventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value(), updatedEventPayload.getEventType());
-          async.complete();
-        }));
+          assertNull(throwable);
+          assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED.value(), updatedEventPayload.getEventType());
+          testContext.completeNow();
+        })));
   }
 
   private Record incomingRecordWithParsedContent(String parsedContent) {

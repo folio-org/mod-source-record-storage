@@ -1,36 +1,5 @@
 package org.folio.rest.impl;
 
-import io.restassured.RestAssured;
-import io.restassured.response.Response;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.util.MatchField;
-import org.folio.dao.util.RecordDaoUtil;
-import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Filter;
-import org.folio.rest.jaxrs.model.Filter.ComparisonPartType;
-import org.folio.rest.jaxrs.model.ParsedRecord;
-import org.folio.rest.jaxrs.model.RawRecord;
-import org.folio.rest.jaxrs.model.Record;
-import org.folio.rest.jaxrs.model.RecordMatchingDto;
-import org.folio.rest.jaxrs.model.Snapshot;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import java.util.Date;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
-import java.util.stream.IntStream;
-
 import static org.folio.rest.jaxrs.model.Filter.ComparisonPartType.ALPHANUMERICS_ONLY;
 import static org.folio.rest.jaxrs.model.Filter.ComparisonPartType.NUMERICS_ONLY;
 import static org.folio.rest.jaxrs.model.Filter.Qualifier.BEGINS_WITH;
@@ -47,7 +16,33 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.oneOf;
 
-@RunWith(VertxUnitRunner.class)
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.vertx.junit5.VertxTestContext;
+import java.util.Date;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
+import java.util.stream.IntStream;
+import org.apache.http.HttpStatus;
+import org.folio.TestUtil;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.MatchField;
+import org.folio.dao.util.RecordDaoUtil;
+import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.Filter;
+import org.folio.rest.jaxrs.model.Filter.ComparisonPartType;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.RecordMatchingDto;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   private static final String RECORDS_MATCHING_PATH = "/source-storage/records/matching";
@@ -69,15 +64,15 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   private Record existingRecord;
   private Record existingDeletedRecord;
 
-  @BeforeClass
-  public static void setUpBeforeClass() {
+  @BeforeAll
+  static void setUpBeforeClass() {
     rawRecordContent = TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH);
     parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_BIB_WITH_999_FIELD_SAMPLE_PATH);
     parsedRecordContentWithout999 = TestUtil.readFileFromPath(PARSED_MARC_BIB_WITHOUT_999_FIELD_SAMPLE_PATH);
   }
 
-  @Before
-  public void setUp(TestContext context) {
+  @BeforeEach
+  void setUpRecordsMatchingApi() {
     snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
       .withProcessingStartedDate(new Date())
@@ -106,20 +101,19 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(new ParsedRecord().withId(deletedRecordId).withContent(parsedRecordContentWithout999))
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("54321"));
 
-    postSnapshots(context, snapshot);
-    postRecords(context, existingRecord, existingDeletedRecord);
+    postSnapshots(snapshot);
+    postRecords(existingRecord, existingDeletedRecord);
   }
 
-  @After
-  public void cleanUp(TestContext context) {
-    Async async = context.async();
+  @AfterEach
+  void cleanUp(VertxTestContext testContext) {
     SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
-      .onSuccess(v -> async.complete())
-      .onFailure(context::fail);
+      .onSuccess(v -> testContext.completeNow())
+      .onFailure(testContext::failNow);
   }
 
   @Test
-  public void shouldReturnEmptyCollectionIfRecordsDoNotMatch() {
+  void shouldReturnEmptyCollectionIfRecordsDoNotMatch() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -141,7 +135,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByMatchedIdField() {
+  void shouldMatchRecordByMatchedIdField() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -165,12 +159,12 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchMarcBibRecordByInstanceIdField() {
+  void shouldMatchMarcBibRecordByInstanceIdField() {
     shouldMatchRecordByExternalIdField(existingRecord);
   }
 
   @Test
-  public void shouldMatchMarcBibRecordByInstanceIdFieldAndQualifier() {
+  void shouldMatchMarcBibRecordByInstanceIdFieldAndQualifier() {
     var instanceId = existingRecord.getExternalIdsHolder().getInstanceId();
     var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, instanceId.substring(0, SPLIT_INDEX));
     var endWith =  new MatchField.QualifierMatch(ENDS_WITH, instanceId.substring(SPLIT_INDEX));
@@ -181,7 +175,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchMarcAuthorityRecordByAuthorityIdField(TestContext context) {
+  void shouldMatchMarcAuthorityRecordByAuthorityIdField() {
     String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_AUTHORITY_WITH_999_FIELD_SAMPLE_PATH);
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
@@ -194,12 +188,12 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
       .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(UUID.randomUUID().toString()));
 
-    postRecords(context, record);
+    postRecords(record);
     shouldMatchRecordByExternalIdField(record);
   }
 
   @Test
-  public void shouldMatchMarcHoldingsRecordByHoldingIdField(TestContext context) {
+  void shouldMatchMarcHoldingsRecordByHoldingIdField() {
     String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_HOLDINGS_WITH_999_FIELD_SAMPLE_PATH);
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
@@ -212,7 +206,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
       .withExternalIdsHolder(new ExternalIdsHolder().withHoldingsId(UUID.randomUUID().toString()));
 
-    postRecords(context, record);
+    postRecords(record);
     shouldMatchRecordByExternalIdField(record);
   }
 
@@ -263,7 +257,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchMarcBibRecordByInstanceIdFieldWithQualifierAndComparePart(TestContext context) {
+  void shouldMatchMarcBibRecordByInstanceIdFieldWithQualifierAndComparePart() {
 
     String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     String recordId = UUID.randomUUID().toString();
@@ -277,7 +271,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID));
 
-    postRecords(context, record);
+    postRecords(record);
 
     var incomingValueNumeric = "ocn393893";
     var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, incomingValueNumeric.substring(0, SPLIT_INDEX));
@@ -299,40 +293,40 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchMarcBibRecordByComparisonPartWithoutQualifier(TestContext context) {
-    Record marcRecord = postRecordWith035Sample(context);
+  void shouldMatchMarcBibRecordByComparisonPartWithoutQualifier() {
+    Record marcRecord = postRecordWith035Sample();
 
     matchOnSingleField(marcRecord, "035", "a", List.of("OCoLC63611770"), null, null, ALPHANUMERICS_ONLY);
   }
 
   @Test
-  public void shouldMatchMarcBibRecordBy010FieldDifferingOnlyInWhitespace(TestContext context) {
-    Record marcRecord = postRecordWith035Sample(context);
+  void shouldMatchMarcBibRecordBy010FieldDifferingOnlyInWhitespace() {
+    Record marcRecord = postRecordWith035Sample();
 
     matchOnSingleField(marcRecord, "010", "a", List.of("55001156M"), null, null, ALPHANUMERICS_ONLY);
   }
 
   @Test
-  public void shouldIgnoreEmptyQualifierValueAndStillApplyComparisonPart(TestContext context) {
-    Record marcRecord = postRecordWith035Sample(context);
+  void shouldIgnoreEmptyQualifierValueAndStillApplyComparisonPart() {
+    Record marcRecord = postRecordWith035Sample();
 
     matchOnSingleField(marcRecord, "035", "a", List.of("OCoLC63611770"), CONTAINS, "", ALPHANUMERICS_ONLY);
   }
 
   @Test
-  public void shouldMatchMarcBibRecordBy001FieldWithComparisonPartWithoutQualifier(TestContext context) {
+  void shouldMatchMarcBibRecordBy001FieldWithComparisonPartWithoutQualifier() {
     String content = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH)
       .replace("\"001\": \"393893\"", "\"001\": \"n 393893 \"");
-    Record record = postRecordWithParsedContent(context, content);
+    Record record = postRecordWithParsedContent(content);
 
     matchOnSingleField(record, "001", "", List.of("n393893"), null, null, ALPHANUMERICS_ONLY);
   }
 
-  private Record postRecordWith035Sample(TestContext context) {
-    return postRecordWithParsedContent(context, TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH));
+  private Record postRecordWith035Sample() {
+    return postRecordWithParsedContent(TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH));
   }
 
-  private Record postRecordWithParsedContent(TestContext context, String content) {
+  private Record postRecordWithParsedContent(String content) {
     String recordId = UUID.randomUUID().toString();
     Record marcRecord = new Record()
       .withId(recordId)
@@ -346,7 +340,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(HR_ID));
 
-    postRecords(context, marcRecord);
+    postRecords(marcRecord);
     return marcRecord;
   }
 
@@ -424,7 +418,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByInstanceHridField() {
+  void shouldMatchRecordByInstanceHridField() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -443,7 +437,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchDeletedRecordByInstanceHridField() {
+  void shouldMatchDeletedRecordByInstanceHridField() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -462,7 +456,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchDeletedRecordByMatchedId() {
+  void shouldMatchDeletedRecordByMatchedId() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -484,7 +478,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByInstanceHridFieldAndQualifier() {
+  void shouldMatchRecordByInstanceHridFieldAndQualifier() {
     var hrId = existingRecord.getExternalIdsHolder().getInstanceHrid();
     var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, hrId.substring(0, SPLIT_INDEX));
     var endWith =  new MatchField.QualifierMatch(ENDS_WITH, hrId.substring(SPLIT_INDEX));
@@ -495,7 +489,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldNotMatchMarcBibRecordByInstanceIdFieldAndQualifier(){
+  void shouldNotMatchMarcBibRecordByInstanceIdFieldAndQualifier(){
     var externalId = RecordDaoUtil.getExternalId(existingRecord.getExternalIdsHolder(), existingRecord.getRecordType());
     var qualifier = new MatchField.QualifierMatch(CONTAINS, "ABC");
     RestAssured.given()
@@ -519,7 +513,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByMultipleDataFields() {
+  void shouldMatchRecordByMultipleDataFields() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -540,7 +534,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .body("identifiers[0].externalId", is(existingRecord.getExternalIdsHolder().getInstanceId()));
   }
 
-  public void shouldMatchRecordByMultipleDataFieldsAndQualifier(MatchField.QualifierMatch qualifier) {
+  void shouldMatchRecordByMultipleDataFieldsAndQualifier(MatchField.QualifierMatch qualifier) {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -564,7 +558,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByMultipleControlledFields() {
+  void shouldMatchRecordByMultipleControlledFields() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -583,7 +577,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByMultipleDataFieldsAndQualifier() {
+  void shouldMatchRecordByMultipleDataFieldsAndQualifier() {
     var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, FIELD_035.substring(0, SPLIT_INDEX));
     var endWith = new MatchField.QualifierMatch(ENDS_WITH, FIELD_035.substring(SPLIT_INDEX));
     var contains = new MatchField.QualifierMatch(CONTAINS, FIELD_035.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
@@ -593,7 +587,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldNotMatchRecordByMultipleDataFieldsAndQualifier() {
+  void shouldNotMatchRecordByMultipleDataFieldsAndQualifier() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -635,7 +629,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByMultipleControlledFieldsAndQualifier() {
+  void shouldMatchRecordByMultipleControlledFieldsAndQualifier() {
     var beginWith = new MatchField.QualifierMatch(BEGINS_WITH, FIELD_007.substring(0, SPLIT_INDEX));
     var endWith = new MatchField.QualifierMatch(ENDS_WITH, FIELD_007.substring(SPLIT_INDEX));
     var contains = new MatchField.QualifierMatch(CONTAINS, FIELD_007.substring(SPLIT_INDEX, SPLIT_INDEX + SPLIT_INDEX));
@@ -645,7 +639,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldNotMatchRecordByMultipleControlledFieldsAndQualifier(){
+  void shouldNotMatchRecordByMultipleControlledFieldsAndQualifier(){
     RestAssured.given()
       .spec(spec)
       .when()
@@ -664,7 +658,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByMultiple024FieldsWithWildcardsInd() {
+  void shouldMatchRecordByMultiple024FieldsWithWildcardsInd() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -686,7 +680,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldNotMatchRecordBy035FieldIfRecordExternalIdIsNull(TestContext context) {
+  void shouldNotMatchRecordBy035FieldIfRecordExternalIdIsNull() {
     String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_AUTHORITY_WITH_999_FIELD_SAMPLE_PATH);
     String recordId = UUID.randomUUID().toString();
     Record record = new Record()
@@ -698,7 +692,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
       .withRawRecord(new RawRecord().withId(recordId).withContent(rawRecordContent))
       .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent));
 
-    postRecords(context, record);
+    postRecords(record);
 
     RestAssured.given()
       .spec(spec)
@@ -719,7 +713,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnLimitedRecordsIdentifiersCollectionWithLimitAndOffset(TestContext context) {
+  void shouldReturnLimitedRecordsIdentifiersCollectionWithLimitAndOffset() {
     String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     List<String> recordsIds = List.of("00000000-0000-1000-8000-000000000004", "00000000-0000-1000-8000-000000000002",
       "00000000-0000-1000-8000-000000000003", "00000000-0000-1000-8000-000000000001");
@@ -735,7 +729,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
         .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID));
 
-      postRecords(context, record);
+      postRecords(record);
     }
 
     RestAssured.given()
@@ -761,7 +755,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByMarcFieldAndExternalIds(TestContext context) {
+  void shouldMatchRecordByMarcFieldAndExternalIds() {
     String parsedContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     Record[] records = IntStream.range(0, 2)
       .mapToObj(i -> UUID.randomUUID().toString())
@@ -777,7 +771,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
           .withInstanceHrid(String.valueOf(new Random().nextInt(100)))))
       .toArray(Record[]::new);
 
-    postRecords(context, records);
+    postRecords(records);
     Record expectedRecord = records[0];
 
     List<Filter> filters = List.of(
@@ -812,7 +806,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordByMultipleFiltersWithSpecifiedComparisonPartTypes() {
+  void shouldMatchRecordByMultipleFiltersWithSpecifiedComparisonPartTypes() {
     List<Filter> filters = List.of(
       new Filter()
         .withValues(List.of("nin00009530412"))
@@ -851,7 +845,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMatchRecordIfMultipleFiltersSpecifiedAndLogicalOperatorIsOr() {
+  void shouldMatchRecordIfMultipleFiltersSpecifiedAndLogicalOperatorIsOr() {
     List<Filter> filters = List.of(
       new Filter()
         .withValues(List.of("nin00009530412"))
@@ -884,7 +878,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnUnprocessableEntityIfFilterIsNotSpecified() {
+  void shouldReturnUnprocessableEntityIfFilterIsNotSpecified() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -897,7 +891,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnUnprocessableEntityIfValuesIsNotSpecified() {
+  void shouldReturnUnprocessableEntityIfValuesIsNotSpecified() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -914,7 +908,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldNotReturnTotalRecordsIfReturnTotalRecordsIsFalse(TestContext context) {
+  void shouldNotReturnTotalRecordsIfReturnTotalRecordsIsFalse() {
     String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_WITH_035_FIELD_SAMPLE_PATH);
     int expectedRecordCount = 3;
 
@@ -930,7 +924,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
         .withParsedRecord(new ParsedRecord().withId(recordId).withContent(parsedRecordContent))
         .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid(HR_ID));
 
-      postRecords(context, record);
+      postRecords(record);
     }
 
     RestAssured.given()
@@ -953,7 +947,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldNotReturnTotalRecordsIfReturnTotalRecordsIsFalseAndMatchingByMatchedIdField() {
+  void shouldNotReturnTotalRecordsIfReturnTotalRecordsIsFalseAndMatchingByMatchedIdField() {
     RestAssured.given()
       .spec(spec)
       .when()

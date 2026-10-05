@@ -3,6 +3,10 @@ package org.folio.dao;
 import static org.folio.dao.RecordDaoImpl.INDEXERS_DELETION_LOCK_NAMESPACE_ID;
 import static org.folio.rest.jaxrs.model.Record.State.ACTUAL;
 import static org.folio.rest.jaxrs.model.Record.State.DELETED;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
@@ -12,17 +16,13 @@ import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.Future;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.AdvisoryLockUtil;
@@ -43,20 +43,16 @@ import org.folio.services.AbstractLBServiceTest;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.entities.RecordsModifierOperator;
 import org.folio.services.util.TypeConnection;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RecordDaoImplTest extends AbstractLBServiceTest {
-
-  @Rule
-  public RunTestOnContext rule = new RunTestOnContext();
 
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
@@ -68,10 +64,8 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   private RawRecord rawRecord;
   private ParsedRecord marcRecord;
 
-  @Before
-  public void setUp(TestContext context) throws IOException {
-    MockitoAnnotations.openMocks(this);
-    Async async = context.async();
+  @BeforeEach
+  void setUp(VertxTestContext testContext) throws IOException {
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     rawRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
@@ -111,29 +105,17 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(record, okapiHeaders))
       .compose(savedSnapshot -> recordDao.saveRecord(deletedRecord, okapiHeaders))
-      .onComplete(save -> {
-        if (save.failed()) {
-          context.fail(save.cause());
-        }
-        async.complete();
-      });
+      .onComplete(testContext.succeedingThenComplete());
   }
 
-  @After
-  public void cleanUp(TestContext context) {
-    Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
+  @AfterEach
+  void cleanUp(VertxTestContext testContext) {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  public void shouldReturnMultipleRecordsOnGetMatchedRecordsIfMatchedRecordIdsNotSpecified(TestContext context) {
-    Async async = context.async();
-
+  void shouldReturnMultipleRecordsOnGetMatchedRecordsIfMatchedRecordIdsNotSpecified(VertxTestContext testContext) {
     MatchField matchField = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
 
     Snapshot copyRecordSnapshot = TestMocks.getSnapshot(1);
@@ -154,20 +136,18 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
       .compose(v -> recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertEquals(2, ar.result().size());
-      List<String> ids = ar.result().stream().map(Record::getId).toList();
-      context.assertTrue(ids.contains(copyRecord.getId()));
-      context.assertTrue(ids.contains(record.getId()));
+    future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+      assertTrue(result.size() == 2);
+      List<String> ids = result.stream().map(Record::getId).toList();
+      assertTrue(ids.contains(copyRecord.getId()));
+      assertTrue(ids.contains(record.getId()));
       recordDao.deleteRecordsBySnapshotId(copyRecordSnapshot.getJobExecutionId(), TENANT_ID)
-        .onComplete(v -> async.complete());
-    });
+        .onComplete(v -> testContext.completeNow());
+    })));
   }
 
   @Test
-  public void shouldReturnSingleRecordsOnGetMatchedRecordsIfMatchedRecordIdsSpecified(TestContext context) {
-    Async async = context.async();
+  void shouldReturnSingleRecordsOnGetMatchedRecordsIfMatchedRecordIdsSpecified(VertxTestContext testContext) {
     MatchField matchField = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
 
     Snapshot copyRecordSnapshot = TestMocks.getSnapshot(1);
@@ -188,63 +168,53 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
       .compose(v -> recordDao.getMatchedRecords(matchField, List.of(record.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()), TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertEquals(1, ar.result().size());
-      context.assertEquals(record.getId(), ar.result().getFirst().getId());
+    future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+      assertEquals(1, result.size());
+      assertEquals(record.getId(), result.getFirst().getId());
       recordDao.deleteRecordsBySnapshotId(copyRecordSnapshot.getJobExecutionId(), TENANT_ID)
-        .onComplete(v -> async.complete());
-    });
+        .onComplete(v -> testContext.completeNow());
+    })));
   }
 
   @Test
-  public void shouldReturnDeletedRecord(TestContext context) {
-    Async async = context.async();
+  void shouldReturnDeletedRecord(VertxTestContext testContext) {
+    Future<Optional<Record>> future = recordDao.getRecordByExternalId(deletedRecordId, IdType.RECORD, TENANT_ID);
 
-    Future<Optional<Record>> future =  recordDao.getRecordByExternalId(deletedRecordId, IdType.RECORD, TENANT_ID);
-
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertTrue(ar.result().isPresent());
-      context.assertEquals(deletedRecord.getId(), ar.result().get().getId());
-      async.complete();
-    });
+    future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+      assertTrue(result.isPresent());
+      assertEquals(deletedRecord.getId(), result.get().getId());
+      testContext.completeNow();
+    })));
   }
 
   @Test
-  public void shouldReturnEmptyListIfValueFieldIsEmpty(TestContext context) {
-    var async = context.async();
+  void shouldReturnEmptyListIfValueFieldIsEmpty(VertxTestContext testContext) {
     var matchField = new MatchField("010", "1", "", "a", MissingValue.getInstance());
 
     var future = recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
 
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertEquals(0, ar.result().size());
-      async.complete();
-    });
+    future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+      assertEquals(0, result.size());
+      testContext.completeNow();
+    })));
   }
 
   @Test
-  public void shouldReturnFalseWhenPreviousIndexersDeletionIsInProgress(TestContext context) {
-    Async async = context.async();
-
+  void shouldReturnFalseWhenPreviousIndexersDeletionIsInProgress(VertxTestContext testContext) {
     Future<Boolean> future = postgresClientFactory.getQueryExecutor(TENANT_ID)
     // gets lock on DB in same way as deleteMarcIndexersOldVersions() method to model indexers deletion being in progress
       .transaction(queryExecutor -> AdvisoryLockUtil.acquireLock(queryExecutor, INDEXERS_DELETION_LOCK_NAMESPACE_ID, TENANT_ID.hashCode())
         .compose(v -> recordDao.deleteMarcIndexersOldVersions(TENANT_ID, 2)));
 
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertFalse(ar.result());
-      async.complete();
-    });
+    future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+      assertFalse(result);
+      testContext.completeNow();
+    })));
   }
 
 
   @Test
-  public void shouldPublishRecordUpdatedWithPreModificationSnapshotWhenSavingByExternalIds(TestContext context) {
-    Async async = context.async();
+  void shouldPublishRecordUpdatedWithPreModificationSnapshotWhenSavingByExternalIds(VertxTestContext testContext) {
     // Build a self-contained fixture on a COMMITTED snapshot so that persistDatabaseRecords()
     // will mark the previous version as OLD (its lookup filters by committed snapshots only)
     // and the re-fetch inside the DAO returns strictly the freshly saved version.
@@ -259,7 +229,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
     // structurally valid and formatRecord() does not fall back to an ErrorRecord.
     String originalMarker = "20141107001016.0";
     String modifiedMarker = "20990101000000.0";
-    context.assertTrue(originalContent.contains(originalMarker));
+    assertTrue(originalContent.contains(originalMarker));
     String modifiedContent = originalContent.replace(originalMarker, modifiedMarker);
     Record seedRecord = new Record()
       .withId(seedRecordId)
@@ -300,9 +270,8 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       })
       .compose(v -> recordDao.saveRecordsByExternalIds(List.of(seedExternalId), RecordType.MARC_BIB, modifier, okapiHeaders));
 
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertEquals(1, ar.result().getTotalRecords());
+    future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+      assertEquals(1, result.getTotalRecords());
 
       ArgumentCaptor<Record> oldCaptor = ArgumentCaptor.forClass(Record.class);
       ArgumentCaptor<Record> newCaptor = ArgumentCaptor.forClass(Record.class);
@@ -316,53 +285,53 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       // even though the modifier has already mutated the shared record instance in-place.
       String oldContent = capturedOld.getParsedRecord().getContent().toString();
       String newContent = capturedNew.getParsedRecord().getContent().toString();
-      context.assertTrue(oldContent.contains(originalMarker));
-      context.assertFalse(oldContent.contains(modifiedMarker));
-      context.assertTrue(newContent.contains(modifiedMarker));
-      context.assertFalse(newContent.contains(originalMarker));
-      context.assertEquals(seedRecordId, capturedOld.getId());
-      context.assertNotEquals(capturedOld.getId(), capturedNew.getId());
-      context.assertEquals(seedRecord.getMatchedId(), capturedOld.getMatchedId());
-      context.assertEquals(seedRecord.getMatchedId(), capturedNew.getMatchedId());
-      async.complete();
-    });
+      assertTrue(oldContent.contains(originalMarker));
+      assertFalse(oldContent.contains(modifiedMarker));
+      assertTrue(newContent.contains(modifiedMarker));
+      assertFalse(newContent.contains(originalMarker));
+      assertEquals(seedRecordId, capturedOld.getId());
+      assertNotEquals(capturedOld.getId(), capturedNew.getId());
+      assertEquals(seedRecord.getMatchedId(), capturedOld.getMatchedId());
+      assertEquals(seedRecord.getMatchedId(), capturedNew.getMatchedId());
+      testContext.completeNow();
+    })));
   }
 
   @Test
-  public void shouldReturnEmptyResponseAndNotPublishEventsWhenNoRecordsFoundByExternalIds(TestContext context) {
+  void shouldReturnEmptyResponseAndNotPublishEventsWhenNoRecordsFoundByExternalIds(VertxTestContext testContext) {
     clearInvocations(recordDomainEventPublisher);
-    Async async = context.async();
     String unknownExternalId = UUID.randomUUID().toString();
     RecordsModifierOperator modifier = collection -> collection;
 
-    Future<RecordsBatchResponse> future = recordDao.saveRecordsByExternalIds(
-      List.of(unknownExternalId), RecordType.MARC_BIB, modifier, okapiHeaders);
+    vertx.runOnContext(v -> {
+      Future<RecordsBatchResponse> future = recordDao.saveRecordsByExternalIds(
+        List.of(unknownExternalId), RecordType.MARC_BIB, modifier, okapiHeaders);
 
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertEquals(0, ar.result().getTotalRecords());
-      verify(recordDomainEventPublisher, never()).publishRecordUpdated(any(), any(), any());
-      verify(recordDomainEventPublisher, never()).publishRecordCreated(any(), any());
-      async.complete();
+      future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+        assertEquals(0, result.getTotalRecords());
+        verify(recordDomainEventPublisher, never()).publishRecordUpdated(any(), any(), any());
+        verify(recordDomainEventPublisher, never()).publishRecordCreated(any(), any());
+        testContext.completeNow();
+      })));
     });
   }
 
   @Test
-  public void shouldSkipDeletedRecordsWhenSavingByExternalIds(TestContext context) {
+  void shouldSkipDeletedRecordsWhenSavingByExternalIds(VertxTestContext testContext) {
     clearInvocations(recordDomainEventPublisher);
-    Async async = context.async();
     RecordsModifierOperator modifier = collection -> collection;
 
     String deletedExternalId = deletedRecord.getExternalIdsHolder().getInstanceId();
-    Future<RecordsBatchResponse> future = recordDao.saveRecordsByExternalIds(
-      List.of(deletedExternalId), RecordType.MARC_BIB, modifier, okapiHeaders);
+    vertx.runOnContext(v -> {
+      Future<RecordsBatchResponse> future = recordDao.saveRecordsByExternalIds(
+        List.of(deletedExternalId), RecordType.MARC_BIB, modifier, okapiHeaders);
 
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertEquals(0, ar.result().getTotalRecords());
-      verify(recordDomainEventPublisher, never()).publishRecordUpdated(any(), any(), any());
-      verify(recordDomainEventPublisher, never()).publishRecordCreated(any(), any());
-      async.complete();
+      future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+        assertEquals(0, result.getTotalRecords());
+        verify(recordDomainEventPublisher, never()).publishRecordUpdated(any(), any(), any());
+        verify(recordDomainEventPublisher, never()).publishRecordCreated(any(), any());
+        testContext.completeNow();
+      })));
     });
   }
 }

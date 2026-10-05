@@ -6,11 +6,11 @@ import static org.folio.rest.jooq.Tables.MARC_RECORDS_TRACKING;
 import static org.jooq.impl.DSL.field;
 import static org.jooq.impl.DSL.name;
 import static org.jooq.impl.DSL.table;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.vertx.core.Future;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import java.util.Map;
 import java.util.UUID;
 
@@ -31,14 +31,14 @@ import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.jooq.Field;
 import org.jooq.Table;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTest {
 
   private static final String MARC_INDEXERS_TABLE = "marc_indexers";
@@ -56,10 +56,8 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
   private Record record;
   private MarcIndexersVersionDeletionVerticle marcIndexersVersionDeletionVerticle;
 
-  @Before
-  public void setUp(TestContext context) {
-    MockitoAnnotations.openMocks(this);
-    Async async = context.async();
+  @BeforeEach
+  void setUp(VertxTestContext testContext) {
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     tenantDataProvider = new TenantDataProviderImpl(vertx);
     recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache);
@@ -84,61 +82,41 @@ public class MarcIndexersVersionDeletionVerticleTest extends AbstractLBServiceTe
       .execute(dsl -> dsl.deleteFrom(table(name(OLD_RECORDS_TRACKING_TABLE))))
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot))
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
-      .onComplete(save -> {
-        if (save.failed()) {
-          context.fail(save.cause());
-        }
-        async.complete();
-      });
+      .onComplete(testContext.succeedingThenComplete());
   }
 
-  @After
-  public void cleanUp(TestContext context) {
-    Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
+  @AfterEach
+  void cleanUp(VertxTestContext testContext) {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  public void shouldDeleteOldVersionsOfMarcIndexers(TestContext context) {
-    Async async = context.async();
-
+  void shouldDeleteOldVersionsOfMarcIndexers(VertxTestContext testContext) {
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
-    // performs record update in the DB that leads to new indexers creation with incremented version
-    // so that previous existing indexers become old and should be deleted
-    Future<Boolean> future = recordService.updateRecord(record, okapiHeaders)
+    recordService.updateRecord(record, okapiHeaders)
       .compose(v -> existOldMarcIndexersVersions())
-      .onSuccess(context::assertTrue)
+      .onSuccess(existsBefore -> testContext.verify(() -> assertTrue(existsBefore)))
       .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(2))
-      .compose(deleteRes -> existOldMarcIndexersVersions());
-
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertFalse(ar.result());
-      async.complete();
-    });
+      .compose(deleteRes -> existOldMarcIndexersVersions())
+      .onComplete(testContext.succeeding(existsAfterDelete -> testContext.verify(() -> {
+        assertFalse(existsAfterDelete);
+        testContext.completeNow();
+      })));
   }
 
   @Test
-  public void shouldDeleteMarcIndexersRelatedToRecordInOldState(TestContext context) {
-    Async async = context.async();
-
+  void shouldDeleteMarcIndexersRelatedToRecordInOldState(VertxTestContext testContext) {
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
-    Future<Boolean> future = recordService.updateRecord(record.withState(OLD), okapiHeaders)
+    recordService.updateRecord(record.withState(OLD), okapiHeaders)
       .compose(v -> existMarcIndexersByRecordId(record.getId()))
-      .onSuccess(context::assertTrue)
+      .onSuccess(existsBefore -> testContext.verify(() -> assertTrue(existsBefore)))
       .compose(v -> marcIndexersVersionDeletionVerticle.deleteOldMarcIndexerVersions(2))
-      .compose(deleteRes -> existMarcIndexersByRecordId(record.getId()));
-
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertFalse(ar.result());
-      async.complete();
-    });
+      .compose(deleteRes -> existMarcIndexersByRecordId(record.getId()))
+      .onComplete(testContext.succeeding(existsAfterDelete -> testContext.verify(() -> {
+        assertFalse(existsAfterDelete);
+        testContext.completeNow();
+      })));
   }
 
   private Future<Boolean> existOldMarcIndexersVersions() {

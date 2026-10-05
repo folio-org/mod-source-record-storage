@@ -1,23 +1,19 @@
 package org.folio.dao.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.common.Json;
+import java.io.File;
+import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.SourceRecord;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.BlockJUnit4ClassRunner;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.marc4j.MarcException;
 
-import java.io.File;
-import java.io.IOException;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
-@RunWith(BlockJUnit4ClassRunner.class)
 public class MarcUtilTest {
 
   private static final String SOURCE_RECORD_PATH = "src/test/resources/mock/sourceRecords/d3cd3e1e-a18c-4f7c-b053-9aa50343394e.json";
@@ -29,14 +25,14 @@ public class MarcUtilTest {
   private SourceRecord sourceRecord;
   private SourceRecord reorderedSourceRecord;
 
-  @Before
-  public void readSourceRecord() throws IOException {
+  @BeforeEach
+  void readSourceRecord() throws IOException {
     File file = new File(SOURCE_RECORD_PATH);
     sourceRecord = new ObjectMapper().readValue(file, SourceRecord.class);
   }
 
   @Test
-  public void shouldConvertRawMarcToMarcJson() throws IOException, MarcException {
+  void shouldConvertRawMarcToMarcJson() throws IOException, MarcException {
     String rawMarc = new ObjectMapper().readValue(new File(RAW_RECORD_PATH), RawRecord.class).getContent();
     String marcJson = MarcUtil.rawMarcToMarcJson(rawMarc);
     assertNotNull(marcJson);
@@ -44,7 +40,7 @@ public class MarcUtilTest {
   }
 
   @Test
-  public void shouldConvertRawMarcToTxtMarc() throws IOException, MarcException {
+  void shouldConvertRawMarcToTxtMarc() throws IOException, MarcException {
     String marcJson = new ObjectMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent());
     String rawMarc = MarcUtil.marcJsonToRawMarc(marcJson);
     assertNotNull(rawMarc);
@@ -54,7 +50,7 @@ public class MarcUtilTest {
   }
 
   @Test
-  public void shouldConvertMarcJsonToRawMarc() throws IOException, MarcException {
+  void shouldConvertMarcJsonToRawMarc() throws IOException, MarcException {
     String marcJson = new ObjectMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent());
     String rawMarc = MarcUtil.marcJsonToRawMarc(marcJson);
     assertNotNull(rawMarc);
@@ -62,7 +58,7 @@ public class MarcUtilTest {
   }
 
   @Test
-  public void shouldConvertMarcJsonToTxtMarc() throws IOException, MarcException {
+  void shouldConvertMarcJsonToTxtMarc() throws IOException, MarcException {
     String marcJson = new ObjectMapper().writeValueAsString(sourceRecord.getParsedRecord().getContent());
     String txtMarc = MarcUtil.marcJsonToTxtMarc(marcJson);
     assertNotNull(txtMarc);
@@ -70,7 +66,7 @@ public class MarcUtilTest {
   }
 
   @Test
-  public void shouldReorderMarcRecordFields() throws IOException, MarcException {
+  void shouldReorderMarcRecordFields() throws IOException, MarcException {
     var systemReorderedRecordContent = readFileFromPath(PARSED_RECORD);
     var userOrderRecordContent = readFileFromPath(REORDERED_PARSED_RECORD);
     var expectedOrderRecord = readFileFromPath(REORDERING_RESULT_RECORD);

@@ -11,20 +11,22 @@ import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_BIB;
 import static org.folio.services.MarcBibUpdateModifyEventHandlerTest.getParsedContentWithoutLeaderAndDate;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.matching.RegexPattern;
 import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
@@ -35,7 +37,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.JobProfile;
@@ -43,13 +44,12 @@ import org.folio.MappingProfile;
 import org.folio.TestUtil;
 import org.folio.dao.RecordDao;
 import org.folio.dao.RecordDaoImpl;
-import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.dao.util.executor.PgPoolQueryExecutor;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
-import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingMetadataDto;
 import org.folio.rest.jaxrs.model.MarcField;
@@ -59,21 +59,21 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.caches.MappingParametersSnapshotCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.handlers.actions.MarcHoldingsUpdateModifyEventHandler;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
@@ -84,6 +84,12 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
 
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;
+
+  @RegisterExtension
+  WireMockExtension mockServer = WireMockExtension.newInstance()
+    .configureStaticDsl(true)
+    .options(WireMockConfiguration.wireMockConfig().dynamicPort().notifier(new Slf4jNotifier(true)))
+    .build();
 
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
@@ -141,35 +147,25 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
             .withContentType(MAPPING_PROFILE)
             .withContent(JsonObject.mapFrom(mappingProfile).getMap())))));
 
-  @Rule
-  public WireMockRule mockServer = new WireMockRule(
-    WireMockConfiguration.wireMockConfig()
-      .dynamicPort()
-      .notifier(new Slf4jNotifier(true)));
-
-  @Rule
-  public RunTestOnContext rule = new RunTestOnContext();
-
-  @BeforeClass
-  public static void setUpClass() throws IOException {
+  @BeforeAll
+  static void setUpClassMarcHoldingsUpdateModify() throws IOException {
     rawRecord = new RawRecord().withId(RECORD_ID)
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedRecord = new ParsedRecord().withId(RECORD_ID)
       .withContent(PARSED_CONTENT);
   }
 
-  @Before
-  public void setUp(TestContext context) {
-    MockitoAnnotations.openMocks(this);
+  @BeforeEach
+  void setUp(Vertx injectedVertx, VertxTestContext testContext) {
     WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
       .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
         .withMappingParams(Json.encode(new MappingParameters()))))));
 
-    ConsortiumConfigurationCache consortiumConfigurationCache = new ConsortiumConfigurationCache(vertx, CACHE_EXPIRATION_TIME);
+    ConsortiumConfigurationCache consortiumConfigurationCache = new ConsortiumConfigurationCache(injectedVertx, CACHE_EXPIRATION_TIME);
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache);
     modifyRecordEventHandler = new MarcHoldingsUpdateModifyEventHandler(recordService, null,
-      new MappingParametersSnapshotCache(vertx, CACHE_EXPIRATION_TIME));
+      new MappingParametersSnapshotCache(injectedVertx, CACHE_EXPIRATION_TIME));
 
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
@@ -195,20 +191,18 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
     SnapshotDaoUtil.save(queryExecutor, snapshot)
       .compose(v -> recordService.saveRecord(record, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
-      .onComplete(context.asyncAssertSuccess());
+      .onComplete(testContext.succeedingThenComplete());
   }
 
-  @After
-  public void tearDown(TestContext context) {
+  @AfterEach
+  void tearDown(VertxTestContext testContext) {
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
-      .onComplete(context.asyncAssertSuccess());
+      .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  public void shouldUpdateMatchedMarcRecordWithFieldFromIncomingRecord(TestContext context) {
+  void shouldUpdateMatchedMarcRecordWithFieldFromIncomingRecord(VertxTestContext testContext) {
     // given
-    Async async = context.async();
-
     String expectedDate = get005FieldExpectedDate();
     String incomingParsedContent = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     String expectedParsedContent = "{\"leader\":\"00134nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"ybp7406512\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"999\":{\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
@@ -235,26 +229,24 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst());
 
-    // when
-    CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
-
-    // then
-    future.whenComplete((eventPayload, throwable) -> {
-      context.assertNull(throwable);
-      context.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value(), eventPayload.getEventType());
+    // when / then
+    vertx.runOnContext(v -> modifyRecordEventHandler.handle(dataImportEventPayload)
+      .whenComplete((eventPayload, throwable) -> testContext.verify(() -> {
+      assertNull(throwable);
+      assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_UPDATED.value(), eventPayload.getEventType());
 
       Record actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_HOLDINGS.value()), Record.class);
-      context.assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
+      assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
         getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
-      context.assertEquals(Record.State.ACTUAL, actualRecord.getState());
-      context.assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
-      validate005Field(context, expectedDate, actualRecord);
-      async.complete();
-    });
+      assertEquals(Record.State.ACTUAL, actualRecord.getState());
+      assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
+      validate005Field(expectedDate, actualRecord);
+      testContext.completeNow();
+    })));
   }
 
-  @Test(expected = ExecutionException.class)
-  public void shouldReturnFailedFutureWhenHasNoMarcRecord() throws InterruptedException, ExecutionException, TimeoutException {
+  @Test
+  void shouldReturnFailedFutureWhenHasNoMarcRecord() throws InterruptedException, ExecutionException, TimeoutException {
     // given
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
@@ -267,11 +259,12 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
 
     // then
-    future.get(5, TimeUnit.SECONDS);
+    org.junit.jupiter.api.Assertions.assertThrows(ExecutionException.class,
+      () -> future.get(5, TimeUnit.SECONDS));
   }
 
   @Test
-  public void shouldReturnTrueWhenHandlerIsEligibleForActionProfile() {
+  void shouldReturnTrueWhenHandlerIsEligibleForActionProfile() {
     // given
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
@@ -284,11 +277,11 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
     boolean isEligible = modifyRecordEventHandler.isEligible(dataImportEventPayload);
 
     // then
-    Assert.assertTrue(isEligible);
+    assertTrue(isEligible);
   }
 
   @Test
-  public void shouldReturnTrueWhenHandlerIsEligibleForUpdateMarcAuthorityActionProfile() {
+  void shouldReturnTrueWhenHandlerIsEligibleForUpdateMarcAuthorityActionProfile() {
     // given
     ActionProfile actionProfile = new ActionProfile()
       .withId(UUID.randomUUID().toString())
@@ -313,11 +306,11 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
     boolean isEligible = modifyRecordEventHandler.isEligible(dataImportEventPayload);
 
     // then
-    Assert.assertTrue(isEligible);
+    assertTrue(isEligible);
   }
 
   @Test
-  public void shouldReturnFalseWhenHandlerIsNotEligibleForActionProfile() {
+  void shouldReturnFalseWhenHandlerIsNotEligibleForActionProfile() {
     // given
     ActionProfile actionProfile = new ActionProfile()
       .withId(UUID.randomUUID().toString())
@@ -342,17 +335,17 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
     boolean isEligible = modifyRecordEventHandler.isEligible(dataImportEventPayload);
 
     // then
-    Assert.assertFalse(isEligible);
+    assertFalse(isEligible);
   }
 
   @Test
-  public void shouldReturnTrueWhenCheckingIsPostProcessingNeeded() {
-    Assert.assertTrue(modifyRecordEventHandler.isPostProcessingNeeded());
+  void shouldReturnTrueWhenCheckingIsPostProcessingNeeded() {
+    assertTrue(modifyRecordEventHandler.isPostProcessingNeeded());
   }
 
   @Test
-  public void shouldGetPostProcessingInitializationEventType() {
+  void shouldGetPostProcessingInitializationEventType() {
     var eventType = modifyRecordEventHandler.getPostProcessingInitializationEventType();
-    Assert.assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(), eventType);
+    assertEquals(DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING.value(), eventType);
   }
 }

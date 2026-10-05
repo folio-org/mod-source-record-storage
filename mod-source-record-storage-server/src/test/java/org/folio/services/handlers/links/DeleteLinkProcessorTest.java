@@ -5,7 +5,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import java.util.Collections;
 import java.util.List;
 import org.hamcrest.Matchers;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.marc4j.marc.impl.SubfieldImpl;
 
 public class DeleteLinkProcessorTest {
@@ -13,7 +13,7 @@ public class DeleteLinkProcessorTest {
   private final LinkProcessor processor = new DeleteLinkProcessor();
 
   @Test
-  public void process_positive_delete9Subfield() {
+  void process_positive_delete9Subfield() {
     List<org.marc4j.marc.Subfield> oldSubfields = List.of(
       new SubfieldImpl('a', "a-data"),
       new SubfieldImpl('z', "z-data"),
@@ -26,7 +26,7 @@ public class DeleteLinkProcessorTest {
   }
 
   @Test
-  public void process_positive_doNothingWhen9SubfieldIsNotPresent() {
+  void process_positive_doNothingWhen9SubfieldIsNotPresent() {
     List<org.marc4j.marc.Subfield> oldSubfields = List.of(
       new SubfieldImpl('a', "a-data"),
       new SubfieldImpl('z', "z-data"),

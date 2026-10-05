@@ -1,16 +1,44 @@
 package org.folio.consumers;
 
+import static org.apache.commons.lang3.StringUtils.EMPTY;
+import static org.folio.consumers.DataImportKafkaHandler.CHUNK_ID_HEADER;
+import static org.folio.consumers.DataImportKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
+import static org.folio.consumers.DataImportKafkaHandler.RECORD_ID_HEADER;
+import static org.folio.consumers.DataImportKafkaHandler.USER_ID_HEADER;
+import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_COMPLETED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.impl.KafkaHeaderImpl;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -30,48 +58,22 @@ import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.services.caches.CancelledJobsIdsCache;
 import org.folio.services.caches.JobProfileSnapshotCache;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.folio.services.util.KafkaTestUtil;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.testcontainers.kafka.KafkaContainer;
 
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Properties;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
-import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.folio.consumers.DataImportKafkaHandler.CHUNK_ID_HEADER;
-import static org.folio.consumers.DataImportKafkaHandler.JOB_EXECUTION_ID_HEADER;
-import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
-import static org.folio.consumers.DataImportKafkaHandler.RECORD_ID_HEADER;
-import static org.folio.consumers.DataImportKafkaHandler.USER_ID_HEADER;
-import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
-import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_COMPLETED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
-import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import org.folio.services.util.KafkaTestUtil;
-
-@RunWith(VertxUnitRunner.class)
+@ExtendWith({VertxExtension.class, MockitoExtension.class})
+@MockitoSettings(strictness = Strictness.LENIENT)
 public class DataImportKafkaHandlerTest {
 
   private static final String TENANT_ID = "diku";
@@ -90,7 +92,6 @@ public class DataImportKafkaHandlerTest {
   @Mock
   private EventHandler mockedEventHandler;
   private DataImportKafkaHandler dataImportKafkaHandler;
-  private AutoCloseable mocksCloseable;
 
   private final ProfileSnapshotWrapper jobProfileSnapshotWrapper = new ProfileSnapshotWrapper()
     .withId(UUID.randomUUID().toString())
@@ -104,8 +105,8 @@ public class DataImportKafkaHandlerTest {
         .withAction(ActionProfile.Action.UPDATE)
         .withFolioRecord(ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC)).getMap())));
 
-  @BeforeClass
-  public static void setUpClass() {
+  @BeforeAll
+  static void setUpClass() {
     vertx = Vertx.vertx();
     kafkaContainer.start();
     kafkaConfig = KafkaConfig.builder()
@@ -116,15 +117,15 @@ public class DataImportKafkaHandlerTest {
       .build();
   }
 
-  @AfterClass
-  public static void tearDownClass(TestContext context) {
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> kafkaContainer.stop()));
+  @AfterAll
+  static void tearDownClass(VertxTestContext testContext) {
+    vertx.close().onComplete(testContext.succeedingThenComplete());
+    kafkaContainer.stop();
   }
 
-  @Before
-  public void setUp() {
+  @BeforeEach
+  void setUp() {
     KafkaTestUtil.clearAllTopics(getConsumerProperties());
-    mocksCloseable = MockitoAnnotations.openMocks(this);
     when(profileSnapshotCacheMock.get(anyString(), any(ConnectionParams.class)))
       .thenReturn(Future.succeededFuture(Optional.of(jobProfileSnapshotWrapper)));
     when(cancelledJobsIdsCacheMock.contains(anyString())).thenReturn(false);
@@ -139,16 +140,14 @@ public class DataImportKafkaHandlerTest {
     EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, 1);
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterEach
+  void tearDown() {
     EventManager.clearEventHandlers();
-    mocksCloseable.close();
   }
 
   @Test
-  public void shouldHandleKafkaRecordAndPopulatePayloadWithHeaders(TestContext context) {
+  void shouldHandleKafkaRecordAndPopulatePayloadWithHeaders(VertxTestContext testContext) {
     // Given
-    Async async = context.async();
     String expectedPermissions = JsonArray.of("test-permission").encode();
     String expectedUserId = UUID.randomUUID().toString();
     String expectedRecordId = UUID.randomUUID().toString();
@@ -184,22 +183,21 @@ public class DataImportKafkaHandlerTest {
     Future<String> future = dataImportKafkaHandler.handle(kafkaRecord);
 
     // Then
-    future.onComplete(context.asyncAssertSuccess(v -> {
+    future.onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       ArgumentCaptor<DataImportEventPayload> payloadCaptor = ArgumentCaptor.forClass(DataImportEventPayload.class);
       verify(mockedEventHandler).handle(payloadCaptor.capture());
       DataImportEventPayload payload = payloadCaptor.getValue();
-      context.assertEquals(expectedPermissions, payload.getContext().get(PERMISSIONS));
-      context.assertEquals(expectedUserId, payload.getContext().get(USER_ID_HEADER));
-      context.assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID_HEADER));
-      context.assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID_HEADER));
-      async.complete();
-    }));
-    async.await();
-    verifyEventPublished(DI_COMPLETED.value(), context);
+      assertEquals(expectedPermissions, payload.getContext().get(PERMISSIONS));
+      assertEquals(expectedUserId, payload.getContext().get(USER_ID_HEADER));
+      assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID_HEADER));
+      assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID_HEADER));
+      verifyEventPublished(DI_COMPLETED.value());
+      testContext.completeNow();
+    })));
   }
 
   @Test
-  public void shouldReturnSucceededFutureAndSkipEventProcessingIfEventPayloadContainsCancelledJobExecutionId(TestContext context) {
+  void shouldReturnSucceededFutureAndSkipEventProcessingIfEventPayloadContainsCancelledJobExecutionId(VertxTestContext testContext) {
     // given
     String expectedKafkaRecordKey = "test_key";
     String cancelledJobId = UUID.randomUUID().toString();
@@ -228,17 +226,18 @@ public class DataImportKafkaHandlerTest {
     Future<String> future = dataImportKafkaHandler.handle(kafkaRecord);
 
     // then
-    future.onComplete(context.asyncAssertSuccess(actualKafkaRecordKey -> {
-      context.assertEquals(expectedKafkaRecordKey, actualKafkaRecordKey);
+    future.onComplete(testContext.succeeding(actualKafkaRecordKey -> testContext.verify(() -> {
+      assertEquals(expectedKafkaRecordKey, actualKafkaRecordKey);
       verify(profileSnapshotCacheMock, never()).get(anyString(), any(ConnectionParams.class));
       verify(mockedEventHandler, never()).isEligible(any(DataImportEventPayload.class));
-    }));
+      testContext.completeNow();
+    })));
   }
 
-  private void verifyEventPublished(String eventType, TestContext context) {
+  private void verifyEventPublished(String eventType) {
     String topicToObserve = formatToKafkaTopicName(eventType);
     List<ConsumerRecord<String, String>> observedEvents = observeKafkaEvents(topicToObserve);
-    context.assertEquals(1, observedEvents.size());
+    assertEquals(1, observedEvents.size());
   }
 
   private String formatToKafkaTopicName(String eventType) {
@@ -266,9 +265,8 @@ public class DataImportKafkaHandlerTest {
   }
 
   @Test
-  public void shouldProcessAuthorityEventDespiteCancelledJob_DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING(TestContext context) {
+  void shouldProcessAuthorityEventDespiteCancelledJob_DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING(VertxTestContext testContext) {
     // Given: Job is cancelled but event type is DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING
-    Async async = context.async();
     String cancelledJobId = UUID.randomUUID().toString();
     String expectedRecordId = UUID.randomUUID().toString();
     String expectedChunkId = UUID.randomUUID().toString();
@@ -308,15 +306,14 @@ public class DataImportKafkaHandlerTest {
     Future<String> future = dataImportKafkaHandler.handle(kafkaRecord);
 
     // Then: Event should be processed despite cancelled job
-    future.onComplete(context.asyncAssertSuccess(v -> {
+    future.onComplete(testContext.succeeding(v -> testContext.verify(() -> {
       ArgumentCaptor<DataImportEventPayload> payloadCaptor = ArgumentCaptor.forClass(DataImportEventPayload.class);
       verify(mockedEventHandler).handle(payloadCaptor.capture());
       DataImportEventPayload payload = payloadCaptor.getValue();
-      context.assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID_HEADER));
-      context.assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID_HEADER));
-      context.assertEquals(expectedUserId, payload.getContext().get(USER_ID_HEADER));
-      async.complete();
-    }));
-    async.await();
+      assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID_HEADER));
+      assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID_HEADER));
+      assertEquals(expectedUserId, payload.getContext().get(USER_ID_HEADER));
+      testContext.completeNow();
+    })));
   }
 }

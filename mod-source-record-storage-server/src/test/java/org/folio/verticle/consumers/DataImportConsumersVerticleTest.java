@@ -112,7 +112,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .notifier(new Slf4jNotifier(true)))
     .build();
 
-  private Record record;
+  private Record marcRecord;
   private Record incorrectRecord;
 
   @BeforeEach
@@ -140,7 +140,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withJobExecutionId(UUID.randomUUID().toString())
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
-    record = new Record()
+    marcRecord = new Record()
       .withId(recordId)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
@@ -169,14 +169,14 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
-      .compose(v -> recordDao.saveRecord(record, okapiHeaders))
+      .compose(v -> recordDao.saveRecord(marcRecord, okapiHeaders))
       .compose(v -> recordDao.saveRecord(incorrectRecord, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  public void shouldUpdateRecordWhenPayloadContainsUpdateMarcBibActionInCurrentNode() {
+  void shouldUpdateRecordWhenPayloadContainsUpdateMarcBibActionInCurrentNode() {
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
       .withContentType(JOB_PROFILE)
@@ -212,7 +212,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
       "{\"leader\":\"00134nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"ybp7406512\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"999\":{\"subfields\":[{\"s\":\"%s\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}"
-        .formatted(record.getMatchedId());
+        .formatted(marcRecord.getMatchedId());
     var instanceId = UUID.randomUUID().toString();
     Record incomingRecord = new Record()
       .withParsedRecord(new ParsedRecord().withContent(incomingParsedContent))
@@ -227,7 +227,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withToken(TOKEN)
       .withContext(new HashMap<>() {{
         put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
-        put("MATCHED_" + MARC_BIBLIOGRAPHIC.value(), Json.encode(record.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
+        put("MATCHED_" + MARC_BIBLIOGRAPHIC.value(), Json.encode(marcRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
         put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
       }});
 
@@ -256,7 +256,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldBeSentDiErrorMessageWhenIncomingRecordDoesNotContainField001() {
+  void shouldBeSentDiErrorMessageWhenIncomingRecordDoesNotContainField001() {
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
       .withContentType(JOB_PROFILE)
@@ -324,7 +324,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldDeleteMarcAuthorityRecord() {
+  void shouldDeleteMarcAuthorityRecord() {
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
       .withContentType(JOB_PROFILE)
@@ -346,7 +346,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .willReturn(WireMock.ok().withBody(Json.encode(profileSnapshotWrapper))));
 
     HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put("MATCHED_MARC_AUTHORITY", Json.encode(record));
+    payloadContext.put("MATCHED_MARC_AUTHORITY", Json.encode(marcRecord));
     payloadContext.put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
     var eventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
@@ -364,7 +364,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     Event obtainedEvent = Json.decodeValue(observedRecord.value(), Event.class);
     var resultPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), resultPayload.getEventType());
-    assertEquals(record.getExternalIdsHolder().getAuthorityId(), resultPayload.getContext().get("AUTHORITY_RECORD_ID"));
+    assertEquals(marcRecord.getExternalIdsHolder().getAuthorityId(), resultPayload.getContext().get("AUTHORITY_RECORD_ID"));
     assertEquals(ACTION_PROFILE, resultPayload.getCurrentNode().getContentType());
   }
 
@@ -380,7 +380,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
         XOkapiHeaders.TENANT, TENANT_ID,
         XOkapiHeaders.TOKEN, TOKEN,
         JOB_EXECUTION_ID_HEADER, snapshotId,
-        RECORD_ID_HEADER, record.getId(),
+        RECORD_ID_HEADER, marcRecord.getId(),
         CHUNK_ID_HEADER, UUID.randomUUID().toString()
     );
     send(topic, "1", Json.encode(event), headers);

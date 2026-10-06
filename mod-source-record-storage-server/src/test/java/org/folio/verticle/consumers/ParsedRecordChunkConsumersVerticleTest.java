@@ -92,19 +92,19 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
+  void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
     assertSentEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(
         RecordType.MARC_BIB, rawMarcRecord, parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
+  void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
     assertSentEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(
         RecordType.MARC_AUTHORITY, rawMarcRecord, parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
+  void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
     assertSentEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(
         RecordType.EDIFACT, rawEdifactRecord, parsedEdifactRecord);
   }
@@ -138,7 +138,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() {
+  void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() {
     Record validRecord = TestMocks.getRecord(0).withSnapshotId(snapshotId);
     Record additionalRecord = getAdditionalRecord(validRecord, snapshotId, validRecord.getRecordType());
     List<Record> records = List.of(validRecord, additionalRecord);
@@ -151,7 +151,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentSnapshotIds() {
+  void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentSnapshotIds() {
     Record first = TestMocks.getRecord(0).withSnapshotId(snapshotId);
     Record secondWithDifferentSnapshotId = getAdditionalRecord(first, UUID.randomUUID().toString(), first.getRecordType());
     List<Record> records = List.of(first, secondWithDifferentSnapshotId);
@@ -163,7 +163,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentRecordTypes() {
+  void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentRecordTypes() {
     Record first = TestMocks.getRecord(0).withSnapshotId(snapshotId);
     Record secondWithDifferentRecordType = getAdditionalRecord(first, snapshotId, RecordType.MARC_AUTHORITY);
     List<Record> records = List.of(first, secondWithDifferentRecordType);
@@ -175,7 +175,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenSnapshotsNotFound() {
+  void shouldSendDIErrorEventsWhenSnapshotsNotFound() {
     String snapshotId = UUID.randomUUID().toString();
     Record first = TestMocks.getRecord(0).withSnapshotId(snapshotId);
     Record second = TestMocks.getRecord(0).withSnapshotId(snapshotId);
@@ -188,12 +188,12 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldNotSendDIErrorWhenReceivedDuplicateChunksParsedEvent() {
+  void shouldNotSendDIErrorWhenReceivedDuplicateChunksParsedEvent() {
     check_sendDuplicateEventAndObserveRecords(DI_ERROR.value(), 0);
   }
 
   @Test
-  public void shouldNotSendDuplicateChunksSavedEventWhenReceivedDuplicateChunksParsedEvent() {
+  void shouldNotSendDuplicateChunksSavedEventWhenReceivedDuplicateChunksParsedEvent() {
     check_sendDuplicateEventAndObserveRecords(DI_PARSED_RECORDS_CHUNK_SAVED.value(), 1);
   }
 

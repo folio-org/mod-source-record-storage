@@ -11,6 +11,7 @@ import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -80,7 +81,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
-      .onSuccess(record -> handler.handle(dataImportEventPayload)
+      .onSuccess(marcRecord -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 
@@ -147,10 +148,10 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
             }
             assertTrue(recordAr.result().isPresent());
             Record rec = recordAr.result().get();
-            assertTrue(rec.getState().equals(Record.State.ACTUAL));
+            assertEquals(Record.State.ACTUAL, rec.getState());
             assertNotNull(rec.getExternalIdsHolder());
-            assertTrue(expectedAuthorityId.equals(rec.getExternalIdsHolder().getAuthorityId()));
-            assertTrue(!rec.getId().equals(record.getId()));
+            assertEquals(expectedAuthorityId, rec.getExternalIdsHolder().getAuthorityId());
+            assertNotEquals(rec.getId(), record.getId());
             assertNotNull(rec.getMetadata().getUpdatedByUserId());
             testContext.completeNow();
           });
@@ -258,7 +259,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
         Record updatedRecord = getAr.result().get();
 
         assertNotNull(updatedRecord.getExternalIdsHolder());
-        assertTrue(expectedAuthorityId.equals(updatedRecord.getExternalIdsHolder().getAuthorityId()));
+        assertEquals(expectedAuthorityId, updatedRecord.getExternalIdsHolder().getAuthorityId());
 
         assertNotNull(updatedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
@@ -425,7 +426,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
-      .onSuccess(record -> handler.handle(dataImportEventPayload)
+      .onSuccess(marcRecord -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 

@@ -76,8 +76,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   private static final String CONSORTIUM_ID = "consortiumIds";
 
   private static final RawRecord rawRecord;
-  private static final ParsedRecord marcRecord;
-  private static final ParsedRecord marcRecordWith001;
+  private static final ParsedRecord parsedRecord;
+  private static final ParsedRecord parsedRecordWith001;
   private static final RawRecord rawEdifactRecord;
   private static final ParsedRecord parsedEdifactRecord;
   private static final ParsedRecord invalidParsedRecord;
@@ -104,9 +104,9 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       rawRecord = new RawRecord()
         .withContent(
           new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-      marcRecord = new ParsedRecord()
+      parsedRecord = new ParsedRecord()
         .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
-      marcRecordWith001 = new ParsedRecord()
+      parsedRecordWith001 = new ParsedRecord()
         .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", FIRST_HRID))).encode());
       rawEdifactRecord = new RawRecord()
         .withContent(
@@ -146,7 +146,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecordWith001)
+      .withParsedRecord(parsedRecordWith001)
       .withMatchedId(FIRST_UUID)
       .withOrder(0)
       .withState(Record.State.ACTUAL)
@@ -158,7 +158,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -171,7 +171,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withRecordType(RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withErrorRecord(errorRecord)
-      .withParsedRecord(marcRecordWith001)
+      .withParsedRecord(parsedRecordWith001)
       .withMatchedId(THIRD_UUID)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()
@@ -182,7 +182,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(1)
       .withState(Record.State.ACTUAL)
@@ -207,7 +207,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withRecordType(RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withMatchedId(SIXTH_UUID)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withOrder(101)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()
@@ -227,7 +227,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_4.getJobExecutionId())
       .withRecordType(RecordType.MARC_AUTHORITY)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(EIGHTH_UUID)
       .withOrder(0)
       .withState(Record.State.ACTUAL)
@@ -239,7 +239,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_5.getJobExecutionId())
       .withRecordType(RecordType.MARC_HOLDING)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(NINTH_UUID)
       .withOrder(0)
       .withState(Record.State.ACTUAL)
@@ -482,7 +482,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -492,7 +492,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -514,11 +514,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     String instanceId = UUID.randomUUID().toString();
 
-    Record record = new Record().withId(THIRD_UUID)
+    Record marcRecord = new Record().withId(THIRD_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -526,7 +526,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(record)
+      .body(marcRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
@@ -547,7 +547,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -557,7 +557,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -579,11 +579,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     String instanceId = UUID.randomUUID().toString();
 
-    Record record = new Record().withId(THIRD_UUID)
+    Record marcRecord = new Record().withId(THIRD_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -591,7 +591,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(record)
+      .body(marcRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
@@ -612,7 +612,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -623,7 +623,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
       .withState(Record.State.DELETED)
@@ -634,7 +634,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
       .withState(Record.State.DELETED)
@@ -775,7 +775,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(firstMatchedId)
       .withOrder(1)
       .withState(Record.State.ACTUAL)
@@ -788,7 +788,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(secondMathcedId)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -961,11 +961,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   void shouldReturnSourceRecordsByListOfId() {
     postSnapshots(snapshot_1, snapshot_2);
 
-    String firstSrsId = UUID.randomUUID().toString();
-    String firstInstanceId = UUID.randomUUID().toString();
-    String firstHrId = "hridFirst";
+    var firstSrsId = UUID.randomUUID().toString();
+    var firstInstanceId = UUID.randomUUID().toString();
+    var firstHrId = "hridFirst";
 
-    ParsedRecord parsedRecord = new ParsedRecord().withId(firstSrsId)
+    var parsedRecord1 = new ParsedRecord().withId(firstSrsId)
       .withContent(new JsonObject().put("leader", "01542dcm a2200361   4500")
         .put("fields", new JsonArray().add(new JsonObject().put("999", new JsonObject()
           .put("subfields",
@@ -973,12 +973,12 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
           .put("ind1", "f")
           .put("ind2", "f"))).add(new JsonObject().put("001", firstHrId))).encode());
 
-    Record deletedRecord1 = new Record()
+    var deletedRecord1 = new Record()
       .withId(firstSrsId)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(parsedRecord)
+      .withParsedRecord(parsedRecord1)
       .withMatchedId(firstSrsId)
       .withLeaderRecordStatus("d")
       .withOrder(11)
@@ -987,16 +987,16 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withInstanceId(firstInstanceId)
         .withInstanceHrid(firstHrId));
 
-    String secondSrsId = UUID.randomUUID().toString();
-    String secondInstanceId = UUID.randomUUID().toString();
-    String secondHrId = "hridSecond";
+    var secondSrsId = UUID.randomUUID().toString();
+    var secondInstanceId = UUID.randomUUID().toString();
+    var secondHrId = "hridSecond";
 
-    Record deletedRecord2 = new Record()
+    var deletedRecord2 = new Record()
       .withId(secondSrsId)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(SourceRecordApiTest.parsedRecord)
       .withMatchedId(secondSrsId)
       .withOrder(1)
       .withState(Record.State.DELETED)
@@ -1004,10 +1004,10 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
         .withInstanceId(secondInstanceId)
         .withInstanceHrid(secondHrId));
 
-    Record[] records = new Record[] {record_1, record_2, record_3, record_4, record_6, deletedRecord1, deletedRecord2};
+    var records = new Record[] {record_1, record_2, record_3, record_4, record_6, deletedRecord1, deletedRecord2};
     postRecords(records);
 
-    List<String> ids = Arrays.stream(records)
+    var ids = Arrays.stream(records)
       .map(Record::getId)
       .toList();
 
@@ -1032,7 +1032,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("sourceRecords.size()", is(7))
       .body("totalRecords", is(7));
 
-    List<String> externalIds = Arrays.stream(records)
+    var externalIds = Arrays.stream(records)
       .map(rec -> rec.getExternalIdsHolder().getInstanceId())
       .toList();
 
@@ -1192,7 +1192,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(RecordType.MARC_AUTHORITY)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withOrder(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder()
@@ -1264,7 +1264,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(0)
       .withState(Record.State.DELETED)
@@ -1296,7 +1296,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(1)
       .withState(Record.State.OLD)
@@ -1307,7 +1307,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(THIRD_UUID)
       .withOrder(0)
       .withState(Record.State.DELETED)
@@ -1318,7 +1318,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(1)
       .withState(Record.State.ACTUAL)
@@ -1375,7 +1375,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   void shouldReturnAllSourceRecordsMarkedAsDeletedOnFindByRecordStateDeleted() {
     postSnapshots(snapshot_2);
 
-    Response createParsed = RestAssured.given()
+    var createParsed = RestAssured.given()
       .spec(spec)
       .body(record_2)
       .when()
@@ -1383,23 +1383,23 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
 
-    Record parsedRecord = createParsed.body().as(Record.class);
+    var parsedRecord1 = createParsed.body().as(Record.class);
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsedRecord.getId())
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsedRecord1.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
 
-    String matchedId = UUID.randomUUID().toString();
+    var matchedId = UUID.randomUUID().toString();
 
-    Record record3 = new Record()
+    var record3 = new Record()
       .withId(matchedId)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(SourceRecordApiTest.parsedRecord)
       .withMatchedId(matchedId)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -1413,12 +1413,12 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createParsed.statusCode(), is(HttpStatus.SC_CREATED));
-    parsedRecord = createParsed.body().as(Record.class);
+    parsedRecord1 = createParsed.body().as(Record.class);
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsedRecord.getId())
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + parsedRecord1.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
 
@@ -1498,7 +1498,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(matchedId)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID).withInstanceHrid(FIRST_HRID))
       .withAdditionalInfo(
@@ -1522,8 +1522,6 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     assertThat(sourceRecordCollection.getSourceRecords().size(), is(1));
     SourceRecord sourceRecord = sourceRecordCollection.getSourceRecords().getFirst();
     assertThat(sourceRecord.getRecordId(), is(createdRecord.getId()));
-    // NOTE: raw record is no longer returned with source records for effeciency
-    // assertThat(sourceRecord.getRawRecord().getContent(), is(rawRecord.getContent()));
     assertThat(sourceRecord.getAdditionalInfo().getSuppressDiscovery(),
       is(createdRecord.getAdditionalInfo().getSuppressDiscovery()));
   }
@@ -1537,7 +1535,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(UUID.randomUUID().toString())
       .withLeaderRecordStatus("d")
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(FIRST_UUID).withInstanceHrid(FIRST_HRID))
@@ -1548,7 +1546,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(UUID.randomUUID().toString())
       .withLeaderRecordStatus("d")
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(SECOND_UUID).withInstanceHrid(SECOND_HRID))
@@ -1559,7 +1557,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(UUID.randomUUID().toString())
       .withLeaderRecordStatus("d")
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(THIRD_UUID).withInstanceHrid(THIRD_HRID))
@@ -1609,7 +1607,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
@@ -1619,7 +1617,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
@@ -1666,7 +1664,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
@@ -1676,7 +1674,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
@@ -1703,25 +1701,25 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(11)
       .withState(Record.State.OLD);
     setExternalIds(recordWithOldState, recordType, externalId, externalHrId);
 
-    Record record = new Record().withId(THIRD_UUID)
+    Record marcRecord = new Record().withId(THIRD_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(SourceRecordApiTest.parsedRecord)
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
-    setExternalIds(record, recordType, externalId, externalHrId);
+    setExternalIds(marcRecord, recordType, externalId, externalHrId);
 
     RestAssured.given()
       .spec(spec)
-      .body(record)
+      .body(marcRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
@@ -1769,25 +1767,25 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
                                                                           String url) {
     postSnapshots(snapshot_1, snapshot);
 
-    String firstHrid = "123";
-    String secondHrid = "1234";
-    String thirdHrid = "1235";
+    var firstHrid = "123";
+    var secondHrid = "1234";
+    var thirdHrid = "1235";
 
-    Record firstRecord = new Record().withId(FIRST_UUID)
+    var firstRecord = new Record().withId(FIRST_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
     setExternalIds(firstRecord, recordType, SECOND_UUID, firstHrid);
 
-    Record secondRecord = new Record().withId(SECOND_UUID)
+    var secondRecord = new Record().withId(SECOND_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
@@ -1807,29 +1805,29 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
 
-    Record recordWithOldState = new Record().withId(FOURTH_UUID)
+    var recordWithOldState = new Record().withId(FOURTH_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FOURTH_UUID)
       .withOrder(11)
       .withState(Record.State.OLD);
     setExternalIds(recordWithOldState, recordType, THIRD_UUID, thirdHrid);
 
-    Record record = new Record().withId(THIRD_UUID)
+    var marcRecord = new Record().withId(THIRD_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
-    setExternalIds(record, recordType, FOURTH_UUID, secondHrid);
+    setExternalIds(marcRecord, recordType, FOURTH_UUID, secondHrid);
 
     RestAssured.given()
       .spec(spec)
-      .body(record)
+      .body(marcRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
@@ -1859,13 +1857,13 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     }
   }
 
-  private void setExternalIds(Record record, RecordType recordType, String id, String hrid) {
+  private void setExternalIds(Record marcRecord, RecordType recordType, String id, String hrid) {
     if (recordType == RecordType.MARC_BIB) {
-      record.setExternalIdsHolder(new ExternalIdsHolder().withInstanceId(id).withInstanceHrid(hrid));
+      marcRecord.setExternalIdsHolder(new ExternalIdsHolder().withInstanceId(id).withInstanceHrid(hrid));
     } else if (recordType == RecordType.MARC_HOLDING) {
-      record.setExternalIdsHolder(new ExternalIdsHolder().withHoldingsId(id).withHoldingsHrid(hrid));
+      marcRecord.setExternalIdsHolder(new ExternalIdsHolder().withHoldingsId(id).withHoldingsHrid(hrid));
     } else if (recordType == RecordType.MARC_AUTHORITY) {
-      record.setExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(id));
+      marcRecord.setExternalIdsHolder(new ExternalIdsHolder().withAuthorityId(id));
     }
   }
 
@@ -1877,7 +1875,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
@@ -1887,7 +1885,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(SECOND_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
@@ -1897,7 +1895,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIFTH_UUID)
       .withOrder(11)
       .withState(Record.State.OLD);
@@ -1926,19 +1924,19 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
 
     String instanceId = UUID.randomUUID().toString();
 
-    Record record = new Record().withId(THIRD_UUID)
+    Record marcRecord = new Record().withId(THIRD_UUID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL);
-    setExternalIds(record, recordType, instanceId, "hridExternal");
+    setExternalIds(marcRecord, recordType, instanceId, "hridExternal");
 
     RestAssured.given()
       .spec(spec)
-      .body(record)
+      .body(marcRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
@@ -1973,7 +1971,7 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .withSnapshotId(snapshot.getJobExecutionId())
       .withRecordType(recordType)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(parsedRecord)
       .withMatchedId(FIRST_UUID)
       .withOrder(11)
       .withState(state);
@@ -2006,20 +2004,21 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
     }
   }
 
-  private void shouldReturnSpecificMarcSourceRecordOnGetByRecordLeaderRecordStatus(RecordType recordType, Record record,
+  private void shouldReturnSpecificMarcSourceRecordOnGetByRecordLeaderRecordStatus(RecordType recordType,
+                                                                                   Record marcRecord,
                                                                                    Snapshot snapshot) {
     postSnapshots(snapshot_1, snapshot_2, snapshot);
 
     postRecords(record_1, record_3);
 
-    Record createdRecord = RestAssured.given()
+    var createdRecord = RestAssured.given()
       .spec(spec)
-      .body(record)
+      .body(marcRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
 
-    String leaderStatus = ParsedRecordDaoUtil.getLeaderStatus(createdRecord.getParsedRecord());
+    var leaderStatus = ParsedRecordDaoUtil.getLeaderStatus(createdRecord.getParsedRecord());
 
     RestAssured.given()
       .spec(spec)
@@ -2032,14 +2031,15 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
       .body("totalRecords", is(1));
   }
 
-  private void shouldReturnSortedMarcSourceRecordsOnGetWhenSortByOrderIsSpecified(RecordType recordType, Record record,
+  private void shouldReturnSortedMarcSourceRecordsOnGetWhenSortByOrderIsSpecified(RecordType recordType,
+                                                                                  Record marcRecord,
                                                                                   Snapshot snapshot) {
     postSnapshots(snapshot_2, snapshot_3, snapshot);
 
-    postRecords(record_2, record_3, record_5, record_6, record_7, record);
+    postRecords(record_2, record_3, record_5, record_6, record_7, marcRecord);
 
     // NOTE: get source records will not return if there is no associated parsed record
-    List<SourceRecord> sourceRecordList = RestAssured.given()
+    var sourceRecordList = RestAssured.given()
       .spec(spec)
       .when()
       .get(SOURCE_STORAGE_SOURCE_RECORDS_PATH + "?recordType=" + recordType + "&snapshotId=" + snapshot.getJobExecutionId()
@@ -2056,11 +2056,11 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
   }
 
   private void shouldReturnMarcParsedResultsOnGetWhenNoQueryIsSpecified(Snapshot snapshot,
-                                                                        Record record, int totalRecords,
+                                                                        Record marcRecord, int totalRecords,
                                                                         RecordType recordType) {
     postSnapshots(snapshot_1, snapshot_2, snapshot);
 
-    postRecords(record_1, record_2, record_3, record_4, record);
+    postRecords(record_1, record_2, record_3, record_4, marcRecord);
 
     RestAssured.given()
       .spec(spec)

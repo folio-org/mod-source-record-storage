@@ -16,7 +16,10 @@ import org.folio.DataImportEventPayload;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class EventHandlingUtilTest {
 
@@ -46,42 +49,11 @@ public class EventHandlingUtilTest {
     assertFalse(moduleName.isEmpty());
   }
 
-  @Test
-  void shouldCreateTopicNameForDomainEvent() {
+  @DisplayName("should create the record domain event topic name for source record domain events")
+  @ParameterizedTest(name = "eventType={0}")
+  @ValueSource(strings = {"SOURCE_RECORD_CREATED", "SOURCE_RECORD_UPDATED", "SOURCE_RECORD_DELETED"})
+  void shouldCreateTopicNameForDomainEvent(String eventType) {
     // Given
-    String eventType = "SOURCE_RECORD_CREATED";
-    KafkaConfig kafkaConfig = KafkaConfig.builder()
-      .envId(ENV)
-      .build();
-
-    // When
-    String topicName = EventHandlingUtil.createTopicName(eventType, TENANT, kafkaConfig);
-
-    // Then
-    String expected = KafkaTopicNameHelper.formatTopicName(ENV, TENANT, RECORD_DOMAIN_EVENT_TOPIC);
-    assertEquals(expected, topicName);
-  }
-
-  @Test
-  void shouldCreateTopicNameForSourceRecordUpdatedDomainEvent() {
-    // Given
-    String eventType = "SOURCE_RECORD_UPDATED";
-    KafkaConfig kafkaConfig = KafkaConfig.builder()
-      .envId(ENV)
-      .build();
-
-    // When
-    String topicName = EventHandlingUtil.createTopicName(eventType, TENANT, kafkaConfig);
-
-    // Then
-    String expected = KafkaTopicNameHelper.formatTopicName(ENV, TENANT, RECORD_DOMAIN_EVENT_TOPIC);
-    assertEquals(expected, topicName);
-  }
-
-  @Test
-  void shouldCreateTopicNameForSourceRecordDeletedDomainEvent() {
-    // Given
-    String eventType = "SOURCE_RECORD_DELETED";
     KafkaConfig kafkaConfig = KafkaConfig.builder()
       .envId(ENV)
       .build();

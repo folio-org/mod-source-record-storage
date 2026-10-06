@@ -18,6 +18,7 @@ import io.vertx.core.json.JsonObject;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.folio.TestUtil;
@@ -27,7 +28,11 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.util.AdditionalFieldsUtil;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.marc4j.marc.Subfield;
 
 public class AdditionalFieldsUtilTest {
@@ -44,10 +49,10 @@ public class AdditionalFieldsUtilTest {
     ParsedRecord parsedRecord = new ParsedRecord();
     String leader = new JsonObject(parsedRecordContent).getString("leader");
     parsedRecord.setContent(parsedRecordContent);
-    Record record = new Record().withId(recordId).withParsedRecord(parsedRecord);
+    Record marcRecord = new Record().withId(recordId).withParsedRecord(parsedRecord);
     // when
-    boolean addedSourceRecordId = AdditionalFieldsUtil.addFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_999, 's', recordId);
-    boolean addedInstanceId = AdditionalFieldsUtil.addFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
+    boolean addedSourceRecordId = AdditionalFieldsUtil.addFieldToMarcRecord(marcRecord, AdditionalFieldsUtil.TAG_999, 's', recordId);
+    boolean addedInstanceId = AdditionalFieldsUtil.addFieldToMarcRecord(marcRecord, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
     // then
     Assertions.assertTrue(addedSourceRecordId);
     Assertions.assertTrue(addedInstanceId);
@@ -81,74 +86,74 @@ public class AdditionalFieldsUtilTest {
   @Test
   void shouldNotAddInstanceIdSubfieldIfNoParsedRecordContent() {
     // given
-    Record record = new Record();
+    Record marcRecord = new Record();
     String instanceId = UUID.randomUUID().toString();
     // when
-    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
+    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(marcRecord, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
     // then
     Assertions.assertFalse(added);
-    Assertions.assertNull(record.getParsedRecord());
+    Assertions.assertNull(marcRecord.getParsedRecord());
   }
 
   @Test
   void shouldNotAddInstanceIdSubfieldIfNoFieldsInParsedRecordContent() {
     // given
-    Record record = new Record();
+    Record marcRecord = new Record();
     String content = StringUtils.EMPTY;
-    record.setParsedRecord(new ParsedRecord().withContent(content));
+    marcRecord.setParsedRecord(new ParsedRecord().withContent(content));
     String instanceId = UUID.randomUUID().toString();
     // when
-    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
+    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(marcRecord, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
     // then
     Assertions.assertFalse(added);
-    Assertions.assertNotNull(record.getParsedRecord());
-    Assertions.assertNotNull(record.getParsedRecord().getContent());
-    Assertions.assertEquals(content, record.getParsedRecord().getContent());
+    Assertions.assertNotNull(marcRecord.getParsedRecord());
+    Assertions.assertNotNull(marcRecord.getParsedRecord().getContent());
+    Assertions.assertEquals(content, marcRecord.getParsedRecord().getContent());
   }
 
   @Test
   void shouldNotAddInstanceIdSubfieldIfCanNotConvertParsedContentToJsonObject() {
     // given
-    Record record = new Record();
+    Record marcRecord = new Record();
     String content = "{fields}";
-    record.setParsedRecord(new ParsedRecord().withContent(content));
+    marcRecord.setParsedRecord(new ParsedRecord().withContent(content));
     String instanceId = UUID.randomUUID().toString();
     // when
-    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
+    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(marcRecord, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
     // then
     Assertions.assertFalse(added);
-    Assertions.assertNotNull(record.getParsedRecord());
-    Assertions.assertNotNull(record.getParsedRecord().getContent());
-    Assertions.assertEquals(content, record.getParsedRecord().getContent());
+    Assertions.assertNotNull(marcRecord.getParsedRecord());
+    Assertions.assertNotNull(marcRecord.getParsedRecord().getContent());
+    Assertions.assertEquals(content, marcRecord.getParsedRecord().getContent());
   }
 
   @Test
   void shouldNotAddInstanceIdSubfieldIfContentHasNoFields() {
     // given
-    Record record = new Record();
+    Record marcRecord = new Record();
     String content = "{\"leader\":\"01240cas a2200397\"}";
-    record.setParsedRecord(new ParsedRecord().withContent(content));
+    marcRecord.setParsedRecord(new ParsedRecord().withContent(content));
     String instanceId = UUID.randomUUID().toString();
     // when
-    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
+    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(marcRecord, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
     // then
     Assertions.assertFalse(added);
-    Assertions.assertNotNull(record.getParsedRecord());
-    Assertions.assertNotNull(record.getParsedRecord().getContent());
+    Assertions.assertNotNull(marcRecord.getParsedRecord());
+    Assertions.assertNotNull(marcRecord.getParsedRecord().getContent());
   }
 
   @Test
   void shouldNotAddInstanceIdSubfieldIfContentIsNull() {
     // given
-    Record record = new Record();
-    record.setParsedRecord(new ParsedRecord().withContent(null));
+    Record marcRecord = new Record();
+    marcRecord.setParsedRecord(new ParsedRecord().withContent(null));
     String instanceId = UUID.randomUUID().toString();
     // when
-    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
+    boolean added = AdditionalFieldsUtil.addFieldToMarcRecord(marcRecord, AdditionalFieldsUtil.TAG_999, 'i', instanceId);
     // then
     Assertions.assertFalse(added);
-    Assertions.assertNotNull(record.getParsedRecord());
-    Assertions.assertNull(record.getParsedRecord().getContent());
+    Assertions.assertNotNull(marcRecord.getParsedRecord());
+    Assertions.assertNull(marcRecord.getParsedRecord().getContent());
   }
 
   @Test
@@ -158,8 +163,8 @@ public class AdditionalFieldsUtilTest {
     ParsedRecord parsedRecord = new ParsedRecord();
     String leader = new JsonObject(parsedRecordContent).getString("leader");
     parsedRecord.setContent(parsedRecordContent);
-    Record record = new Record().withId(recordId).withParsedRecord(parsedRecord);
-    boolean deleted = removeField(record, "001");
+    Record marcRecord = new Record().withId(recordId).withParsedRecord(parsedRecord);
+    boolean deleted = removeField(marcRecord, "001");
     Assertions.assertTrue(deleted);
     JsonObject content = new JsonObject(parsedRecord.getContent().toString());
     JsonArray fields = content.getJsonArray("fields");
@@ -181,8 +186,8 @@ public class AdditionalFieldsUtilTest {
     ParsedRecord parsedRecord = new ParsedRecord();
     String leader = new JsonObject(parsedRecordContent).getString("leader");
     parsedRecord.setContent(parsedRecordContent);
-    Record record = new Record().withId(recordId).withParsedRecord(parsedRecord);
-    boolean added = AdditionalFieldsUtil.addControlledFieldToMarcRecord(record, "002", "test");
+    Record marcRecord = new Record().withId(recordId).withParsedRecord(parsedRecord);
+    boolean added = AdditionalFieldsUtil.addControlledFieldToMarcRecord(marcRecord, "002", "test");
     Assertions.assertTrue(added);
     JsonObject content = new JsonObject(parsedRecord.getContent().toString());
     JsonArray fields = content.getJsonArray("fields");
@@ -208,9 +213,9 @@ public class AdditionalFieldsUtilTest {
     ParsedRecord parsedRecord = new ParsedRecord();
     String leader = new JsonObject(parsedRecordContent).getString("leader");
     parsedRecord.setContent(parsedRecordContent);
-    Record record = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
+    Record marcRecord = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
     // when
-    boolean added = addDataFieldToMarcRecord(record, "035", ' ', ' ', 'a', instanceHrId);
+    boolean added = addDataFieldToMarcRecord(marcRecord, "035", ' ', ' ', 'a', instanceHrId);
     // then
     Assertions.assertTrue(added);
     JsonObject content = new JsonObject(parsedRecord.getContent().toString());
@@ -240,96 +245,44 @@ public class AdditionalFieldsUtilTest {
     String expectedParsedContent = "{\"leader\":\"00113nam  22000731a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"999\":{\"subfields\":[{\"i\":\"12345\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
     ParsedRecord parsedRecord = new ParsedRecord();
     parsedRecord.setContent(parsedContent);
-    Record record = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
+    Record marcRecord = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
     // when
-    boolean added = addDataFieldToMarcRecord(record, "999", 'f', 'f', 'i', instanceId);
+    boolean added = addDataFieldToMarcRecord(marcRecord, "999", 'f', 'f', 'i', instanceId);
     // then
     Assertions.assertTrue(added);
     Assertions.assertEquals(expectedParsedContent, parsedRecord.getContent());
   }
 
-  @Test
-  void shouldNotAdd035AndAdd001FieldsIf001And003FieldsNotExists() {
-    // given
-    String parsedContent = "{\"leader\":\"00115nam  22000731a 4500\",\"fields\":[{\"003\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-    String expectedParsedContent = "{\"leader\":\"00086nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-    ParsedRecord parsedRecord = new ParsedRecord();
-    parsedRecord.setContent(parsedContent);
-
-    Record record = new Record().withId(UUID.randomUUID().toString())
-      .withParsedRecord(parsedRecord)
-      .withGeneration(0)
-      .withState(Record.State.ACTUAL)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
-
-    JsonObject jsonObject = new JsonObject("{\"hrid\":\"in001\"}");
-    Pair<Record, JsonObject> pair = Pair.of(record, jsonObject);
-    // when
-    AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(pair);
-    // then
-    Assertions.assertEquals(expectedParsedContent, parsedRecord.getContent());
+  private static Stream<Arguments> fillHrIdFieldArguments() {
+    return Stream.of(
+      // 001 and 003 fields not exist: 003 renamed to 001
+      Arguments.of("{\"leader\":\"00115nam  22000731a 4500\",\"fields\":[{\"003\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}"),
+      // 001 already contains HRID: content unchanged
+      Arguments.of("{\"leader\":\"00086nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}"),
+      // 003 present after HRID manipulation already done: 003 removed
+      Arguments.of("{\"leader\":\"00115nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"},{\"003\":\"qwerty\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}"),
+      // 035 contains HRID: 035 (and 003) removed
+      Arguments.of("{\"leader\":\"00118nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"},{\"003\":\"qwerty\"},{\"035\":{\"subfields\":[{\"a\":\"(NhFolYBP)in001\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}")
+    );
   }
 
-  @Test
-  void shouldNotAdd035if001containsHRID() {
+  @DisplayName("should fill 001 with HRID and drop 003/035 HRID artifacts")
+  @ParameterizedTest(name = "parsedContent={0}")
+  @MethodSource("fillHrIdFieldArguments")
+  void shouldFillHrIdFieldInMarcRecord(String parsedContent) {
     // given
-    String parsedContent = "{\"leader\":\"00086nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     String expectedParsedContent = "{\"leader\":\"00086nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     ParsedRecord parsedRecord = new ParsedRecord();
     parsedRecord.setContent(parsedContent);
 
-    Record record = new Record().withId(UUID.randomUUID().toString())
+    Record marcRecord = new Record().withId(UUID.randomUUID().toString())
       .withParsedRecord(parsedRecord)
       .withGeneration(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
 
     JsonObject jsonObject = new JsonObject("{\"hrid\":\"in001\"}");
-    Pair<Record, JsonObject> pair = Pair.of(record, jsonObject);
-    // when
-    AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(pair);
-    // then
-    Assertions.assertEquals(expectedParsedContent, parsedRecord.getContent());
-  }
-
-  @Test
-  void shouldRemove003ifHRIDManipulationAlreadyDone() {
-    // given
-    String parsedContent = "{\"leader\":\"00115nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"},{\"003\":\"qwerty\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-    String expectedParsedContent = "{\"leader\":\"00086nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-    ParsedRecord parsedRecord = new ParsedRecord();
-    parsedRecord.setContent(parsedContent);
-
-    Record record = new Record().withId(UUID.randomUUID().toString())
-      .withParsedRecord(parsedRecord)
-      .withGeneration(0)
-      .withState(Record.State.ACTUAL)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
-
-    JsonObject jsonObject = new JsonObject("{\"hrid\":\"in001\"}");
-    Pair<Record, JsonObject> pair = Pair.of(record, jsonObject);
-    // when
-    AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(pair);
-    // then
-    Assertions.assertEquals(expectedParsedContent, parsedRecord.getContent());
-  }
-
-  @Test
-  void shouldRemove035ifItContainsHRID() {
-    // given
-    String parsedContent = "{\"leader\":\"00118nam  22000731a 4500\",\"fields\":[{\"001\":\"in001\"},{\"003\":\"qwerty\"},{\"035\":{\"subfields\":[{\"a\":\"(NhFolYBP)in001\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-    String expectedParsedContent = "{\"leader\":\"00086nam  22000611a 4500\",\"fields\":[{\"001\":\"in001\"},{\"507\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
-    ParsedRecord parsedRecord = new ParsedRecord();
-    parsedRecord.setContent(parsedContent);
-
-    Record record = new Record().withId(UUID.randomUUID().toString())
-      .withParsedRecord(parsedRecord)
-      .withGeneration(0)
-      .withState(Record.State.ACTUAL)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
-
-    JsonObject jsonObject = new JsonObject("{\"hrid\":\"in001\"}");
-    Pair<Record, JsonObject> pair = Pair.of(record, jsonObject);
+    Pair<Record, JsonObject> pair = Pair.of(marcRecord, jsonObject);
     // when
     AdditionalFieldsUtil.fillHrIdFieldInMarcRecord(pair);
     // then
@@ -347,14 +300,14 @@ public class AdditionalFieldsUtilTest {
 
     ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
 
-    Record record = new Record().withId(UUID.randomUUID().toString())
+    Record marcRecord = new Record().withId(UUID.randomUUID().toString())
       .withParsedRecord(parsedRecord)
       .withGeneration(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
 
     // when
-    var subfields = get035SubfieldOclcValues(record, TAG_035).stream().map(Subfield::getData).toList();
+    var subfields = get035SubfieldOclcValues(marcRecord, TAG_035).stream().map(Subfield::getData).toList();
     // then
     Assertions.assertEquals(expectedSubfields.size(), subfields.size());
     Assertions.assertEquals(expectedSubfields.getFirst(), subfields.getFirst());
@@ -372,13 +325,13 @@ public class AdditionalFieldsUtilTest {
       "{\"500\":{\"subfields\":[{\"a\":\"data\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
 
-    Record record = new Record().withId(UUID.randomUUID().toString())
+    Record marcRecord = new Record().withId(UUID.randomUUID().toString())
       .withParsedRecord(parsedRecord)
       .withGeneration(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
     // when
-    AdditionalFieldsUtil.normalize035(record);
+    AdditionalFieldsUtil.normalize035(marcRecord);
     Assertions.assertEquals(expectedParsedContent, parsedRecord.getContent());
   }
 
@@ -407,13 +360,13 @@ public class AdditionalFieldsUtilTest {
 
     ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
 
-    Record record = new Record().withId(UUID.randomUUID().toString())
+    Record marcRecord = new Record().withId(UUID.randomUUID().toString())
       .withParsedRecord(parsedRecord)
       .withGeneration(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
     // when
-    AdditionalFieldsUtil.normalize035(record);
+    AdditionalFieldsUtil.normalize035(marcRecord);
     Assertions.assertEquals(expectedParsedContent, parsedRecord.getContent());
   }
 
@@ -425,25 +378,26 @@ public class AdditionalFieldsUtilTest {
 
     ParsedRecord parsedRecord = new ParsedRecord().withContent(parsedContent);
 
-    Record record = new Record().withId(UUID.randomUUID().toString())
+    Record marcRecord = new Record().withId(UUID.randomUUID().toString())
       .withParsedRecord(parsedRecord)
       .withGeneration(0)
       .withState(Record.State.ACTUAL)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId("001").withInstanceHrid("in001"));
 
     // when
-    var subfields = get035SubfieldOclcValues(record, TAG_035).stream().map(Subfield::getData).toList();
+    var subfields = get035SubfieldOclcValues(marcRecord, TAG_035).stream().map(Subfield::getData).toList();
     // then
     Assertions.assertEquals(0, subfields.size());
   }
 
   @Test
+  @SuppressWarnings("java:S5961")
   void caching() {
     // given
     String parsedRecordContent = TestUtil.readFileFromPath(PARSED_MARC_RECORD_PATH);
     ParsedRecord parsedRecord = new ParsedRecord();
     parsedRecord.setContent(parsedRecordContent);
-    Record record = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
+    Record marcRecord = new Record().withId(UUID.randomUUID().toString()).withParsedRecord(parsedRecord);
     String instanceId = UUID.randomUUID().toString();
 
     CacheStats initialCacheStats = getCacheStats();
@@ -484,56 +438,56 @@ public class AdditionalFieldsUtilTest {
     Assertions.assertEquals(1, cacheStats.missCount());
     Assertions.assertEquals(1, cacheStats.loadCount());
     // does field exists?
-    Assertions.assertFalse(isFieldExist(record, "035", 'a', instanceId));
+    Assertions.assertFalse(isFieldExist(marcRecord, "035", 'a', instanceId));
     cacheStats = getCacheStats().minus(initialCacheStats);
     Assertions.assertEquals(2, cacheStats.requestCount());
     Assertions.assertEquals(0, cacheStats.hitCount());
     Assertions.assertEquals(2, cacheStats.missCount());
     Assertions.assertEquals(2, cacheStats.loadCount());
     // update field
-    addDataFieldToMarcRecord(record, "035", ' ', ' ', 'a', instanceId);
+    addDataFieldToMarcRecord(marcRecord, "035", ' ', ' ', 'a', instanceId);
     cacheStats = getCacheStats().minus(initialCacheStats);
     Assertions.assertEquals(3, cacheStats.requestCount());
     Assertions.assertEquals(1, cacheStats.hitCount());
     Assertions.assertEquals(2, cacheStats.missCount());
     Assertions.assertEquals(2, cacheStats.loadCount());
     // verify that field exists
-    Assertions.assertTrue(isFieldExist(record, "035", 'a', instanceId));
+    Assertions.assertTrue(isFieldExist(marcRecord, "035", 'a', instanceId));
     cacheStats = getCacheStats().minus(initialCacheStats);
     Assertions.assertEquals(4, cacheStats.requestCount());
     Assertions.assertEquals(2, cacheStats.hitCount());
     Assertions.assertEquals(2, cacheStats.missCount());
     Assertions.assertEquals(2, cacheStats.loadCount());
     // verify that field exists again
-    Assertions.assertTrue(isFieldExist(record, "035", 'a', instanceId));
+    Assertions.assertTrue(isFieldExist(marcRecord, "035", 'a', instanceId));
     cacheStats = getCacheStats().minus(initialCacheStats);
     Assertions.assertEquals(5, cacheStats.requestCount());
     Assertions.assertEquals(3, cacheStats.hitCount());
     Assertions.assertEquals(2, cacheStats.missCount());
     Assertions.assertEquals(2, cacheStats.loadCount());
     // remove the field
-    Assertions.assertTrue(removeField(record, "035"));
+    Assertions.assertTrue(removeField(marcRecord, "035"));
     cacheStats = getCacheStats().minus(initialCacheStats);
     Assertions.assertEquals(6, cacheStats.requestCount());
     Assertions.assertEquals(4, cacheStats.hitCount());
     Assertions.assertEquals(2, cacheStats.missCount());
     Assertions.assertEquals(2, cacheStats.loadCount());
     // get value from controlled field
-    Assertions.assertEquals(getValueFromControlledField(record,"001"),"ybp7406411");
+    Assertions.assertEquals("ybp7406411", getValueFromControlledField(marcRecord, "001"));
     cacheStats = getCacheStats().minus(initialCacheStats);
     Assertions.assertEquals(7, cacheStats.requestCount());
     Assertions.assertEquals(5, cacheStats.hitCount());
     Assertions.assertEquals(2, cacheStats.missCount());
     Assertions.assertEquals(2, cacheStats.loadCount());
     // add controlled field to marc record
-    Assertions.assertTrue(addControlledFieldToMarcRecord(record, "002", "test"));
+    Assertions.assertTrue(addControlledFieldToMarcRecord(marcRecord, "002", "test"));
     cacheStats = getCacheStats().minus(initialCacheStats);
     Assertions.assertEquals(8, cacheStats.requestCount());
     Assertions.assertEquals(6, cacheStats.hitCount());
     Assertions.assertEquals(2, cacheStats.missCount());
     Assertions.assertEquals(2, cacheStats.loadCount());
     // add field to marc record
-    Assertions.assertTrue(addFieldToMarcRecord(record, AdditionalFieldsUtil.TAG_999, 'i', instanceId));
+    Assertions.assertTrue(addFieldToMarcRecord(marcRecord, AdditionalFieldsUtil.TAG_999, 'i', instanceId));
     cacheStats = getCacheStats().minus(initialCacheStats);
     Assertions.assertEquals(9, cacheStats.requestCount());
     Assertions.assertEquals(7, cacheStats.hitCount());

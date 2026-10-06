@@ -57,26 +57,26 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
   private RecordDao recordDao;
-  private Record record;
+  private Record marcRecord;
   private Record deletedRecord;
   private String deletedRecordId;
   private Map<String, String> okapiHeaders;
   private RawRecord rawRecord;
-  private ParsedRecord marcRecord;
+  private ParsedRecord parsedRecord;
 
   @BeforeEach
   void setUp(VertxTestContext testContext) throws IOException {
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     rawRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
-    marcRecord = new ParsedRecord()
+    parsedRecord = new ParsedRecord()
       .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
 
     Snapshot snapshot = TestMocks.getSnapshot(0);
     String recordId = UUID.randomUUID().toString();
     deletedRecordId = UUID.randomUUID().toString();
 
-    this.record = new Record()
+    this.marcRecord = new Record()
       .withId(recordId)
       .withState(ACTUAL)
       .withMatchedId(recordId)
@@ -84,7 +84,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withGeneration(0)
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord.withId(recordId))
-      .withParsedRecord(marcRecord.withId(recordId))
+      .withParsedRecord(parsedRecord.withId(recordId))
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
@@ -97,13 +97,13 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withGeneration(0)
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord.withId(recordId))
-      .withParsedRecord(marcRecord.withId(recordId))
+      .withParsedRecord(parsedRecord.withId(recordId))
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
     okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
-      .compose(savedSnapshot -> recordDao.saveRecord(record, okapiHeaders))
+      .compose(savedSnapshot -> recordDao.saveRecord(marcRecord, okapiHeaders))
       .compose(savedSnapshot -> recordDao.saveRecord(deletedRecord, okapiHeaders))
       .onComplete(testContext.succeedingThenComplete());
   }
@@ -128,7 +128,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withGeneration(0)
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord.withId(copyRecordId))
-      .withParsedRecord(marcRecord.withId(copyRecordId))
+      .withParsedRecord(parsedRecord.withId(copyRecordId))
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
@@ -137,10 +137,10 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .compose(v -> recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
     future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
-      assertTrue(result.size() == 2);
+      assertEquals(2, result.size());
       List<String> ids = result.stream().map(Record::getId).toList();
       assertTrue(ids.contains(copyRecord.getId()));
-      assertTrue(ids.contains(record.getId()));
+      assertTrue(ids.contains(marcRecord.getId()));
       recordDao.deleteRecordsBySnapshotId(copyRecordSnapshot.getJobExecutionId(), TENANT_ID)
         .onComplete(v -> testContext.completeNow());
     })));
@@ -160,17 +160,17 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
       .withGeneration(0)
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord.withId(copyRecordId))
-      .withParsedRecord(marcRecord.withId(copyRecordId))
+      .withParsedRecord(parsedRecord.withId(copyRecordId))
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString()));
 
     Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), copyRecordSnapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
-      .compose(v -> recordDao.getMatchedRecords(matchField, List.of(record.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()), TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
+      .compose(v -> recordDao.getMatchedRecords(matchField, List.of(marcRecord.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()), TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
     future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
       assertEquals(1, result.size());
-      assertEquals(record.getId(), result.getFirst().getId());
+      assertEquals(marcRecord.getId(), result.getFirst().getId());
       recordDao.deleteRecordsBySnapshotId(copyRecordSnapshot.getJobExecutionId(), TENANT_ID)
         .onComplete(v -> testContext.completeNow());
     })));

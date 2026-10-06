@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
@@ -43,7 +44,11 @@ import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
@@ -211,7 +216,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   void shouldReturnAllRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(VertxTestContext testContext) {
     postSnapshots(snapshot_1, snapshot_2);
 
-    Record record_4 = new Record()
+    Record record4 = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -224,7 +229,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         .withInstanceId(FIFTH_UUID)
         .withInstanceHrid(FIRST_HRID));
 
-    postRecords(marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, record_4);
+    postRecords(marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, record4);
 
     InputStream response = RestAssured.given()
       .spec(spec)
@@ -254,10 +259,10 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(testContext, RecordType.MARC_HOLDING, marc_holdings_record_1);
   }
 
-  private void shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(VertxTestContext testContext, RecordType recordType, Record marc_auth_record_1) {
+  private void shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(VertxTestContext testContext, RecordType recordType, Record marcAuthRecord1) {
     postSnapshots(snapshot_1, snapshot_2, snapshot_3);
 
-    Record record_4 = new Record()
+    Record record4 = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_3.getJobExecutionId())
       .withRecordType(recordType)
@@ -270,7 +275,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         .withInstanceHrid(FIRST_HRID))
       .withState(Record.State.OLD);
 
-    postRecords(marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, record_4, marc_auth_record_1);
+    postRecords(marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, record4, marcAuthRecord1);
 
     InputStream response = RestAssured.given()
       .spec(spec)
@@ -341,7 +346,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
    shouldReturnMarcRecordsOnGetBySpecifiedSnapshotId(testContext, RecordType.MARC_HOLDING, marc_holdings_record_1);
  }
 
-  private void shouldReturnMarcRecordsOnGetBySpecifiedSnapshotId(VertxTestContext testContext, RecordType marcHolding, Record marc_holdings_record_1) {
+  private void shouldReturnMarcRecordsOnGetBySpecifiedSnapshotId(VertxTestContext testContext, RecordType marcHolding, Record marcHoldingsRecord1) {
     postSnapshots(snapshot_1, snapshot_2, snapshot_3);
 
     Record recordWithOldStatus = new Record()
@@ -354,12 +359,12 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withOrder(1)
       .withState(Record.State.OLD);
 
-    postRecords(marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, marc_holdings_record_1, recordWithOldStatus);
+    postRecords(marc_bib_record_1, marc_bib_record_2, marc_bib_record_3, marcHoldingsRecord1, recordWithOldStatus);
 
     InputStream response = RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?recordType=" + marcHolding + "&state=ACTUAL&snapshotId=" + marc_holdings_record_1.getSnapshotId())
+      .get(SOURCE_STORAGE_STREAM_RECORDS_PATH + "?recordType=" + marcHolding + "&state=ACTUAL&snapshotId=" + marcHoldingsRecord1.getSnapshotId())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().response().asInputStream();
@@ -369,7 +374,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .map(r -> Json.decodeValue(r, Record.class))
       .doFinally(() -> {
         assertEquals(1, actual.size());
-        assertEquals(marc_holdings_record_1.getSnapshotId(), actual.getFirst().getSnapshotId());
+        assertEquals(marcHoldingsRecord1.getSnapshotId(), actual.getFirst().getSnapshotId());
         assertEquals(false, actual.getFirst().getAdditionalInfo().getSuppressDiscovery());
         testContext.completeNow();
       }).collect(() -> actual, List::add)
@@ -465,11 +470,11 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withState(Record.State.OLD)
       .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(THIRD_UUID).withInstanceHrid(thirdHrid));
 
-    Record record = new Record().withId(THIRD_UUID)
+    Record marcRecord1 = new Record().withId(THIRD_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
-      .withParsedRecord(marcRecord)
+      .withParsedRecord(SourceStorageStreamApiTest.marcRecord)
       .withMatchedId(THIRD_UUID)
       .withOrder(11)
       .withState(Record.State.ACTUAL)
@@ -477,7 +482,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(record)
+      .body(marcRecord1)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
@@ -665,7 +670,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
     String firstMatchedId = UUID.randomUUID().toString();
 
-    Record record_4_tmp = new Record()
+    Record record4Tmp = new Record()
       .withId(firstMatchedId)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -680,7 +685,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
     String secondMathcedId = UUID.randomUUID().toString();
 
-    Record record_2_tmp = new Record()
+    Record record2Tmp = new Record()
       .withId(secondMathcedId)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -693,7 +698,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
         .withInstanceId(FIFTH_UUID)
         .withInstanceHrid(FIRST_HRID));
 
-    postRecords(marc_bib_record_2, record_2_tmp, marc_bib_record_4, record_4_tmp);
+    postRecords(marc_bib_record_2, record2Tmp, marc_bib_record_4, record4Tmp);
 
     InputStream response = RestAssured.given()
       .spec(spec)
@@ -1097,43 +1102,24 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     testContext.completeNow();
   }
 
-  @Test
-  void shouldReturnRecordOnSearchMarcRecordWhenRecordWasSuppressedAndSetSuppressFromDiscoveryNotSetInRequest(VertxTestContext testContext) {
-    // given
-    Record suppressedRecord = new Record()
-      .withId(marc_bib_record_2.getId())
-      .withSnapshotId(snapshot_2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withRawRecord(marc_bib_record_2.getRawRecord())
-      .withParsedRecord(marc_bib_record_2.getParsedRecord())
-      .withMatchedId(marc_bib_record_2.getMatchedId())
-      .withState(Record.State.ACTUAL)
-      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true))
-      .withExternalIdsHolder(marc_bib_record_2.getExternalIdsHolder());
-    postSnapshots(snapshot_2);
-    postRecords(suppressedRecord);
-
-    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
-    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
-    // when
-    ExtractableResponse<Response> response = RestAssured.given()
-      .spec(spec)
-      .body(searchRequest)
-      .when()
-      .post("/source-storage/stream/marc-record-identifiers")
-      .then()
-      .extract();
-    JsonObject responseBody = new JsonObject(response.body().asString());
-    // then
-    assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, responseBody.getJsonArray("records").size());
-    assertEquals(1, responseBody.getInteger("totalCount").intValue());
-    testContext.completeNow();
+  private static Stream<Arguments> marcRecordSearchArguments() {
+    return Stream.of(
+      Arguments.of(true,
+        "001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'"),
+      Arguments.of(false,
+        "001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'"),
+      Arguments.of(true,
+        "(035.a = '(OCoLC)63611770' and 036.ind1 = '1') or (245.a ^= 'Neue Ausgabe sämtlicher' and 005.value ^= '20141107')"),
+      Arguments.of(true,
+        "(035.a = '(OCoLC)63611770' and 948.ind1 not= '5')")
+    );
   }
 
-  @Test
-  void shouldReturnRecordOnSearchMarcRecordWhenRecordWasNotSuppressedAndSetSuppressFromDiscoveryNotSetInRequest(VertxTestContext testContext) {
+  @DisplayName("should return the record when searching with a matching fields expression regardless of suppress-from-discovery flag")
+  @ParameterizedTest(name = "suppressDiscovery={0}, fieldsSearchExpression={1}")
+  @MethodSource("marcRecordSearchArguments")
+  void shouldReturnRecordOnSearchMarcRecord(boolean suppressDiscovery, String fieldsSearchExpression,
+                                            VertxTestContext testContext) {
     // given
     Record suppressedRecord = new Record()
       .withId(marc_bib_record_2.getId())
@@ -1143,14 +1129,14 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withParsedRecord(marc_bib_record_2.getParsedRecord())
       .withMatchedId(marc_bib_record_2.getMatchedId())
       .withState(Record.State.ACTUAL)
-      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(false))
+      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(suppressDiscovery))
       .withExternalIdsHolder(marc_bib_record_2.getExternalIdsHolder());
     postSnapshots(snapshot_2);
     postRecords(suppressedRecord);
 
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
-    searchRequest.setFieldsSearchExpression("001.value = '393893' and 005.value ^= '2014110' and 035.ind1 = '#'");
+    searchRequest.setFieldsSearchExpression(fieldsSearchExpression);
     // when
     ExtractableResponse<Response> response = RestAssured.given()
       .spec(spec)
@@ -1325,7 +1311,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
   void shouldReturnIdOnSearchMarcRecordIdsWhenInstanceIdIsMissing(VertxTestContext testContext) {
     // given
     postSnapshots(snapshot_2);
-    Record marc_bib_record_withoutInstanceId = new Record()
+    Record marcBibRecordWithoutInstanceId = new Record()
       .withId(SECOND_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -1337,7 +1323,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(FIFTH_UUID)
         .withInstanceHrid(FIRST_HRID));
-    postRecords(marc_bib_record_2, marc_bib_record_withoutInstanceId);
+    postRecords(marc_bib_record_2, marcBibRecordWithoutInstanceId);
 
     MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
     searchRequest.setFieldsSearchExpression("001.value = '393893'");
@@ -1434,76 +1420,6 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
     assertEquals(HttpStatus.SC_BAD_REQUEST, response.statusCode());
     assertEquals("The number of opened brackets should be equal to number of closed brackets [expression: marcFieldSearchExpression]",
       response.body().asString());
-    testContext.completeNow();
-  }
-
-  @Test
-  void shouldReturnDataForDocumentationExample(VertxTestContext testContext) {
-    // given
-    Record suppressedRecord = new Record()
-      .withId(marc_bib_record_2.getId())
-      .withSnapshotId(snapshot_2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withRawRecord(marc_bib_record_2.getRawRecord())
-      .withParsedRecord(marc_bib_record_2.getParsedRecord())
-      .withMatchedId(marc_bib_record_2.getMatchedId())
-      .withState(Record.State.ACTUAL)
-      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true))
-      .withExternalIdsHolder(marc_bib_record_2.getExternalIdsHolder());
-    postSnapshots(snapshot_2);
-    postRecords(suppressedRecord);
-
-    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
-    searchRequest.setFieldsSearchExpression("(035.a = '(OCoLC)63611770' and 036.ind1 = '1') or (245.a ^= 'Neue Ausgabe sämtlicher' and 005.value ^= '20141107')");
-    // when
-    ExtractableResponse<Response> response = RestAssured.given()
-      .spec(spec)
-      .body(searchRequest)
-      .when()
-      .post("/source-storage/stream/marc-record-identifiers")
-      .then()
-      .extract();
-    JsonObject responseBody = new JsonObject(response.body().asString());
-    // then
-    assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, responseBody.getJsonArray("records").size());
-    assertEquals(1, responseBody.getInteger("totalCount").intValue());
-    testContext.completeNow();
-  }
-
-  @Test
-  void shouldReturnDataForNotEqualsOperator(VertxTestContext testContext) {
-    // given
-    Record suppressedRecord = new Record()
-      .withId(marc_bib_record_2.getId())
-      .withSnapshotId(snapshot_2.getJobExecutionId())
-      .withRecordType(Record.RecordType.MARC_BIB)
-      .withRawRecord(marc_bib_record_2.getRawRecord())
-      .withParsedRecord(marc_bib_record_2.getParsedRecord())
-      .withMatchedId(marc_bib_record_2.getMatchedId())
-      .withState(Record.State.ACTUAL)
-      .withAdditionalInfo(new AdditionalInfo().withSuppressDiscovery(true))
-      .withExternalIdsHolder(marc_bib_record_2.getExternalIdsHolder());
-    postSnapshots(snapshot_2);
-    postRecords(suppressedRecord);
-
-    MarcRecordSearchRequest searchRequest = new MarcRecordSearchRequest();
-    searchRequest.setLeaderSearchExpression("p_05 = 'c' and p_06 = 'c' and p_07 = 'm'");
-    searchRequest.setFieldsSearchExpression("(035.a = '(OCoLC)63611770' and 948.ind1 not= '5')");
-    // when
-    ExtractableResponse<Response> response = RestAssured.given()
-      .spec(spec)
-      .body(searchRequest)
-      .when()
-      .post("/source-storage/stream/marc-record-identifiers")
-      .then()
-      .extract();
-    JsonObject responseBody = new JsonObject(response.body().asString());
-    // then
-    assertEquals(HttpStatus.SC_OK, response.statusCode());
-    assertEquals(1, responseBody.getJsonArray("records").size());
-    assertEquals(1, responseBody.getInteger("totalCount").intValue());
     testContext.completeNow();
   }
 

@@ -72,7 +72,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
   private EventHandler handler;
 
   @BeforeAll
-  public static void setUpClass() throws IOException {
+  static void setUpClass1() throws IOException {
     rawRecordContent = new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class);
   }
 
@@ -358,7 +358,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
 
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
-      .onComplete(testContext.succeeding(record -> handler.handle(dataImportEventPayload)
+      .onComplete(testContext.succeeding(marcRecord -> handler.handle(dataImportEventPayload)
         .whenComplete((updatedEventPayload, throwable) -> {
           assertNull(throwable);
           assertEquals(1, updatedEventPayload.getEventsChain().size());

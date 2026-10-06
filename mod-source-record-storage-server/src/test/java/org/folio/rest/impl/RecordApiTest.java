@@ -41,7 +41,7 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class RecordApiTest extends AbstractRestVerticleTest {
+class RecordApiTest extends AbstractRestVerticleTest {
 
   private static final String FIRST_UUID = UUID.randomUUID().toString();
   private static final String SECOND_UUID = UUID.randomUUID().toString();
@@ -199,7 +199,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnEmptyListOnGetIfNoRecordsExist() {
+  void shouldReturnEmptyListOnGetIfNoRecordsExist() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -214,7 +214,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   void shouldReturnAllMarcBibRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified() {
     postSnapshots(snapshot_1, snapshot_2, snapshot_3);
 
-    Record record_4 = new Record()
+    Record record4 = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -227,7 +227,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(FIRST_HRID));
 
-    postRecords(record_1, record_2, record_3, record_4, record_6);
+    postRecords(record_1, record_2, record_3, record4, record_6);
 
     RestAssured.given()
       .spec(spec)
@@ -250,10 +250,10 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(RecordType.MARC_HOLDING, record_8);
   }
 
-  void shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(RecordType recordType, Record record) {
+  void shouldReturnAllMarcRecordsWithNotEmptyStateOnGetWhenNoQueryIsSpecified(RecordType recordType, Record marcRecord) {
     postSnapshots(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
 
-    Record record_4 = new Record()
+    Record record4 = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_4.getJobExecutionId())
       .withRecordType(recordType)
@@ -263,7 +263,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withOrder(1)
       .withState(Record.State.OLD);
 
-    postRecords(record_1, record_2, record_3, record_4, record);
+    postRecords(record_1, record_2, record_3, record4, marcRecord);
 
     RestAssured.given()
       .spec(spec)
@@ -280,7 +280,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
   void shouldReturnAllEdifactRecordsWithNotEmptyStateOnGetWhenRecordTypeQueryIsSpecified() {
     postSnapshots(snapshot_1, snapshot_2, snapshot_3);
 
-    Record record_4 = new Record()
+    Record record4 = new Record()
       .withId(FOURTH_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -293,7 +293,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
         .withInstanceId(FOURTH_UUID)
         .withInstanceHrid(FIRST_HRID));
 
-    postRecords(record_1, record_2, record_3, record_4, record_6);
+    postRecords(record_1, record_2, record_3, record4, record_6);
 
     RestAssured.given()
       .spec(spec)
@@ -347,7 +347,7 @@ public class RecordApiTest extends AbstractRestVerticleTest {
     shouldReturnMarcRecordsOnGetBySpecifiedSnapshotId(RecordType.MARC_HOLDING, record_8);
   }
 
-  void shouldReturnMarcRecordsOnGetBySpecifiedSnapshotId(RecordType recordType, Record record){
+  void shouldReturnMarcRecordsOnGetBySpecifiedSnapshotId(RecordType recordType, Record marcRecord){
     postSnapshots(snapshot_1, snapshot_2, snapshot_3, snapshot_4);
 
     Record recordWithOldStatus = new Record()
@@ -360,17 +360,17 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .withOrder(1)
       .withState(Record.State.OLD);
 
-    postRecords(record_1, record_2, record_3, record, recordWithOldStatus);
+    postRecords(record_1, record_2, record_3, marcRecord, recordWithOldStatus);
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_RECORDS_PATH + "?recordType=" + recordType + "&state=ACTUAL&snapshotId=" + record.getSnapshotId())
+      .get(SOURCE_STORAGE_RECORDS_PATH + "?recordType=" + recordType + "&state=ACTUAL&snapshotId=" + marcRecord.getSnapshotId())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
       .body("records*.recordType", everyItem(is(recordType.name())))
-      .body("records*.snapshotId", everyItem(is(record.getSnapshotId())))
+      .body("records*.snapshotId", everyItem(is(marcRecord.getSnapshotId())))
       .body("records*.additionalInfo.suppressDiscovery", everyItem(is(false)));
   }
 
@@ -789,19 +789,19 @@ public class RecordApiTest extends AbstractRestVerticleTest {
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH);
     assertThat(createErrorRecord.statusCode(), is(HttpStatus.SC_CREATED));
-    Record errorRecord = createErrorRecord.body().as(Record.class);
+    Record errorRecord1 = createErrorRecord.body().as(Record.class);
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord.getId())
+      .delete(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord1.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
 
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord.getId())
+      .get(SOURCE_STORAGE_RECORDS_PATH + "/" + errorRecord1.getId())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("deleted", is(true))

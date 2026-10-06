@@ -69,8 +69,8 @@ public class ConsortiumConfigurationCacheTest {
       optionalFuture.onComplete(testContext.succeeding(result -> {
         assertTrue(result.isPresent());
         ConsortiumConfiguration actualConsortiumConfiguration = result.get();
-        assertEquals(actualConsortiumConfiguration.getCentralTenantId(), CENTRAL_TENANT_ID);
-        assertEquals(actualConsortiumConfiguration.getConsortiumId(), CONSORTIUM_ID);
+        assertEquals(CENTRAL_TENANT_ID, actualConsortiumConfiguration.getCentralTenantId());
+        assertEquals(CONSORTIUM_ID, actualConsortiumConfiguration.getConsortiumId());
         testContext.completeNow();
       }));
     });

@@ -15,82 +15,45 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.stream.Stream;
 import org.folio.services.util.parser.ParseFieldsResult;
 import org.folio.services.util.parser.ParseLeaderResult;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class SearchExpressionParserUnitTest {
 
   /* - TESTING SearchExpressionParser#parseFieldsSearchExpression */
 
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_isBlank() {
-    // given
-    String fieldsSearchExpression = "     ";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "The input expression should not be black or empty [expression: marcFieldSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
+  private static Stream<Arguments> invalidFieldsSearchExpressionArguments() {
+    return Stream.of(
+      Arguments.of("     ", "The input expression should not be black or empty [expression: marcFieldSearchExpression]"),
+      Arguments.of("", "The input expression should not be black or empty [expression: marcFieldSearchExpression]"),
+      Arguments.of("(035.a = '0' or (035.a = '1')", "The number of opened brackets should be equal to number of closed brackets [expression: marcFieldSearchExpression]"),
+      Arguments.of("(035.a = '0') or (035.a = 1')", "Each value in the expression should be surrounded by single quotes [expression: marcFieldSearchExpression]"),
+      Arguments.of("(035.a = '')", "Empty values are not allowed [expression: marcFieldSearchExpression]"),
+      Arguments.of("035.a none '1'", "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=, not=, from, to, in, is]"),
+      Arguments.of("xxx.a = '1'", "The given expression [xxx.a = '1'] is not parsable"),
+      Arguments.of("001.08_01 = 'abc'", "The length of the value [abc] should be equal to the end position [expected length = 1]"),
+      Arguments.of("001.08_01 ^= 'a'", "Operator [^=] is not supported for the given Position operand"),
+      Arguments.of("005.date in 'wrong date'", "The given date [wrong date] is in a wrong format. Expected date pattern: [yyyymmdd]"),
+      Arguments.of("005.date ^= '201701025'", "The given expression [005.date ^= '201701025'] is not supported"),
+      Arguments.of("005.date in '201701025'", "The given expression [005.date in '201701025'] is not supported")
+    );
   }
 
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_isEmpty() {
-    // given
-    String fieldsSearchExpression = "";
+  @DisplayName("should throw IllegalArgumentException when fields search expression is invalid")
+  @ParameterizedTest(name = "expression=[{0}]")
+  @MethodSource("invalidFieldsSearchExpressionArguments")
+  void shouldThrowException_if_fieldsSearchExpression_isInvalid(String fieldsSearchExpression, String expectedMessage) {
     // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
+    Exception exception = assertThrows(IllegalArgumentException.class,
+      () -> parseFieldsSearchExpression(fieldsSearchExpression));
     // then
-    String expectedMessage = "The input expression should not be black or empty [expression: marcFieldSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_hasWrongBrackets() {
-    // given
-    String fieldsSearchExpression = "(035.a = '0' or (035.a = '1')";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "The number of opened brackets should be equal to number of closed brackets [expression: marcFieldSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_hasWrongQuotes() {
-    // given
-    String fieldsSearchExpression = "(035.a = '0') or (035.a = 1')";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "Each value in the expression should be surrounded by single quotes [expression: marcFieldSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_hasEmptyValue() {
-    // given
-    String fieldsSearchExpression = "(035.a = '')";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "Empty values are not allowed [expression: marcFieldSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
+    assertEquals(expectedMessage, exception.getMessage());
   }
 
   @Test
@@ -104,34 +67,6 @@ public class SearchExpressionParserUnitTest {
     assertEquals(emptySet(), result.getFieldsToJoin());
     assertFalse(result.isEnabled());
     assertNull(result.getWhereExpression());
-  }
-
-  @Test
-  void shouldReturnParseResult_if_fieldsSearchExpression_hasWrongOperator() {
-    // given
-    String fieldsSearchExpression = "035.a none '1'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "The given binary operator is not supported [key: 035.a, operator: none, value: 1]. Supported operators: [=, ^=, not=, from, to, in, is]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_hasWrongOperand() {
-    // given
-    String fieldsSearchExpression = "xxx.a = '1'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "The given expression [xxx.a = '1'] is not parsable";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
   }
 
   @Test
@@ -173,30 +108,28 @@ public class SearchExpressionParserUnitTest {
     assertEquals("( \"field_no\" = '035' and \"subfield_no\" = 'a' and \"value\" <> ?)", result.getWhereExpression());
   }
 
-  @Test
-  void shouldParseFieldsSearchExpression_for_SubFieldOperand_IsPresentOperator() {
-    // given
-    String fieldsSearchExpression = "035.a is 'present'";
-    // when
-    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
-    // then
-    assertTrue(result.isEnabled());
-    assertEquals(emptyList(), result.getBindingParams());
-    assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id in (select marc_id from marc_indexers_035 where subfield_no = 'a'))", result.getWhereExpression());
+  private static Stream<Arguments> presenceFieldsSearchExpressionArguments() {
+    return Stream.of(
+      Arguments.of("035.a is 'present'", "( \"field_no\" = '035' and marc_indexers.marc_id in (select marc_id from marc_indexers_035 where subfield_no = 'a'))"),
+      Arguments.of("035.z is 'absent'", "( \"field_no\" = '035' and marc_indexers.marc_id not in (select marc_id from marc_indexers_035 where subfield_no = 'z'))"),
+      Arguments.of("035.value is 'present'", "( \"field_no\" = '035' and marc_indexers.marc_id in (select marc_id from marc_indexers_035))"),
+      Arguments.of("035.value is 'absent'", "( \"field_no\" = '035' and marc_indexers.marc_id not in (select marc_id from marc_indexers_035))"),
+      Arguments.of("050.ind1 is 'present'", "( \"field_no\" = '050' and marc_indexers.marc_id in (select marc_id from marc_indexers_050 where ind1 <> '#'))"),
+      Arguments.of("050.ind2 is 'absent'", "( \"field_no\" = '050' and marc_indexers.marc_id in (select marc_id from marc_indexers_050 where ind2 = '#'))")
+    );
   }
 
-  @Test
-  void shouldParseFieldsSearchExpression_for_SubFieldOperand_IsAbsentOperator() {
-    // given
-    String fieldsSearchExpression = "035.z is 'absent'";
+  @DisplayName("should parse fields search expression with presence (is present/absent) operator")
+  @ParameterizedTest(name = "expression=[{0}]")
+  @MethodSource("presenceFieldsSearchExpressionArguments")
+  void shouldParseFieldsSearchExpression_for_PresenceOperator(String fieldsSearchExpression, String expectedWhereExpression) {
     // when
     ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
     // then
     assertTrue(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id not in (select marc_id from marc_indexers_035 where subfield_no = 'z'))", result.getWhereExpression());
+    assertEquals(expectedWhereExpression, result.getWhereExpression());
   }
 
   @Test
@@ -278,60 +211,6 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  void shouldParseFieldsSearchExpression_for_ValueOperand_IsPresentOperator() {
-    // given
-    String fieldsSearchExpression = "035.value is 'present'";
-    // when
-    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
-    // then
-    assertTrue(result.isEnabled());
-    assertEquals(emptyList(), result.getBindingParams());
-    assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id in (select marc_id from marc_indexers_035))", result.getWhereExpression());
-  }
-
-  @Test
-  void shouldParseFieldsSearchExpression_for_ValueOperand_IsAbsentOperator() {
-    // given
-    String fieldsSearchExpression = "035.value is 'absent'";
-    // when
-    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
-    // then
-    assertTrue(result.isEnabled());
-    assertEquals(emptyList(), result.getBindingParams());
-    assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '035' and marc_indexers.marc_id not in (select marc_id from marc_indexers_035))", result.getWhereExpression());
-  }
-
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForPositionOperand() {
-    // given
-    String fieldsSearchExpression = "001.08_01 = 'abc'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "The length of the value [abc] should be equal to the end position [expected length = 1]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForPositionOperand() {
-    // given
-    String fieldsSearchExpression = "001.08_01 ^= 'a'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "Operator [^=] is not supported for the given Position operand";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
   void shouldParseFieldsSearchExpression_for_PositionOperand_EqualsOperator() {
     // given
     String fieldsSearchExpression = "005.00_04 = '2014'";
@@ -355,48 +234,6 @@ public class SearchExpressionParserUnitTest {
     assertEquals(singletonList("2014"), result.getBindingParams());
     assertEquals(new HashSet<>(singletonList("005")), result.getFieldsToJoin());
     assertEquals("( \"field_no\" = '005' and substring(\"value\", 1, 4) <> ?)", result.getWhereExpression());
-  }
-
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_hasWrongValueForDateRangeOperand() {
-    // given
-    String fieldsSearchExpression = "005.date in 'wrong date'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "The given date [wrong date] is in a wrong format. Expected date pattern: [yyyymmdd]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForDateRangeOperand() {
-    // given
-    String fieldsSearchExpression = "005.date ^= '201701025'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "The given expression [005.date ^= '201701025'] is not supported";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_fieldsSearchExpression_hasNonSupportedExpressionForDateRangeOperand() {
-    // given
-    String fieldsSearchExpression = "005.date in '201701025'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseFieldsSearchExpression(fieldsSearchExpression);
-    });
-    // then
-    String expectedMessage = "The given expression [005.date in '201701025'] is not supported";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
   }
 
   @Test
@@ -478,32 +315,6 @@ public class SearchExpressionParserUnitTest {
   }
 
   @Test
-  void shouldParseFieldsSearchExpression_for_IndicatorOperand_IsPresentOperator() {
-    // given
-    String fieldsSearchExpression = "050.ind1 is 'present'";
-    // when
-    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
-    // then
-    assertTrue(result.isEnabled());
-    assertEquals(emptyList(), result.getBindingParams());
-    assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '050' and marc_indexers.marc_id in (select marc_id from marc_indexers_050 where ind1 <> '#'))", result.getWhereExpression());
-  }
-
-  @Test
-  void shouldParseFieldsSearchExpression_for_IndicatorOperand_IsAbsentOperator() {
-    // given
-    String fieldsSearchExpression = "050.ind2 is 'absent'";
-    // when
-    ParseFieldsResult result = parseFieldsSearchExpression(fieldsSearchExpression);
-    // then
-    assertTrue(result.isEnabled());
-    assertEquals(emptyList(), result.getBindingParams());
-    assertEquals(emptySet(), result.getFieldsToJoin());
-    assertEquals("( \"field_no\" = '050' and marc_indexers.marc_id in (select marc_id from marc_indexers_050 where ind2 = '#'))", result.getWhereExpression());
-  }
-
-  @Test
   void shouldThrowException_if_fieldsSearchExpression_hasWrongOperatorForIndicatorOperand() {
     // given
     String fieldsSearchExpression = "050.ind2 is 'empty'";
@@ -518,74 +329,27 @@ public class SearchExpressionParserUnitTest {
 
   /* - TESTING SearchExpressionParser#parseLeaderSearchExpression */
 
-  @Test
-  void shouldThrowException_if_leaderSearchExpression_isBlank() {
-    // given
-    String leaderSearchExpression = "     ";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseLeaderSearchExpression(leaderSearchExpression);
-    });
-    // then
-    String expectedMessage = "The input expression should not be black or empty [expression: leaderSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
+  private static Stream<Arguments> invalidLeaderSearchExpressionArguments() {
+    return Stream.of(
+      Arguments.of("     ", "The input expression should not be black or empty [expression: leaderSearchExpression]"),
+      Arguments.of("", "The input expression should not be black or empty [expression: leaderSearchExpression]"),
+      Arguments.of("(p_05 = 'a') and (p_06 = 'c'", "The number of opened brackets should be equal to number of closed brackets [expression: leaderSearchExpression]"),
+      Arguments.of("(p_05 = '0') or (p_06 = 1')", "Each value in the expression should be surrounded by single quotes [expression: leaderSearchExpression]"),
+      Arguments.of("(p_05 = '')", "Empty values are not allowed [expression: leaderSearchExpression]"),
+      Arguments.of("p_05 ^= 'a'", "Operator [^=] is not supported for the given Leader operand. Supported operators: [=]"),
+      Arguments.of("xxx.a = '1'", "The given expression [xxx.a = '1'] is not parsable")
+    );
   }
 
-  @Test
-  void shouldThrowException_if_leaderSearchExpression_isEmpty() {
-    // given
-    String leaderSearchExpression = "";
+  @DisplayName("should throw IllegalArgumentException when leader search expression is invalid")
+  @ParameterizedTest(name = "expression=[{0}]")
+  @MethodSource("invalidLeaderSearchExpressionArguments")
+  void shouldThrowException_if_leaderSearchExpression_isInvalid(String leaderSearchExpression, String expectedMessage) {
     // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseLeaderSearchExpression(leaderSearchExpression);
-    });
+    Exception exception = assertThrows(IllegalArgumentException.class,
+      () -> parseLeaderSearchExpression(leaderSearchExpression));
     // then
-    String expectedMessage = "The input expression should not be black or empty [expression: leaderSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_leaderSearchExpression_hasWrongBrackets() {
-    // given
-    String leaderSearchExpression = "(p_05 = 'a') and (p_06 = 'c'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseLeaderSearchExpression(leaderSearchExpression);
-    });
-    // then
-    String expectedMessage = "The number of opened brackets should be equal to number of closed brackets [expression: leaderSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_leaderSearchExpression_hasWrongQuotes() {
-    // given
-    String leaderSearchExpression = "(p_05 = '0') or (p_06 = 1')";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseLeaderSearchExpression(leaderSearchExpression);
-    });
-    // then
-    String expectedMessage = "Each value in the expression should be surrounded by single quotes [expression: leaderSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_leaderSearchExpression_hasEmptyValue() {
-    // given
-    String leaderSearchExpression = "(p_05 = '')";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseLeaderSearchExpression(leaderSearchExpression);
-    });
-    // then
-    String expectedMessage = "Empty values are not allowed [expression: leaderSearchExpression]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
+    assertEquals(expectedMessage, exception.getMessage());
   }
 
   @Test
@@ -598,34 +362,6 @@ public class SearchExpressionParserUnitTest {
     assertFalse(result.isEnabled());
     assertEquals(emptyList(), result.getBindingParams());
     assertNull(result.getWhereExpression());
-  }
-
-  @Test
-  void shouldReturnParseResult_if_leaderSearchExpression_hasWrongOperator() {
-    // given
-    String leaderSearchExpression = "p_05 ^= 'a'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseLeaderSearchExpression(leaderSearchExpression);
-    });
-    // then
-    String expectedMessage = "Operator [^=] is not supported for the given Leader operand. Supported operators: [=]";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
-  }
-
-  @Test
-  void shouldThrowException_if_leaderSearchExpression_hasWrongOperand() {
-    // given
-    String leaderSearchExpression = "xxx.a = '1'";
-    // when
-    Exception exception = assertThrows(IllegalArgumentException.class, () -> {
-      parseLeaderSearchExpression(leaderSearchExpression);
-    });
-    // then
-    String expectedMessage = "The given expression [xxx.a = '1'] is not parsable";
-    String actualMessage = exception.getMessage();
-    assertEquals(expectedMessage, actualMessage);
   }
 
   @Test

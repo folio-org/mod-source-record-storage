@@ -76,7 +76,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
-      .onSuccess(record -> handler.handle(dataImportEventPayload)
+      .onSuccess(marcRecord -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 
@@ -207,13 +207,13 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
         Record updatedRecord = getAr.result().get();
 
         assertNotNull(updatedRecord.getExternalIdsHolder());
-        assertTrue(expectedHoldingsId.equals(updatedRecord.getExternalIdsHolder().getHoldingsId()));
+        assertEquals(expectedHoldingsId, updatedRecord.getExternalIdsHolder().getHoldingsId());
 
         assertNotNull(updatedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
-        assertTrue(!fields.isEmpty());
+        assertFalse(fields.isEmpty());
 
         String actualHoldingsId = getInventoryId(fields);
         assertEquals(expectedHoldingsId, actualHoldingsId);
@@ -376,7 +376,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
         Record updatedRecord = getAr.result().get();
 
         assertNotNull(updatedRecord.getExternalIdsHolder());
-        assertTrue(expectedHoldingsId.equals(updatedRecord.getExternalIdsHolder().getHoldingsId()));
+        assertEquals(expectedHoldingsId, updatedRecord.getExternalIdsHolder().getHoldingsId());
 
         assertNotNull(updatedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
@@ -431,7 +431,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
-      .onSuccess(record -> handler.handle(dataImportEventPayload)
+      .onSuccess(marcRecord -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 

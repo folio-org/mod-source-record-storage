@@ -36,7 +36,6 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.JobProfile;
@@ -97,7 +96,7 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
   private RecordService recordService;
   private MarcHoldingsUpdateModifyEventHandler modifyRecordEventHandler;
   private Snapshot snapshotForRecordUpdate;
-  private Record record;
+  private Record marcRecord;
 
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
@@ -176,7 +175,7 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
       .withJobExecutionId(UUID.randomUUID().toString())
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
 
-    record = new Record()
+    marcRecord = new Record()
       .withId(RECORD_ID)
       .withSnapshotId(snapshot.getJobExecutionId())
       .withGeneration(0)
@@ -189,7 +188,7 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
     PgPoolQueryExecutor queryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     SnapshotDaoUtil.save(queryExecutor, snapshot)
-      .compose(v -> recordService.saveRecord(record, okapiHeaders))
+      .compose(v -> recordService.saveRecord(marcRecord, okapiHeaders))
       .compose(v -> SnapshotDaoUtil.save(queryExecutor, snapshotForRecordUpdate))
       .onComplete(testContext.succeedingThenComplete());
   }
@@ -207,10 +206,10 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
     String incomingParsedContent = "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406512\"},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
     String expectedParsedContent = "{\"leader\":\"00134nam  22000611a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"035\":{\"subfields\":[{\"a\":\"ybp7406512\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"856\":{\"subfields\":[{\"u\":\"http://libproxy.smith.edu?url=example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}},{\"999\":{\"subfields\":[{\"s\":\"eae222e8-70fd-4422-852c-60d22bae36b8\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
     Record incomingRecord = new Record().withParsedRecord(new ParsedRecord().withContent(incomingParsedContent));
-    record.getParsedRecord().setContent(Json.encode(record.getParsedRecord().getContent()));
+    marcRecord.getParsedRecord().setContent(Json.encode(marcRecord.getParsedRecord().getContent()));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_HOLDINGS.value(), Json.encode(incomingRecord));
-    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(record));
+    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(marcRecord));
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
     profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
@@ -246,7 +245,7 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
   }
 
   @Test
-  void shouldReturnFailedFutureWhenHasNoMarcRecord() throws InterruptedException, ExecutionException, TimeoutException {
+  void shouldReturnFailedFutureWhenHasNoMarcRecord() {
     // given
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
@@ -283,24 +282,24 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
   @Test
   void shouldReturnTrueWhenHandlerIsEligibleForUpdateMarcAuthorityActionProfile() {
     // given
-    ActionProfile actionProfile = new ActionProfile()
+    ActionProfile actionProfile1 = new ActionProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Update marc bib")
       .withAction(ActionProfile.Action.UPDATE)
       .withFolioRecord(ActionProfile.FolioRecord.MARC_HOLDINGS);
 
-    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
+    ProfileSnapshotWrapper profileSnapshotWrapper1 = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
-      .withProfileId(actionProfile.getId())
+      .withProfileId(actionProfile1.getId())
       .withContentType(ACTION_PROFILE)
-      .withContent(actionProfile);
+      .withContent(actionProfile1);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(new HashMap<>())
-      .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper);
+      .withProfileSnapshot(profileSnapshotWrapper1)
+      .withCurrentNode(profileSnapshotWrapper1);
 
     // when
     boolean isEligible = modifyRecordEventHandler.isEligible(dataImportEventPayload);
@@ -312,24 +311,24 @@ public class MarcHoldingsUpdateModifyEventHandlerTest extends AbstractLBServiceT
   @Test
   void shouldReturnFalseWhenHandlerIsNotEligibleForActionProfile() {
     // given
-    ActionProfile actionProfile = new ActionProfile()
+    ActionProfile actionProfile1 = new ActionProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Create instance")
       .withAction(ActionProfile.Action.CREATE)
       .withFolioRecord(ActionProfile.FolioRecord.INSTANCE);
 
-    ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
+    ProfileSnapshotWrapper profileSnapshotWrapper1 = new ProfileSnapshotWrapper()
       .withId(UUID.randomUUID().toString())
-      .withProfileId(actionProfile.getId())
+      .withProfileId(actionProfile1.getId())
       .withContentType(ACTION_PROFILE)
-      .withContent(actionProfile);
+      .withContent(actionProfile1);
 
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withTenant(TENANT_ID)
       .withEventType(DI_SRS_MARC_BIB_RECORD_CREATED.value())
       .withContext(new HashMap<>())
-      .withProfileSnapshot(profileSnapshotWrapper)
-      .withCurrentNode(profileSnapshotWrapper);
+      .withProfileSnapshot(profileSnapshotWrapper1)
+      .withCurrentNode(profileSnapshotWrapper1);
 
     // when
     boolean isEligible = modifyRecordEventHandler.isEligible(dataImportEventPayload);

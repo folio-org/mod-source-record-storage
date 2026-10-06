@@ -687,7 +687,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
       assertNotNull(record1Saved.result().getRawRecord());
       assertNotNull(record1Saved.result().getParsedRecord());
-      assertEquals(record1Saved.result().getState(), State.ACTUAL);
+      assertEquals(State.ACTUAL, record1Saved.result().getState());
       compareRecords(record1, record1Saved.result());
 
       SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
@@ -750,7 +750,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
       assertNotNull(record1Saved.result().getRawRecord());
       assertNotNull(record1Saved.result().getParsedRecord());
-      assertEquals(record1Saved.result().getState(), State.ACTUAL);
+      assertEquals(State.ACTUAL, record1Saved.result().getState());
       compareRecords(record1, record1Saved.result());
 
       SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(snapshotSaved -> {
@@ -761,22 +761,22 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           verify(recordDomainEventPublisher).publishRecordUpdated(eq(record1Saved.result()), eq(recordToUpdateGenerationSaved.result()), any());
           assertTrue(recordToUpdateGenerationSaved.succeeded());
           assertEquals(recordToUpdateGenerationSaved.result().getMatchedId(), matchedId);
-          assertEquals(recordToUpdateGenerationSaved.result().getGeneration(), 1);
+          assertEquals(1, recordToUpdateGenerationSaved.result().getGeneration());
           recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(get -> {
             if (get.failed()) {
               testContext.failNow(get.cause());
             }
             assertTrue(get.result().isPresent());
-            assertEquals(get.result().get().getGeneration(), 1);
+            assertEquals(1, get.result().get().getGeneration());
             assertEquals(get.result().get().getMatchedId(), matchedId);
             assertNotEquals(get.result().get().getId(), matchedId);
-            assertEquals(get.result().get().getState(), State.ACTUAL);
+            assertEquals(State.ACTUAL, get.result().get().getState());
             recordDao.getRecordById(matchedId, TENANT_ID).onComplete(getRecord1 -> {
               if (getRecord1.failed()) {
                 testContext.failNow(get.cause());
               }
               assertTrue(getRecord1.result().isPresent());
-              assertEquals(getRecord1.result().get().getState(), State.OLD);
+              assertEquals(State.OLD, getRecord1.result().get().getState());
               testContext.completeNow();
             });
           });
@@ -986,7 +986,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       }
       assertNotNull(savedRecord.result().getRawRecord());
       assertNotNull(savedRecord.result().getParsedRecord());
-      assertEquals(savedRecord.result().getState(), State.ACTUAL);
+      assertEquals(State.ACTUAL, savedRecord.result().getState());
       compareRecords(recordToSave, savedRecord.result());
 
       var matchedId = savedRecord.result().getMatchedId();
@@ -1022,22 +1022,22 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, okapiHeaders).onComplete(recordToUpdateGenerationSaved -> {
           assertTrue(recordToUpdateGenerationSaved.succeeded());
           assertEquals(recordToUpdateGenerationSaved.result().getMatchedId(), matchedId);
-          assertEquals(recordToUpdateGenerationSaved.result().getGeneration(), 1);
+          assertEquals(1, recordToUpdateGenerationSaved.result().getGeneration());
           recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(get -> {
             if (get.failed()) {
               testContext.failNow(get.cause());
             }
             assertTrue(get.result().isPresent());
-            assertEquals(get.result().get().getGeneration(), 1);
+            assertEquals(1, get.result().get().getGeneration());
             assertEquals(get.result().get().getMatchedId(), matchedId);
             assertNotEquals(get.result().get().getId(), matchedId);
-            assertEquals(get.result().get().getState(), State.ACTUAL);
+            assertEquals(State.ACTUAL, get.result().get().getState());
             recordDao.getRecordById(matchedId, TENANT_ID).onComplete(getRecord1 -> {
               if (getRecord1.failed()) {
                 testContext.failNow(get.cause());
               }
               assertTrue(getRecord1.result().isPresent());
-              assertEquals(getRecord1.result().get().getState(), State.OLD);
+              assertEquals(State.OLD, getRecord1.result().get().getState());
               testContext.completeNow();
             });
           });
@@ -2355,7 +2355,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
           assertNotNull(get.result().getParsedRecord());
           assertEquals(expected.getParsedRecord().getFormattedContent(),
             get.result().getParsedRecord().getFormattedContent());
-          assertEquals(get.result().getState().toString(), "ACTUAL");
+          assertEquals("ACTUAL", get.result().getState().toString());
           testContext.completeNow();
         });
     });

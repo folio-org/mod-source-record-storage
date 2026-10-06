@@ -850,9 +850,8 @@ public class RecordServiceTest extends AbstractLBServiceTest {
   }
 
   @Test
-  public void shouldFailSaveRecordWithOptimisticLockingError_whenRecordWasModifiedByAnotherProcess(TestContext context) {
+  void shouldFailSaveRecordWithOptimisticLockingError_whenRecordWasModifiedByAnotherProcess(VertxTestContext testContext) {
     // given: record generation 1 was saved by another process (e.g. quickMARC) after the import job matched generation 0
-    Async async = context.async();
     String matchedId = UUID.randomUUID().toString();
     Record existingRecord = buildRecordToUpdateGeneration(matchedId, TestMocks.getMarcBibRecord().getSnapshotId(), null)
       .withId(matchedId);
@@ -866,25 +865,24 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), anotherProcessSnapshot))
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), importJobSnapshot))
       .compose(v -> recordService.updateRecordGeneration(matchedId, anotherProcessRecord, okapiHeaders))
-      .onComplete(context.asyncAssertSuccess(anotherProcessSaved ->
+      .onComplete(testContext.succeeding(anotherProcessSaved ->
 
         // when: the import job saves the generation it calculated from the previously matched record
-        recordService.saveRecord(importJobRecord, okapiHeaders).onComplete(context.asyncAssertFailure(throwable -> {
+        recordService.saveRecord(importJobRecord, okapiHeaders).onComplete(testContext.failing(throwable -> testContext.verify(() -> {
 
           // then: the conflict is reported as optimistic locking error and the concurrent change is preserved
-          context.assertEquals(RecordOptimisticLockingException.class, throwable.getClass());
-          context.assertTrue(throwable.getMessage().startsWith("Optimistic locking"));
-          recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(context.asyncAssertSuccess(actual -> {
-            context.assertEquals(anotherProcessSaved.getId(), actual.orElseThrow().getId());
-            async.complete();
-          }));
-        }))));
+          assertEquals(RecordOptimisticLockingException.class, throwable.getClass());
+          assertTrue(throwable.getMessage().startsWith("Optimistic locking"));
+          recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(testContext.succeeding(actual -> testContext.verify(() -> {
+            assertEquals(anotherProcessSaved.getId(), actual.orElseThrow().getId());
+            testContext.completeNow();
+          })));
+        })))));
   }
 
   @Test
-  public void shouldFailSaveRecordWithDuplicateError_whenRecordWasModifiedBySameJob(TestContext context) {
+  void shouldFailSaveRecordWithDuplicateError_whenRecordWasModifiedBySameJob(VertxTestContext testContext) {
     // given: record generation 1 was already saved by the same job from another incoming record
-    Async async = context.async();
     String matchedId = UUID.randomUUID().toString();
     Record existingRecord = buildRecordToUpdateGeneration(matchedId, TestMocks.getMarcBibRecord().getSnapshotId(), null)
       .withId(matchedId);
@@ -896,21 +894,20 @@ public class RecordServiceTest extends AbstractLBServiceTest {
     recordService.saveRecord(existingRecord, okapiHeaders)
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), importJobSnapshot))
       .compose(v -> recordService.saveRecord(firstIncomingRecord, okapiHeaders))
-      .onComplete(context.asyncAssertSuccess(firstSaved ->
+      .onComplete(testContext.succeeding(firstSaved ->
 
         // when
-        recordService.saveRecord(secondIncomingRecord, okapiHeaders).onComplete(context.asyncAssertFailure(throwable -> {
+        recordService.saveRecord(secondIncomingRecord, okapiHeaders).onComplete(testContext.failing(throwable -> testContext.verify(() -> {
 
           // then
-          context.assertEquals(DuplicateRecordException.class, throwable.getClass());
-          async.complete();
-        }))));
+          assertEquals(DuplicateRecordException.class, throwable.getClass());
+          testContext.completeNow();
+        })))));
   }
 
   @Test
-  public void shouldFailUpdateRecordGenerationWithOptimisticLockingError_whenRecordWasModifiedByAnotherJob(TestContext context) {
+  void shouldFailUpdateRecordGenerationWithOptimisticLockingError_whenRecordWasModifiedByAnotherJob(VertxTestContext testContext) {
     // given: record generation 1 was saved by an import job after quickMARC loaded generation 0
-    Async async = context.async();
     String matchedId = UUID.randomUUID().toString();
     Record existingRecord = buildRecordToUpdateGeneration(matchedId, TestMocks.getMarcBibRecord().getSnapshotId(), null)
       .withId(matchedId);
@@ -924,17 +921,17 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), importJobSnapshot))
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), quickMarcSnapshot))
       .compose(v -> recordService.saveRecord(importJobRecord, okapiHeaders))
-      .onComplete(context.asyncAssertSuccess(importJobSaved ->
+      .onComplete(testContext.succeeding(importJobSaved ->
 
         // when
         recordService.updateRecordGeneration(matchedId, quickMarcRecord, okapiHeaders)
-          .onComplete(context.asyncAssertFailure(throwable -> {
+          .onComplete(testContext.failing(throwable -> testContext.verify(() -> {
 
             // then
-            context.assertEquals(BadRequestException.class, throwable.getClass());
-            context.assertTrue(throwable.getMessage().startsWith("Optimistic locking"));
-            async.complete();
-          }))));
+            assertEquals(BadRequestException.class, throwable.getClass());
+            assertTrue(throwable.getMessage().startsWith("Optimistic locking"));
+            testContext.completeNow();
+          })))));
   }
 
   private Snapshot buildInProgressSnapshot() {

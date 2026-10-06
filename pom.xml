@@ -52,6 +52,7 @@
     <byte-buddy.version>1.18.14</byte-buddy.version>
     <testcontainers.version>2.0.5</testcontainers.version>
     <aspectj.version>1.9.25.1</aspectj.version>
+    <assertj-core.version>3.27.7</assertj-core.version>
 
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>

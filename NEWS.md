@@ -4,6 +4,7 @@
 * [MODSOURCE-1019](https://folio-org.atlassian.net/browse/MODSOURCE-1019) Fix MARC-MARC matching when comparison part is used without a qualifier
 * [MODSOURCE-1021](https://folio-org.atlassian.net/browse/MODSOURCE-1021) Reject duplicate records within one import job on record generation update regardless of timing
 * [MODSOURCE-1026](https://folio-org.atlassian.net/browse/MODSOURCE-1026) Report optimistic locking error instead of "Incoming file may contain duplicates" when record is modified concurrently during import
+* [MODSOURCE-1020](https://folio-org.atlassian.net/browse/MODSOURCE-1020) Upgrade from Java 21 to Java 25
 
 ## 2026-04-15 6.0.0
 * [MODSOURCE-917](https://folio-org.atlassian.net/browse/MODSOURCE-917) "Numerics only" option of existing record section does not work during MARC-BIB to MARC-BIB matching

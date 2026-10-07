@@ -1,9 +1,11 @@
 package org.folio.rest.impl;
 
+import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.config.ObjectMapperConfig;
@@ -13,13 +15,17 @@ import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.VertxOptions;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.web.client.WebClient;
+import io.vertx.junit5.VertxExtension;
 import io.vertx.reactivex.core.Vertx;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.apache.http.HttpStatus;
-import org.folio.TestUtil;
 import org.folio.SharedPostgresContainer;
+import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.RestVerticle;
@@ -32,17 +38,14 @@ import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.testcontainers.kafka.KafkaContainer;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.UUID;
 
-import static org.folio.rest.impl.ModTenantAPI.LOAD_SAMPLE_PARAMETER;
-
+@ExtendWith(VertxExtension.class)
 public abstract class AbstractRestVerticleTest {
 
   private static String useExternalDatabase;
@@ -73,18 +76,18 @@ public abstract class AbstractRestVerticleTest {
   static RequestSpecification spec;
   static RequestSpecification specWithoutUserId;
 
-  @Rule
-  public WireMockRule mockServer = new WireMockRule(
-    WireMockConfiguration.wireMockConfig()
+  @RegisterExtension
+  WireMockExtension mockServer = WireMockExtension.newInstance()
+    .configureStaticDsl(true)
+    .options(WireMockConfiguration.wireMockConfig()
       .dynamicPort()
-      .notifier(new Slf4jNotifier(true)));
+      .notifier(new Slf4jNotifier(true)))
+    .build();
 
   public static KafkaContainer kafkaContainer = TestUtil.getKafkaContainer();
 
-  @BeforeClass
-  public static void setUpClass(final TestContext context) throws Exception {
-    Async async = context.async();
-
+  @BeforeAll
+  public static void setUpClass() throws Exception {
     // Bind the module to a fresh free port for every test class. Surefire reuses one JVM fork for
     // the whole module, and the RestVerticle HTTP server from a previous class is not always
     // released before the next class starts, which caused "Address already in use" (BindException).
@@ -97,10 +100,8 @@ public abstract class AbstractRestVerticleTest {
 
     kafkaContainer.start();
     setUpConsortiumConfigurationCache();
-    //Property variables
     System.setProperty("kafka-host", kafkaContainer.getHost());
     System.setProperty("kafka-port", kafkaContainer.getFirstMappedPort() + "");
-    //Env variables
     System.setProperty(KAFKA_HOST, kafkaContainer.getHost());
     System.setProperty(KAFKA_PORT, kafkaContainer.getFirstMappedPort() + "");
     System.setProperty(OKAPI_URL_ENV, OKAPI_URL);
@@ -109,8 +110,7 @@ public abstract class AbstractRestVerticleTest {
       "embedded");
 
     RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
-      .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()
-      ));
+      .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()));
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
 
     switch (useExternalDatabase) {
@@ -135,19 +135,19 @@ public abstract class AbstractRestVerticleTest {
         envs.put(Envs.DB_MAXPOOLSIZE.toString(), MAX_POOL_SIZE);
 
         Envs.setEnv(envs);
-
         break;
       default:
-        String message = "No understood database choice made." +
-          "Please set org.folio.source.storage.test.database" +
-          "to 'external', 'environment' or 'embedded'";
-        throw new Exception(message);
+        throw new Exception("No understood database choice made."
+          + "Please set org.folio.source.storage.test.database"
+          + "to 'external', 'environment' or 'embedded'");
     }
 
     TenantClient tenantClient =
       new TenantClient(OKAPI_URL, TENANT_ID, "dummy-token", WebClient.create(vertx.getDelegate()));
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", PORT));
+
+    CompletableFuture<Void> setup = new CompletableFuture<>();
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete(res -> {
       try {
         TenantAttributes tenantAttributes = new TenantAttributes();
@@ -156,38 +156,46 @@ public abstract class AbstractRestVerticleTest {
           .withKey(LOAD_SAMPLE_PARAMETER)
           .withValue("true")));
         tenantClient.postTenant(tenantAttributes, res2 -> {
-          context.assertTrue(res2.succeeded());
+          if (!res2.succeeded()) {
+            setup.completeExceptionally(new RuntimeException("postTenant failed", res2.cause()));
+            return;
+          }
           if (res2.result().statusCode() == 204) {
-            async.complete();
+            setup.complete(null);
             return;
           }
           if (res2.result().statusCode() == 201) {
-            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
-              context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
-              String error = res3.bodyAsJson(TenantJob.class).getError();
-              if (error != null) {
-                context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
+            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, res3 -> {
+              if (!res3.succeeded()) {
+                setup.completeExceptionally(res3.cause());
+                return;
               }
-            }));
+              String error = res3.result().bodyAsJson(TenantJob.class).getError();
+              if (error != null && !error.contains("EventDescriptor was not registered for eventType")) {
+                setup.completeExceptionally(new RuntimeException("Tenant job error: " + error));
+                return;
+              }
+              setup.complete(null);
+            });
           } else {
-            context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
+            setup.completeExceptionally(new RuntimeException(
+              "Failed to make post tenant. Received status code " + res2.result().statusCode()));
           }
-          async.complete();
         });
       } catch (Exception e) {
-        e.printStackTrace();
-        async.complete();
+        setup.completeExceptionally(e);
       }
     });
+    setup.get(120, TimeUnit.SECONDS);
   }
 
-  @Before
+  @BeforeEach
   public void setUp() {
     String okapiUserId = UUID.randomUUID().toString();
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
       .setBaseUri("http://localhost:" + PORT)
-      .addHeader(XOkapiHeaders.URL, "http://localhost:" + mockServer.port())
+      .addHeader(XOkapiHeaders.URL, "http://localhost:" + mockServer.getPort())
       .addHeader(XOkapiHeaders.TENANT, TENANT_ID)
       .addHeader(XOkapiHeaders.USER_ID, okapiUserId)
       .build();
@@ -200,28 +208,25 @@ public abstract class AbstractRestVerticleTest {
       .build();
   }
 
-  @AfterClass
-  public static void tearDownClass(final TestContext context) {
-    Async async = context.async();
+  @AfterAll
+  public static void tearDownClass() throws Exception {
     Vertx currentVertx = vertx;
     // Clear the factory caches so the next class rebuilds its pools, but never stop the shared
     // container/tester - it stays up for the whole JVM fork and is reaped at JVM exit.
-    // The Async is created synchronously so VertxUnit waits for vertx to fully close before the
-    // next class reassigns the shared static vertx field (otherwise we could close the new vertx).
+    CompletableFuture<Void> close = new CompletableFuture<>();
     PostgresClientFactory.closeAll()
       .onComplete(closed -> currentVertx.close().onComplete(res -> {
         kafkaContainer.stop();
-        async.complete();
+        close.complete(null);
       }));
+    close.get(30, TimeUnit.SECONDS);
   }
 
   private static void setUpConsortiumConfigurationCache() {
-    // set cache expiration time to 0 to avoid side effects between tests
     System.setProperty("srs.consortium-configuration-cache.expiration.time.seconds", "0");
   }
 
-  protected void postSnapshots(TestContext testContext, Snapshot... snapshots) {
-    Async async = testContext.async();
+  protected void postSnapshots(Snapshot... snapshots) {
     for (Snapshot snapshot : snapshots) {
       RestAssured.given()
         .spec(spec)
@@ -231,7 +236,6 @@ public abstract class AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_CREATED);
     }
-    async.complete();
   }
 
   protected void postSnapshots(String tenantId, Snapshot... snapshots) {
@@ -247,8 +251,7 @@ public abstract class AbstractRestVerticleTest {
     }
   }
 
-  protected void postRecords(TestContext testContext, Record... records) {
-    Async async = testContext.async();
+  protected void postRecords(Record... records) {
     for (Record record : records) {
       RestAssured.given()
         .spec(spec)
@@ -258,7 +261,6 @@ public abstract class AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_CREATED);
     }
-    async.complete();
   }
 
   protected void postRecords(String tenantId, Record... records) {

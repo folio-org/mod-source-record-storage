@@ -9,6 +9,10 @@ import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_HOLDING;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -17,10 +21,7 @@ import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -43,16 +44,9 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.RecordService;
 import org.folio.services.SnapshotService;
 import org.folio.services.util.AdditionalFieldsUtil;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
-@RunWith(VertxUnitRunner.class)
 public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessingEventHandlerTest {
-
-  @Rule
-  public RunTestOnContext rule = new RunTestOnContext();
 
   @Override
   protected Record.RecordType getMarcType() {
@@ -65,9 +59,7 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
   }
 
   @Test
-  public void shouldSetHoldingsIdToRecord(TestContext context) {
-    Async async = context.async();
-
+  void shouldSetHoldingsIdToRecord(VertxTestContext testContext) {
     String expectedHoldingsId = UUID.randomUUID().toString();
     String expectedHrId = UUID.randomUUID().toString();
 
@@ -84,43 +76,43 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
-      .onSuccess(record -> handler.handle(dataImportEventPayload)
+      .onSuccess(marcRecord -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 
     future.whenComplete((payload, e) -> {
       if (e != null) {
-        context.fail(e);
+        testContext.failNow(e);
+        return;
       }
       recordDao.getRecordByMatchedId(RECORD_ID, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
 
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        context.assertNotNull(updatedRecord.getExternalIdsHolder());
-        context.assertEquals(expectedHoldingsId, updatedRecord.getExternalIdsHolder().getHoldingsId());
+        assertNotNull(updatedRecord.getExternalIdsHolder());
+        assertEquals(expectedHoldingsId, updatedRecord.getExternalIdsHolder().getHoldingsId());
 
-        context.assertNotNull(updatedRecord.getParsedRecord());
-        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
+        assertNotNull(updatedRecord.getParsedRecord());
+        assertNotNull(updatedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
-        context.assertTrue(!fields.isEmpty());
+        assertTrue(!fields.isEmpty());
 
         String actualHoldingsId = getInventoryId(fields);
-        context.assertEquals(expectedHoldingsId, actualHoldingsId);
-        async.complete();
+        assertEquals(expectedHoldingsId, actualHoldingsId);
+        testContext.completeNow();
       });
     });
   }
 
   @Test
-  public void shouldSaveRecordWhenRecordDoesntExist(TestContext context) throws IOException {
-    Async async = context.async();
-
+  void shouldSaveRecordWhenRecordDoesntExist(VertxTestContext testContext) throws IOException {
     String recordId = UUID.randomUUID().toString();
     RawRecord rawRecord = new RawRecord().withId(recordId)
       .withContent(
@@ -147,41 +139,40 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
-
-    future.whenComplete((payload, e) -> {
+    vertx.runOnContext(v -> handler.handle(dataImportEventPayload)
+      .whenComplete((payload, e) -> {
       if (e != null) {
-        context.fail(e);
+        testContext.failNow(e);
+        return;
       }
       recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
 
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record savedRecord = getAr.result().get();
 
-        context.assertNotNull(savedRecord.getExternalIdsHolder());
-        context.assertEquals(expectedHoldingsId, savedRecord.getExternalIdsHolder().getHoldingsId());
+        assertNotNull(savedRecord.getExternalIdsHolder());
+        assertEquals(expectedHoldingsId, savedRecord.getExternalIdsHolder().getHoldingsId());
 
-        context.assertNotNull(savedRecord.getParsedRecord());
-        context.assertNotNull(savedRecord.getParsedRecord().getContent());
+        assertNotNull(savedRecord.getParsedRecord());
+        assertNotNull(savedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(savedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
-        context.assertTrue(!fields.isEmpty());
+        assertTrue(!fields.isEmpty());
 
         String actualHoldingsId = getInventoryId(fields);
-        context.assertEquals(expectedHoldingsId, actualHoldingsId);
-        async.complete();
+        assertEquals(expectedHoldingsId, actualHoldingsId);
+        testContext.completeNow();
       });
-    });
+    }));
   }
 
   @Test
-  public void shouldSetHoldingsIdToParsedRecordWhenContentHasField999(TestContext context) {
-    Async async = context.async();
-
+  void shouldSetHoldingsIdToParsedRecordWhenContentHasField999(VertxTestContext testContext) {
     record.withParsedRecord(new ParsedRecord()
       .withId(RECORD_ID)
       .withContent(PARSED_CONTENT_WITH_999_FIELD));
@@ -204,35 +195,35 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
     future.whenComplete((payload, throwable) -> {
       if (throwable != null) {
-        context.fail(throwable);
+        testContext.failNow(throwable);
+        return;
       }
       recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        context.assertNotNull(updatedRecord.getExternalIdsHolder());
-        context.assertTrue(expectedHoldingsId.equals(updatedRecord.getExternalIdsHolder().getHoldingsId()));
+        assertNotNull(updatedRecord.getExternalIdsHolder());
+        assertEquals(expectedHoldingsId, updatedRecord.getExternalIdsHolder().getHoldingsId());
 
-        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
+        assertNotNull(updatedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
-        context.assertTrue(!fields.isEmpty());
+        assertFalse(fields.isEmpty());
 
         String actualHoldingsId = getInventoryId(fields);
-        context.assertEquals(expectedHoldingsId, actualHoldingsId);
-        async.complete();
+        assertEquals(expectedHoldingsId, actualHoldingsId);
+        testContext.completeNow();
       });
     });
   }
 
   @Test
-  public void shouldUpdateField005WhenThisFiledIsNotProtected(TestContext context) throws IOException {
-    Async async = context.async();
-
+  void shouldUpdateField005WhenThisFiledIsNotProtected(VertxTestContext testContext) throws IOException {
     String expectedDate = get005FieldExpectedDate();
 
     String recordId = UUID.randomUUID().toString();
@@ -261,31 +252,30 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
-
-    future.whenComplete((payload, throwable) -> {
+    vertx.runOnContext(v -> handler.handle(dataImportEventPayload)
+      .whenComplete((payload, throwable) -> {
       if (throwable != null) {
-        context.fail(throwable);
+        testContext.failNow(throwable);
+        return;
       }
       recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
 
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        validate005Field(context, expectedDate, updatedRecord);
+        validate005Field(expectedDate, updatedRecord);
 
-        async.complete();
+        testContext.completeNow();
       });
-    });
+    }));
   }
 
   @Test
-  public void shouldUpdateField005WhenThisFiledIsProtected(TestContext context) throws IOException {
-    Async async = context.async();
-
+  void shouldUpdateField005WhenThisFiledIsProtected(VertxTestContext testContext) throws IOException {
     MappingParameters mappingParameters = new MappingParameters()
       .withMarcFieldProtectionSettings(List.of(new MarcFieldProtectionSetting()
         .withField(TAG_005)
@@ -324,32 +314,31 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING);
 
-    CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
-
-    future.whenComplete((payload, throwable) -> {
+    vertx.runOnContext(v -> handler.handle(dataImportEventPayload)
+      .whenComplete((payload, throwable) -> {
       if (throwable != null) {
-        context.fail(throwable);
+        testContext.failNow(throwable);
+        return;
       }
       recordDao.getRecordByMatchedId(recordId, TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
 
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
         String actualDate = AdditionalFieldsUtil.getValueFromControlledField(updatedRecord, TAG_005);
-        Assert.assertEquals(expectedDate, actualDate);
+        assertEquals(expectedDate, actualDate);
 
-        async.complete();
+        testContext.completeNow();
       });
-    });
+    }));
   }
 
   @Test
-  public void shouldSetHoldingsHridToParsedRecordWhenContentHasNotField001(TestContext context) {
-    Async async = context.async();
-
+  void shouldSetHoldingsHridToParsedRecordWhenContentHasNotField001(VertxTestContext testContext) {
     record.withParsedRecord(new ParsedRecord()
       .withId(RECORD_ID)
       .withContent(PARSED_CONTENT_WITHOUT_001_FIELD));
@@ -375,34 +364,35 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
     future.whenComplete((payload, throwable) -> {
       if (throwable != null) {
-        context.fail(throwable);
+        testContext.failNow(throwable);
+        return;
       }
       recordDao.getRecordById(record.getId(), TENANT_ID).onComplete(getAr -> {
         if (getAr.failed()) {
-          context.fail(getAr.cause());
+          testContext.failNow(getAr.cause());
+          return;
         }
-        context.assertTrue(getAr.result().isPresent());
+        assertTrue(getAr.result().isPresent());
         Record updatedRecord = getAr.result().get();
 
-        context.assertNotNull(updatedRecord.getExternalIdsHolder());
-        context.assertTrue(expectedHoldingsId.equals(updatedRecord.getExternalIdsHolder().getHoldingsId()));
+        assertNotNull(updatedRecord.getExternalIdsHolder());
+        assertEquals(expectedHoldingsId, updatedRecord.getExternalIdsHolder().getHoldingsId());
 
-        context.assertNotNull(updatedRecord.getParsedRecord().getContent());
+        assertNotNull(updatedRecord.getParsedRecord().getContent());
         JsonObject parsedContent = JsonObject.mapFrom(updatedRecord.getParsedRecord().getContent());
 
         JsonArray fields = parsedContent.getJsonArray("fields");
-        context.assertTrue(!fields.isEmpty());
+        assertTrue(!fields.isEmpty());
 
         String actualHoldingsHrid = getInventoryHrid(fields);
-        context.assertEquals(expectedHoldingsHrid, actualHoldingsHrid);
-        async.complete();
+        assertEquals(expectedHoldingsHrid, actualHoldingsHrid);
+        testContext.completeNow();
       });
     });
   }
 
   @Test
-  public void shouldReturnFailedFutureWhenHoldingsOrRecordDoesNotExist(TestContext context) {
-    Async async = context.async();
+  void shouldReturnFailedFutureWhenHoldingsOrRecordDoesNotExist(VertxTestContext testContext) {
     HashMap<String, String> payloadContext = new HashMap<>();
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withEventType(DI_INVENTORY_HOLDINGS_CREATED_READY_FOR_POST_PROCESSING.value())
@@ -414,14 +404,13 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     CompletableFuture<DataImportEventPayload> future = handler.handle(dataImportEventPayload);
 
     future.whenComplete((payload, throwable) -> {
-      context.assertNotNull(throwable);
-      async.complete();
+      assertNotNull(throwable);
+      testContext.completeNow();
     });
   }
 
   @Test
-  public void shouldReturnFailedFutureWhenParsedRecordHasNoFields(TestContext context) {
-    Async async = context.async();
+  void shouldReturnFailedFutureWhenParsedRecordHasNoFields(VertxTestContext testContext) {
     record.withParsedRecord(new ParsedRecord()
       .withId(record.getId())
       .withContent("{\"leader\":\"01240cas a2200397\"}"));
@@ -442,18 +431,18 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordDao.saveRecord(record, okapiHeaders)
       .onFailure(future::completeExceptionally)
-      .onSuccess(record -> handler.handle(dataImportEventPayload)
+      .onSuccess(marcRecord -> handler.handle(dataImportEventPayload)
         .thenApply(future::complete)
         .exceptionally(future::completeExceptionally));
 
     future.whenComplete((payload, throwable) -> {
-      context.assertNotNull(throwable);
-      async.complete();
+      assertNotNull(throwable);
+      testContext.completeNow();
     });
   }
 
   @Test
-  public void shouldReturnTrueWhenHandlerIsEligibleForProfile() {
+  void shouldReturnTrueWhenHandlerIsEligibleForProfile() {
     MappingProfile mappingProfile = new MappingProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Create holdings")
@@ -474,11 +463,11 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
-    Assert.assertTrue(isEligible);
+    assertTrue(isEligible);
   }
 
   @Test
-  public void shouldReturnFalseWhenHandlerIsNotEligibleForProfile() {
+  void shouldReturnFalseWhenHandlerIsNotEligibleForProfile() {
     ActionProfile actionProfile = new ActionProfile()
       .withId(UUID.randomUUID().toString())
       .withName("Create holdings")
@@ -500,6 +489,6 @@ public class HoldingsPostProcessingEventHandlerTest extends AbstractPostProcessi
 
     boolean isEligible = handler.isEligible(dataImportEventPayload);
 
-    Assert.assertFalse(isEligible);
+    assertFalse(isEligible);
   }
 }

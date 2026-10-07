@@ -1,14 +1,17 @@
 package org.folio.consumers;
 
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import io.vertx.kafka.client.consumer.impl.KafkaConsumerRecordImpl;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -40,15 +43,15 @@ import org.folio.services.RecordServiceImpl;
 import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.jetbrains.annotations.NotNull;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
 
   private static final String RECORD_ID = UUID.randomUUID().toString();
@@ -64,8 +67,8 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
   private Record record;
   private AuthorityDomainKafkaHandler handler;
 
-  @BeforeClass
-  public static void setUpClass() throws IOException {
+  @BeforeAll
+  static void setUpClassAuthority() throws IOException {
     rawRecord = new RawRecord().withId(RECORD_ID)
       .withContent(
         new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
@@ -76,13 +79,11 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
           .add(new JsonObject().put("005", CURRENT_DATE))));
   }
 
-  @Before
-  public void setUp(TestContext context) {
-    MockitoAnnotations.openMocks(this);
+  @BeforeEach
+  void setUp(VertxTestContext testContext) {
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache);
     handler = new AuthorityDomainKafkaHandler(recordService);
-    Async async = context.async();
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
       .withProcessingStartedDate(new Date())
@@ -99,79 +100,52 @@ public class AuthorityDomainKafkaHandlerTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
-      .onSuccess(ar -> async.complete())
-      .onFailure(context::fail);
+      .onComplete(testContext.succeedingThenComplete());
   }
 
-  @After
-  public void cleanUp(TestContext context) {
-    Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
+  @AfterEach
+  void cleanUp(VertxTestContext testContext) {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  public void shouldSoftDeleteMarcAuthorityRecordOnSoftDeleteDomainEvent(TestContext context) {
-    Async async = context.async();
-
+  void shouldSoftDeleteMarcAuthorityRecordOnSoftDeleteDomainEvent(VertxTestContext testContext) {
     var payload = new HashMap<String, String>();
     payload.put("deleteEventSubType", "SOFT_DELETE");
     payload.put("tenant", TENANT_ID);
 
     handler.handle(new KafkaConsumerRecordImpl<>(getConsumerRecord(payload)))
-      .onComplete(ar -> {
-        if (ar.failed()) {
-          context.fail(ar.cause());
-        }
-        recordService.getSourceRecordById(record.getId(), IdType.RECORD, RecordState.DELETED, TENANT_ID)
-          .onComplete(result -> {
-            if (result.failed()) {
-              context.fail(result.cause());
-            }
-            context.assertTrue(result.result().isPresent());
-            SourceRecord updatedRecord = result.result().get();
-            context.assertTrue(updatedRecord.getDeleted());
-            context.assertTrue(updatedRecord.getAdditionalInfo().getSuppressDiscovery());
-            context.assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(updatedRecord.getParsedRecord()));
+      .compose(ar -> recordService.getSourceRecordById(record.getId(), IdType.RECORD, RecordState.DELETED, TENANT_ID))
+      .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+        assertTrue(result.isPresent());
+        SourceRecord updatedRecord = result.get();
+        assertTrue(updatedRecord.getDeleted());
+        assertTrue(updatedRecord.getAdditionalInfo().getSuppressDiscovery());
+        assertEquals("d", ParsedRecordDaoUtil.getLeaderStatus(updatedRecord.getParsedRecord()));
 
-            //Complex verifying "005" field is NOT empty inside parsed record.
-            LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>> content = (LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>>) updatedRecord.getParsedRecord().getContent();
-            LinkedHashMap<String, String> map = content.get("fields").getFirst();
-            String resulted005FieldValue = map.get("005");
-            context.assertNotNull(resulted005FieldValue);
-            context.assertNotEquals(CURRENT_DATE, resulted005FieldValue);
-
-            async.complete();
-          });
-      });
+        LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>> content =
+          (LinkedHashMap<String, ArrayList<LinkedHashMap<String, String>>>) updatedRecord.getParsedRecord().getContent();
+        LinkedHashMap<String, String> map = content.get("fields").getFirst();
+        String resulted005FieldValue = map.get("005");
+        assertNotNull(resulted005FieldValue);
+        assertNotEquals(CURRENT_DATE, resulted005FieldValue);
+        testContext.completeNow();
+      })));
   }
 
   @Test
-  public void shouldHardDeleteMarcAuthorityRecordOnHardDeleteDomainEvent(TestContext context) {
-    Async async = context.async();
-
+  void shouldHardDeleteMarcAuthorityRecordOnHardDeleteDomainEvent(VertxTestContext testContext) {
     var payload = new HashMap<String, String>();
     payload.put("deleteEventSubType", "HARD_DELETE");
     payload.put("tenant", TENANT_ID);
 
     handler.handle(new KafkaConsumerRecordImpl<>(getConsumerRecord(payload)))
-      .onComplete(ar -> {
-        if (ar.failed()) {
-          context.fail(ar.cause());
-        }
-        recordService.getSourceRecordById(record.getId(), IdType.RECORD, RecordState.ACTUAL, TENANT_ID)
-          .onComplete(result -> {
-            if (result.failed()) {
-              context.fail(result.cause());
-            }
-            context.assertFalse(result.result().isPresent());
-            async.complete();
-          });
-      });
+      .compose(ar -> recordService.getSourceRecordById(record.getId(), IdType.RECORD, RecordState.ACTUAL, TENANT_ID))
+      .onComplete(testContext.succeeding(result -> testContext.verify(() -> {
+        assertFalse(result.isPresent());
+        testContext.completeNow();
+      })));
   }
 
   @NotNull

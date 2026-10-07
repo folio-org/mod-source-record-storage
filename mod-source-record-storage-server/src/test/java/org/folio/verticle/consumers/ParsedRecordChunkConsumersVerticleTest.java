@@ -1,12 +1,29 @@
 package org.folio.verticle.consumers;
 
+import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.TestMocks;
@@ -24,36 +41,11 @@ import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.AbstractLBServiceTest;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.MockitoAnnotations;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.util.UUID;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.ArrayList;
-
-import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
-import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_RAW_RECORDS_CHUNK_PARSED;
-import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
-
-@RunWith(VertxUnitRunner.class)
 public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTest {
 
   private static final String KAFKA_KEY_NAME = "test-key";
@@ -61,9 +53,6 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   public static final int EXPECTED_ERROR_EVENTS_NUMBER = 2;
 
   private static final String RECORD_ID = UUID.randomUUID().toString();
-
-  @Rule
-  public RunTestOnContext rule = new RunTestOnContext();
 
   private static RawRecord rawMarcRecord;
   private static ParsedRecord parsedMarcRecord;
@@ -73,8 +62,8 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
 
   private String snapshotId = UUID.randomUUID().toString();
 
-  @BeforeClass
-  public static void loadMockRecords(TestContext context) throws IOException {
+  @BeforeAll
+  static void loadMockRecordsParsedRecordChunk() throws IOException {
     rawMarcRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
     parsedMarcRecord = new ParsedRecord()
@@ -85,49 +74,37 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(PARSED_EDIFACT_RECORD_CONTENT_SAMPLE_PATH), JsonObject.class).encode());
   }
 
-  @Before
-  public void setUp(TestContext context) {
-    MockitoAnnotations.openMocks(this);
-    Async async = context.async();
-
+  @BeforeEach
+  void setUp(VertxTestContext testContext) {
     Snapshot snapshot = new Snapshot()
       .withJobExecutionId(snapshotId)
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.COMMITTED);
 
-    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot).onComplete(save -> {
-      if (save.failed()) {
-        context.fail(save.cause());
-      }
-      async.complete();
-    });
+    SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
+      .onComplete(testContext.succeedingThenComplete());
   }
 
-  @After
-  public void cleanUp(TestContext context) {
-    Async async = context.async();
-    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
-      if (delete.failed()) {
-        context.fail(delete.cause());
-      }
-      async.complete();
-    });
+  @AfterEach
+  void cleanUp(VertxTestContext testContext) {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
+  void shouldSendEventWithSavedMarcBibRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
     assertSentEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(
         RecordType.MARC_BIB, rawMarcRecord, parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
+  void shouldSendEventWithSavedMarcAuthorityRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
     assertSentEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(
         RecordType.MARC_AUTHORITY, rawMarcRecord, parsedMarcRecord);
   }
 
   @Test
-  public void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
+  void shouldSendEventWithSavedEdifactRecordCollectionPayloadAfterProcessingParsedRecordEvent() {
     assertSentEventWithSavedMarcRecordCollectionPayloadAfterProcessingParsedRecordEvent(
         RecordType.EDIFACT, rawEdifactRecord, parsedEdifactRecord);
   }
@@ -161,7 +138,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() {
+  void shouldSendDIErrorEventsWhenParsedRecordChunkWasNotSaved() {
     Record validRecord = TestMocks.getRecord(0).withSnapshotId(snapshotId);
     Record additionalRecord = getAdditionalRecord(validRecord, snapshotId, validRecord.getRecordType());
     List<Record> records = List.of(validRecord, additionalRecord);
@@ -174,7 +151,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentSnapshotIds() {
+  void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentSnapshotIds() {
     Record first = TestMocks.getRecord(0).withSnapshotId(snapshotId);
     Record secondWithDifferentSnapshotId = getAdditionalRecord(first, UUID.randomUUID().toString(), first.getRecordType());
     List<Record> records = List.of(first, secondWithDifferentSnapshotId);
@@ -186,7 +163,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentRecordTypes() {
+  void shouldSendDIErrorEventsWhenParsedRecordsHaveDifferentRecordTypes() {
     Record first = TestMocks.getRecord(0).withSnapshotId(snapshotId);
     Record secondWithDifferentRecordType = getAdditionalRecord(first, snapshotId, RecordType.MARC_AUTHORITY);
     List<Record> records = List.of(first, secondWithDifferentRecordType);
@@ -198,7 +175,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldSendDIErrorEventsWhenSnapshotsNotFound() {
+  void shouldSendDIErrorEventsWhenSnapshotsNotFound() {
     String snapshotId = UUID.randomUUID().toString();
     Record first = TestMocks.getRecord(0).withSnapshotId(snapshotId);
     Record second = TestMocks.getRecord(0).withSnapshotId(snapshotId);
@@ -211,12 +188,12 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
   }
 
   @Test
-  public void shouldNotSendDIErrorWhenReceivedDuplicateChunksParsedEvent() {
+  void shouldNotSendDIErrorWhenReceivedDuplicateChunksParsedEvent() {
     check_sendDuplicateEventAndObserveRecords(DI_ERROR.value(), 0);
   }
 
   @Test
-  public void shouldNotSendDuplicateChunksSavedEventWhenReceivedDuplicateChunksParsedEvent() {
+  void shouldNotSendDuplicateChunksSavedEventWhenReceivedDuplicateChunksParsedEvent() {
     check_sendDuplicateEventAndObserveRecords(DI_PARSED_RECORDS_CHUNK_SAVED.value(), 1);
   }
 

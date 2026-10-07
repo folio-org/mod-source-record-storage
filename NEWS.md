@@ -1,4 +1,5 @@
 ## xxxx-xx-xx 6.1.0
+* [MODSOURCE-1006](https://folio-org.atlassian.net/browse/MODSOURCE-1006) Migrate tests to JUnit 6
 * [MODSOURCE-1014](https://folio-org.atlassian.net/browse/MODSOURCE-1014) Fix 035 being split on update when same $a in incoming and existing
 * [MODSOURCE-1019](https://folio-org.atlassian.net/browse/MODSOURCE-1019) Fix MARC-MARC matching when comparison part is used without a qualifier
 * [MODSOURCE-1021](https://folio-org.atlassian.net/browse/MODSOURCE-1021) Reject duplicate records within one import job on record generation update regardless of timing

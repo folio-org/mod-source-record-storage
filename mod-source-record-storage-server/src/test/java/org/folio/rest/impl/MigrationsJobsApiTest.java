@@ -1,43 +1,38 @@
 package org.folio.rest.impl;
 
-import io.restassured.RestAssured;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.AsyncMigrationJob;
-import org.folio.rest.jaxrs.model.AsyncMigrationJobInitRq;
-import org.folio.rest.jooq.Tables;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.PostgresClient;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
-import java.time.Duration;
-import java.util.List;
-import java.util.UUID;
-
 import static java.lang.String.format;
 import static org.folio.rest.jaxrs.model.AsyncMigrationJob.Status.COMPLETED;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
-@RunWith(VertxUnitRunner.class)
+import io.restassured.RestAssured;
+import io.vertx.junit5.VertxTestContext;
+import java.time.Duration;
+import java.util.List;
+import java.util.UUID;
+import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.AsyncMigrationJob;
+import org.folio.rest.jaxrs.model.AsyncMigrationJobInitRq;
+import org.folio.rest.jooq.Tables;
+import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.PostgresClient;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
+
 public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
 
   static final String MIGRATIONS_JOBS_PATH = "/source-storage/migrations/jobs/";
 
-  @Before
-  public void setUp(TestContext context) {
-    super.setUp();
-    clearTable(context);
+  @BeforeEach
+  void setUpMigrations(VertxTestContext testContext) {
+    clearTable(testContext);
   }
 
   @Test
-  public void shouldExecuteAsyncMigration() {
+  void shouldExecuteAsyncMigration() {
     AsyncMigrationJobInitRq migrationInitDto = new AsyncMigrationJobInitRq()
       .withMigrations(List.of("marcIndexersVersionMigration"));
 
@@ -68,7 +63,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnNotFoundOnGetByIdIfJobDoesNotExist() {
+  void shouldReturnNotFoundOnGetByIdIfJobDoesNotExist() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -78,7 +73,7 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestOnPostIfSpecifiedMigrationIsNotSupported() {
+  void shouldReturnBadRequestOnPostIfSpecifiedMigrationIsNotSupported() {
     AsyncMigrationJobInitRq migrationInitDto = new AsyncMigrationJobInitRq()
       .withMigrations(List.of("unsupportedMigrationName"));
 
@@ -93,8 +88,8 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  @Ignore("investigate why test is not passing on CI")
-  public void shouldReturnBadRequestOnPostIfOtherMigrationJobInProgress() {
+  @Disabled("investigate why test is not passing on CI")
+  void shouldReturnBadRequestOnPostIfOtherMigrationJobInProgress() {
     AsyncMigrationJobInitRq migrationInitDto = new AsyncMigrationJobInitRq()
       .withMigrations(List.of("marcIndexersVersionMigration"));
 
@@ -129,14 +124,14 @@ public class MigrationsJobsApiTest extends AbstractRestVerticleTest {
     });
   }
 
-  private void clearTable(TestContext context) {
-    Async async = context.async();
+  private void clearTable(VertxTestContext testContext) {
     PostgresClient pgClient = PostgresClient.getInstance(vertx.getDelegate(), TENANT_ID);
     pgClient.delete(Tables.ASYNC_MIGRATION_JOBS.getName(), new Criterion(), ar -> {
       if (ar.failed()) {
-        context.fail(ar.cause());
+        testContext.failNow(ar.cause());
+      } else {
+        testContext.completeNow();
       }
-      async.complete();
     });
   }
 

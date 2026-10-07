@@ -1,5 +1,10 @@
 package org.folio.services;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -9,8 +14,17 @@ import io.restassured.config.RestAssuredConfig;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
+import io.vertx.junit5.VertxExtension;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import lombok.SneakyThrows;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -22,11 +36,11 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.folio.SharedPostgresContainer;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.KafkaConfig;
-import org.folio.SharedPostgresContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.Metadata;
@@ -37,26 +51,13 @@ import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.services.util.AdditionalFieldsUtil;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.jooq.impl.DSL;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.kafka.KafkaContainer;
 
-import org.jooq.impl.DSL;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.folio.services.util.AdditionalFieldsUtil.TAG_005;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import lombok.SneakyThrows;
-
+@ExtendWith(VertxExtension.class)
 public abstract class AbstractLBServiceTest {
 
   private static final String KAFKA_HOST = "KAFKA_HOST";
@@ -90,9 +91,8 @@ public abstract class AbstractLBServiceTest {
   private static KafkaProducer<String, String> kafkaProducer;
   public static WireMockServer wireMockServer;
 
-  @BeforeClass
-  public static void setUpClass(TestContext context) {
-    Async async = context.async();
+  @BeforeAll
+  public static void setUpClass() throws Exception {
     // Pick a fresh free port for every test class. All LB test classes run in the same reused
     // Surefire JVM fork; a fixed shared port could still be held by a previous class's RestVerticle
     // (its vertx close lags behind), so deployVerticle would fail with "Address already in use" and
@@ -107,7 +107,6 @@ public abstract class AbstractLBServiceTest {
     wireMockServer = new WireMockServer(new WireMockConfiguration().dynamicPort());
     wireMockServer.start();
 
-    //Env variables
     System.setProperty(KAFKA_HOST, kafkaContainer.getHost());
     System.setProperty(KAFKA_PORT, kafkaContainer.getFirstMappedPort() + "");
     System.setProperty(KAFKA_ENV, KAFKA_ENV_ID);
@@ -125,8 +124,7 @@ public abstract class AbstractLBServiceTest {
       .build();
 
     RestAssured.config = RestAssuredConfig.config().objectMapperConfig(new ObjectMapperConfig()
-      .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()
-      ));
+      .jackson2ObjectMapperFactory((arg0, arg1) -> new ObjectMapper()));
 
     JsonObject pgClientConfig = SharedPostgresContainer.getConnectionConfig();
 
@@ -142,57 +140,64 @@ public abstract class AbstractLBServiceTest {
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", PORT));
 
-    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete( deployResponse -> {
+    CompletableFuture<Void> setup = new CompletableFuture<>();
+    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete(deployResponse -> {
       if (deployResponse.failed()) {
         // Surface the real cause (e.g. a port BindException) instead of letting the module start
         // half-deployed and failing later with a confusing postTenant connection-refused error.
-        context.fail(deployResponse.cause());
+        setup.completeExceptionally(deployResponse.cause());
         return;
       }
       try {
         String fullModuleName = getFullModuleName();
         tenantClient.postTenant(new TenantAttributes().withModuleTo(fullModuleName), res2 -> {
           postgresClientFactory = new PostgresClientFactory(vertx);
-          context.assertTrue(res2.succeeded());
+          if (!res2.succeeded()) {
+            setup.completeExceptionally(new RuntimeException("postTenant failed", res2.cause()));
+            return;
+          }
           if (res2.result().statusCode() == 204) {
-            cleanUpExistingData(async);
+            cleanUpExistingData(setup);
             return;
           }
           if (res2.result().statusCode() == 201) {
-            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
-              context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
-              String error = res3.bodyAsJson(TenantJob.class).getError();
-              if (error != null) {
-                context.assertTrue(error.contains("EventDescriptor was not registered for eventType"));
+            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, res3 -> {
+              if (!res3.succeeded()) {
+                setup.completeExceptionally(res3.cause());
+                return;
               }
-              cleanUpExistingData(async);
-            }));
+              String error = res3.result().bodyAsJson(TenantJob.class).getError();
+              if (error != null && !error.contains("EventDescriptor was not registered for eventType")) {
+                setup.completeExceptionally(new RuntimeException("Tenant job error: " + error));
+                return;
+              }
+              cleanUpExistingData(setup);
+            });
             return;
           }
-          context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
-          async.complete();
+          setup.completeExceptionally(new RuntimeException(
+            "Failed to make post tenant. Received status code " + res2.result().statusCode()));
         });
       } catch (Exception e) {
-        e.printStackTrace();
-        context.fail(e);
+        setup.completeExceptionally(e);
       }
     });
+    setup.get(120, TimeUnit.SECONDS);
   }
 
-  @AfterClass
-  public static void tearDownClass(TestContext context) {
-    Async async = context.async();
+  @AfterAll
+  public static void tearDownClass() throws Exception {
     Vertx currentVertx = vertx;
     // Clear the factory caches so the next class rebuilds its pools, but never stop the shared
     // container/tester - it stays up for the whole JVM fork and is reaped at JVM exit.
-    // The Async is created synchronously so VertxUnit waits for vertx to fully close before the
-    // next class reassigns the shared static vertx field (otherwise we could close the new vertx).
+    CompletableFuture<Void> close = new CompletableFuture<>();
     PostgresClientFactory.closeAll()
       .onComplete(closed -> currentVertx.close().onComplete(v -> {
         wireMockServer.stop();
         kafkaContainer.stop();
-        async.complete();
+        close.complete(null);
       }));
+    close.get(30, TimeUnit.SECONDS);
   }
 
   public static String getFullModuleName() {
@@ -201,7 +206,7 @@ public abstract class AbstractLBServiceTest {
 
   /**
    * Removes data left in the shared {@code diku} schema by previously executed test classes and then
-   * completes the setup {@link Async}.
+   * completes the setup future.
    *
    * <p>The Postgres test container is started once and reused for the whole JVM fork (see
    * {@link SharedPostgresContainer}), so - unlike when every class used to get its own container -
@@ -209,18 +214,24 @@ public abstract class AbstractLBServiceTest {
    * their child tables, giving each class a clean starting state and avoiding cross-class data bleed
    * (duplicate records, stale matches, delete deadlocks).
    */
-  private static void cleanUpExistingData(Async async) {
+  private static void cleanUpExistingData(CompletableFuture<Void> setup) {
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
       .compose(v -> postgresClientFactory.getQueryExecutor(TENANT_ID)
         .execute(dsl -> dsl.deleteFrom(DSL.table("old_records_tracking"))))
-      .onComplete(ar -> async.complete());
+      .onComplete(ar -> {
+        if (ar.failed()) {
+          setup.completeExceptionally(ar.cause());
+        } else {
+          setup.complete(null);
+        }
+      });
   }
 
-  void compareMetadata(TestContext context, Metadata expected, Metadata actual) {
-    context.assertEquals(expected.getCreatedByUserId(), actual.getCreatedByUserId());
-    context.assertNotNull(actual.getCreatedDate());
-    context.assertEquals(expected.getUpdatedByUserId(), actual.getUpdatedByUserId());
-    context.assertNotNull(actual.getUpdatedDate());
+  void compareMetadata(Metadata expected, Metadata actual) {
+    assertEquals(expected.getCreatedByUserId(), actual.getCreatedByUserId());
+    assertNotNull(actual.getCreatedDate());
+    assertEquals(expected.getUpdatedByUserId(), actual.getUpdatedByUserId());
+    assertNotNull(actual.getUpdatedDate());
   }
 
   protected String get005FieldExpectedDate() {
@@ -228,18 +239,10 @@ public abstract class AbstractLBServiceTest {
       .format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
   }
 
-  protected void validate005Field(TestContext testContext, String expectedDate, Record record) {
-    String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
-    assertNotNull(actualDate);
-    testContext.assertEquals(expectedDate.substring(0, 10),
-      actualDate.substring(0, 10));
-  }
-
   protected void validate005Field(String expectedDate, Record record) {
     String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
     assertNotNull(actualDate);
-    assertEquals(expectedDate.substring(0, 10),
-      actualDate.substring(0, 10));
+    assertEquals(expectedDate.substring(0, 10), actualDate.substring(0, 10));
   }
 
   private static KafkaProducer<String, String> createKafkaProducer() {

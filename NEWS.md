@@ -1,3 +1,6 @@
+## 2026-10-09 v6.0.3
+* [MODSOURCE-1023](https://folio-org.atlassian.net/browse/MODSOURCE-1023) Reject duplicate records within one import job on record generation update regardless of timing
+
 ## 2026-09-02 v6.0.2
 * [MODSOURCE-1014](https://folio-org.atlassian.net/browse/MODSOURCE-1014) Fix 035 being split on update when same $a in incoming and existing
 

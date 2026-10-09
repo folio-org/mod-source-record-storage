@@ -817,7 +817,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
     Record firstIncomingRecord = buildRecordToUpdateGeneration(matchedId, snapshot.getJobExecutionId(), 1);
     Record secondIncomingRecord = buildRecordToUpdateGeneration(matchedId, snapshot.getJobExecutionId(), 2);
-    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
     recordService.saveRecord(existingRecord, okapiHeaders)
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot))
@@ -850,7 +850,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withProcessingStartedDate(new Date())
       .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
     Record incomingRecord = buildRecordToUpdateGeneration(matchedId, snapshot.getJobExecutionId(), 1);
-    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
 
     recordService.saveRecord(existingRecord, okapiHeaders)
       .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot))

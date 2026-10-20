@@ -1,3 +1,6 @@
+## 2026-10-20 5.10.16
+* [MODSOURCE-1019](https://folio-org.atlassian.net/browse/MODSOURCE-1019) Fix MARC-MARC matching when comparison part is used without a qualifier
+
 ## 2026-01-16 5.10.15
 * [MODSOURCE-970](https://folio-org.atlassian.net/browse/MODSOURCE-970) 003 is being deleted when overlaying a MARC authority record with Data Import (MODSOURCE-964)
 

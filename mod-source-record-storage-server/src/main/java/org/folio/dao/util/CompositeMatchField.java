@@ -25,8 +25,8 @@ public class CompositeMatchField {
     return logicalOperator;
   }
 
-  public boolean isDefaultField() {
-    return matchFields.stream().allMatch(MatchField::isDefaultField);
+  public boolean isMatchedByRecordColumn() {
+    return matchFields.stream().allMatch(MatchField::isMatchedByRecordColumn);
   }
 
 }

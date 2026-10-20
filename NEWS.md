@@ -1,3 +1,6 @@
+## 2026-10-20 v6.0.4
+* [MODSOURCE-1019](https://folio-org.atlassian.net/browse/MODSOURCE-1019) Fix MARC-MARC matching when comparison part is used without a qualifier
+
 ## 2026-10-09 v6.0.3
 * [MODSOURCE-1023](https://folio-org.atlassian.net/browse/MODSOURCE-1023) Reject duplicate records within one import job on record generation update regardless of timing
 

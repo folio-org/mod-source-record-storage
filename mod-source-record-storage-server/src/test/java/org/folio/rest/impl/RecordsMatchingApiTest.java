@@ -60,6 +60,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
   private static final String FIELD_007 = "12569";
   private static final String FIELD_035 = "12345";
   private static final int SPLIT_INDEX = 2;
+  private static final String HR_ID = "hrId12345";
 
   private static String rawRecordContent;
   private static String parsedRecordContent;

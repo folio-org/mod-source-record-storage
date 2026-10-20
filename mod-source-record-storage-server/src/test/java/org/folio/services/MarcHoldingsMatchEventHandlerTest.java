@@ -471,7 +471,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
     DataImportEventPayload payload = payloadMatchingOn010a(
       incomingRecordWithParsedContent(PARSED_CONTENT_WITH_REPADDED_LCCN), numericsOnly, numericsOnly);
 
-    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(payload)
@@ -489,7 +489,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
     DataImportEventPayload payload = payloadMatchingOn010a(
       incomingRecordWithParsedContent(PARSED_CONTENT_WITH_REPADDED_LCCN), null, null);
 
-    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(payload)
@@ -508,7 +508,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
       .withQualifierValue("zzz");
     DataImportEventPayload payload = payloadMatchingOn010a(incomingRecord, null, existingQualifier);
 
-    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    var okapiHeaders = Map.of(OKAPI_TENANT_HEADER, TENANT_ID);
     recordDao.saveRecord(existingRecord, okapiHeaders)
       .onComplete(context.asyncAssertSuccess())
       .onSuccess(existingSavedRecord -> handler.handle(payload)

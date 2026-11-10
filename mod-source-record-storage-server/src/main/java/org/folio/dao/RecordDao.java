@@ -96,6 +96,24 @@ public interface RecordDao {
                                          int offset, int limit, String tenantId);
 
   /**
+   * Searches for {@link Record} matching ALL of the given {@link MatchField} criteria in one query.
+   * Indexer-based criteria are matched against separately aliased marc_indexers joins, default-column criteria
+   * (matched id, external id, external hrid) are applied as conditions on the records table.
+   *
+   * @param matchFields         criteria that a record has to satisfy simultaneously
+   * @param matchedRecordIds    list of records IDs used as additional filter
+   * @param recordType          record type
+   * @param externalIdRequired  specifies whether records with {@code externalId == null} must be skipped
+   * @param offset              starting index in a list of results
+   * @param limit               limit of records
+   * @param tenantId            tenant id
+   * @return {@link Future} of matched records
+   */
+  Future<List<Record>> getMatchedRecords(List<MatchField> matchFields,
+                                         List<String> matchedRecordIds, TypeConnection recordType, boolean externalIdRequired,
+                                         int offset, int limit, String tenantId);
+
+  /**
    * Searches for {@link Record} by {@link MatchField} with offset and limit,
    * and returns {@link RecordsIdentifiersCollection} representing list of pairs of recordId and externalId
    *

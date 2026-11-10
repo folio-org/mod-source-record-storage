@@ -291,36 +291,64 @@ public class RecordDaoImpl implements RecordDao {
   public Future<List<Record>> getMatchedRecords(MatchField matchedField,
                                                 List<String> matchedRecordIds, TypeConnection typeConnection,
                                                 boolean externalIdRequired, int offset, int limit, String tenantId) {
-    Name prt = name(typeConnection.getDbType().getTableName());
-    Table<org.jooq.Record> marcIndexersPartitionTable =
-      table(name(MARC_INDEXERS_PARTITION_PREFIX + matchedField.getTag()));
+    return getMatchedRecords(List.of(matchedField), matchedRecordIds, typeConnection, externalIdRequired,
+      offset, limit, tenantId);
+  }
 
-    if (matchedField.getValue() instanceof MissingValue)
+  @Override
+  public Future<List<Record>> getMatchedRecords(List<MatchField> matchFields,
+                                                List<String> matchedRecordIds, TypeConnection typeConnection,
+                                                boolean externalIdRequired, int offset, int limit, String tenantId) {
+    if (matchFields.stream().anyMatch(matchField -> matchField.getValue() instanceof MissingValue)) {
       return Future.succeededFuture(emptyList());
+    }
+
+    Name prt = name(typeConnection.getDbType().getTableName());
+    boolean trackingRequired = typeConnection.getDbType()
+      .getTableName().equalsIgnoreCase(MARC_RECORDS_LB.getName());
 
     return getQueryExecutor(tenantId).execute(dsl -> {
-      SelectOnConditionStep<org.jooq.Record> query = dsl
+      SelectJoinStep<org.jooq.Record> query = dsl
         .select(getAllRecordFields(prt))
         .distinctOn(RECORDS_LB.ID)
         .from(RECORDS_LB)
         .leftJoin(table(prt)).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, prt, name(ID))))
         .leftJoin(RAW_RECORDS_LB).on(RECORDS_LB.ID.eq(RAW_RECORDS_LB.ID))
-        .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID))
-        .innerJoin(marcIndexersPartitionTable).on(RECORDS_LB.ID.eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID))));
-      if (typeConnection.getDbType()
-        .getTableName().equalsIgnoreCase(MARC_RECORDS_LB.getName())) {
-        query = query.innerJoin(MARC_RECORDS_TRACKING)
-          .on(MARC_RECORDS_TRACKING.MARC_ID
-            .eq(field(TABLE_FIELD_TEMPLATE, UUID.class, marcIndexersPartitionTable, name(MARC_ID)))
-            .and(MARC_RECORDS_TRACKING.VERSION
-              .eq(field(TABLE_FIELD_TEMPLATE, Integer.class, marcIndexersPartitionTable, name(VERSION)))));
+        .leftJoin(ERROR_RECORDS_LB).on(RECORDS_LB.ID.eq(ERROR_RECORDS_LB.ID));
+
+      Condition fieldsCondition = DSL.noCondition();
+      boolean trackingJoined = false;
+      int aliasIndex = 0;
+      for (MatchField matchField : matchFields) {
+        if (matchField.isMatchedByRecordColumn()) {
+          fieldsCondition = fieldsCondition.and(getDefaultMatchFieldCondition(matchField));
+          continue;
+        }
+        // each criterion gets its own alias, so criteria on the same tag are matched against different index rows
+        String alias = "mi_" + aliasIndex++;
+        Table<org.jooq.Record> partitionTable =
+          table(name(MARC_INDEXERS_PARTITION_PREFIX + matchField.getTag())).as(alias);
+        Field<UUID> aliasMarcId = field(TABLE_FIELD_TEMPLATE, UUID.class, name(alias), name(MARC_ID));
+        Field<Integer> aliasVersion = field(TABLE_FIELD_TEMPLATE, Integer.class, name(alias), name(VERSION));
+        Condition joinCondition = RECORDS_LB.ID.eq(aliasMarcId);
+        if (trackingRequired && trackingJoined) {
+          joinCondition = joinCondition.and(MARC_RECORDS_TRACKING.VERSION.eq(aliasVersion));
+        }
+        query = query.innerJoin(partitionTable).on(joinCondition);
+        if (trackingRequired && !trackingJoined) {
+          query = query.innerJoin(MARC_RECORDS_TRACKING)
+            .on(MARC_RECORDS_TRACKING.MARC_ID.eq(aliasMarcId).and(MARC_RECORDS_TRACKING.VERSION.eq(aliasVersion)));
+          trackingJoined = true;
+        }
+        fieldsCondition = fieldsCondition.and(getMatchedFieldCondition(matchField, alias));
       }
+
       return query.where(
           filterRecordByType(typeConnection.getRecordType().value())
             .and(filterRecordByMultipleIds(matchedRecordIds))
             .and(filterRecordByState(Record.State.ACTUAL.value()))
             .and(externalIdRequired ? filterRecordByExternalIdNonNull() : DSL.noCondition())
-            .and(getMatchedFieldCondition(matchedField, marcIndexersPartitionTable.getName()))
+            .and(fieldsCondition)
         )
         .offset(offset)
         .limit(limit > 0 ? limit : DEFAULT_LIMIT_FOR_GET_RECORDS);
@@ -616,8 +644,18 @@ public class RecordDaoImpl implements RecordDao {
     return condition;
   }
 
+  private static List<String> getValuesAsList(Value<?> value) {
+    if (Value.ValueType.LIST.equals(value.getType())) {
+      return ((ListValue) value).getValue();
+    }
+    if (Value.ValueType.STRING.equals(value.getType())) {
+      return List.of(String.valueOf(value.getValue()));
+    }
+    return List.of();
+  }
+
   private Condition getDefaultMatchFieldCondition(MatchField matchField) {
-    List<String> values = ((ListValue) matchField.getValue()).getValue();
+    List<String> values = getValuesAsList(matchField.getValue());
     MatchField.QualifierMatch qualifier = matchField.getQualifierMatch();
 
     // ComparisonPartType is not used in this case because it is illogical to apply filters of this type to UUID values.

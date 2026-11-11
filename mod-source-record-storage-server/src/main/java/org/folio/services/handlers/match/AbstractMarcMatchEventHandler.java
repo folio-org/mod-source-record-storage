@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -38,13 +39,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
-import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByMultipleIds;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
@@ -188,38 +187,45 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   abstract boolean isConsortiumAvailable();
 
-  /* Creates match fields of the current match profile and, if eligible, of its submatch profile */
+  /* Creates match fields of the current match profile and of its chain of eligible submatch profiles */
   private List<MatchField> prepareMatchFields(String record, MatchDetail matchDetail, DataImportEventPayload payload) {
     List<MatchField> matchFields = new ArrayList<>();
     matchFields.add(prepareMatchField(record, matchDetail));
-    retrieveSubMatchDetail(payload)
-      .ifPresent(subMatchDetail -> matchFields.add(prepareMatchField(record, subMatchDetail)));
+    retrieveSubMatchDetails(payload)
+      .forEach(subMatchDetail -> matchFields.add(prepareMatchField(record, subMatchDetail)));
+    LOG.debug("prepareMatchFields:: Prepared {} match field(s) to be processed in one query", matchFields.size());
     return matchFields;
   }
 
-  /* Retrieves a {@link MatchDetail} of the first child match profile linked via MATCH, if it can be combined */
-  private Optional<MatchDetail> retrieveSubMatchDetail(DataImportEventPayload payload) {
-    if (!canProcessMultiMatchResult(payload)) {
-      return Optional.empty();
+  /*
+   * Walks down the chain of first child profiles that are match profiles linked via MATCH and collects their
+   * match details. The chain stops at the first profile that can't be combined into the query.
+   */
+  private List<MatchDetail> retrieveSubMatchDetails(DataImportEventPayload payload) {
+    List<MatchDetail> subMatchDetails = new ArrayList<>();
+    ProfileSnapshotWrapper node = payload.getCurrentNode();
+    while (hasMatchChild(node)) {
+      ProfileSnapshotWrapper child = node.getChildSnapshotWrappers().getFirst();
+      Object content = child.getContent();
+      if (content == null) {
+        break;
+      }
+      MatchProfile subMatchProfile = content instanceof MatchProfile profile
+        ? profile
+        : JsonObject.mapFrom(content).mapTo(MatchProfile.class);
+      if (!isEligibleMatchProfile(subMatchProfile) || CollectionUtils.isEmpty(subMatchProfile.getMatchDetails())) {
+        break;
+      }
+      MatchDetail subMatchDetail = subMatchProfile.getMatchDetails().getFirst();
+      if (!isValidMatchDetail(subMatchDetail)) {
+        LOG.debug("retrieveSubMatchDetails:: Submatch detail is not valid, the chain is stopped");
+        break;
+      }
+      subMatchDetails.add(subMatchDetail);
+      node = child;
     }
-    Object content = payload.getCurrentNode().getChildSnapshotWrappers().getFirst().getContent();
-    if (content == null) {
-      return Optional.empty();
-    }
-    MatchProfile subMatchProfile = content instanceof MatchProfile profile
-      ? profile
-      : JsonObject.mapFrom(content).mapTo(MatchProfile.class);
-    if (!isEligibleMatchProfile(subMatchProfile) || isEmpty(subMatchProfile.getMatchDetails())) {
-      return Optional.empty();
-    }
-    MatchDetail subMatchDetail = subMatchProfile.getMatchDetails().getFirst();
-    if (!isValidMatchDetail(subMatchDetail)) {
-      LOG.debug("retrieveSubMatchDetail:: Submatch detail is not valid, it will be processed separately");
-      return Optional.empty();
-    }
-    return Optional.of(subMatchDetail);
+    return subMatchDetails;
   }
-
   /* Creates a {@link MatchField} from the given {@link MatchDetail} */
   private MatchField prepareMatchField(String record, MatchDetail matchDetail) {
     List<Field> matchDetailFields = matchDetail.getExistingMatchExpression().getFields();
@@ -351,7 +357,11 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   }
 
   private boolean canProcessMultiMatchResult(DataImportEventPayload eventPayload) {
-    List<ProfileSnapshotWrapper> childProfiles = eventPayload.getCurrentNode().getChildSnapshotWrappers();
+    return hasMatchChild(eventPayload.getCurrentNode());
+  }
+
+  private boolean hasMatchChild(ProfileSnapshotWrapper node) {
+    List<ProfileSnapshotWrapper> childProfiles = node.getChildSnapshotWrappers();
     return isNotEmpty(childProfiles) && ReactToType.MATCH.equals(childProfiles.getFirst().getReactTo())
       && MATCH_PROFILE.equals(childProfiles.getFirst().getContentType());
   }

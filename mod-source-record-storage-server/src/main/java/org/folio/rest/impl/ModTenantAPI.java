@@ -14,6 +14,7 @@ import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.RecordStorageKafkaTopic;
+import org.folio.dao.PostgresClientFactory;
 import org.folio.kafka.services.KafkaAdminClientService;
 import org.folio.liquibase.LiquibaseUtil;
 import org.folio.rest.annotations.Validate;
@@ -43,6 +44,9 @@ public class ModTenantAPI extends TenantAPI {
 
   @Autowired
   private SRSKafkaTopicService srsKafkaTopicService;
+
+  @Autowired
+  private PostgresClientFactory postgresClientFactory;
 
   private final String tenantId;
 
@@ -74,10 +78,8 @@ public class ModTenantAPI extends TenantAPI {
   @Override
   public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
                          Handler<AsyncResult<Response>> handler, Context context) {
-    // delete Kafka topics if tenant purged
-
-    Future<Void> result = tenantAttributes.getPurge() != null && tenantAttributes.getPurge()
-      ? new KafkaAdminClientService(context.owner()).deleteKafkaTopics(RecordStorageKafkaTopic.values(), tenantId(headers))
+    Future<Void> result = isPurge(tenantAttributes)
+      ? purgeTenantResources(context, tenantId(headers))
       : Future.succeededFuture();
     result
       .compose(v -> super.postTenantSync(tenantAttributes, headers, context))
@@ -92,6 +94,33 @@ public class ModTenantAPI extends TenantAPI {
         }
         LOGGER.info("postTenant:: Post tenant request is completed");
       });
+  }
+
+  private static boolean isPurge(TenantAttributes tenantAttributes) {
+    return Boolean.TRUE.equals(tenantAttributes.getPurge());
+  }
+
+  /**
+   * Release what belongs to the tenant outside of its database schema, before the schema is dropped:
+   * its Kafka topics, and its cached database connections, whose {@code search_path} points at the
+   * schema that is about to be dropped.
+   *
+   * @param context  current Vert.x context
+   * @param tenantId tenant id
+   * @return future completed when the tenant's resources are released
+   */
+  private Future<Void> purgeTenantResources(Context context, String tenantId) {
+    LOGGER.info("purgeTenantResources:: Releasing Kafka topics and database connections of tenant {}", tenantId);
+    return new KafkaAdminClientService(context.owner())
+      .deleteKafkaTopics(RecordStorageKafkaTopic.values(), tenantId)
+      // dropping the tenant's schema is what a purge is for, so a topic that is already gone, or
+      // was never created, must not fail the purge and leave the tenant undeletable
+      .recover(cause -> {
+        LOGGER.warn("purgeTenantResources:: Failed to delete Kafka topics of tenant {}, continuing the purge",
+          tenantId, cause);
+        return Future.succeededFuture();
+      })
+      .compose(v -> postgresClientFactory.closeTenant(tenantId));
   }
 
   private Future<Void> setLoadSampleParameter(TenantAttributes attributes, Context context) {

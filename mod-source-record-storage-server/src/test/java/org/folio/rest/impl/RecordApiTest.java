@@ -194,7 +194,7 @@ class RecordApiTest extends AbstractRestVerticleTest {
 
   @BeforeEach
   void setUpRecordApiTest(VertxTestContext testContext) {
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
       .onComplete(testContext.succeedingThenComplete());
   }
 

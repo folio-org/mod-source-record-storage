@@ -161,6 +161,19 @@ class ModuleIT {
     postTenant(body);
   }
 
+  @Test
+  @DisplayName("Purge the tenant")
+  void purge() {
+    setTenant("purge");
+    String module = ModuleName.getModuleName() + "-" + ModuleName.getModuleVersion();
+
+    postTenant(new JsonObject().put("module_to", module));
+
+    // purging drops the tenant's schema, so the module has to release its database connections,
+    // whose search_path points at that schema, before the schema is dropped
+    postTenant(new JsonObject().put("module_from", module).put("purge", true));
+  }
+
   private void setTenant(String tenant) {
     RestAssured.requestSpecification = new RequestSpecBuilder()
         .addHeader("X-Okapi-Url", "http://mod-source-record-storage:8081")  // returns 404 for all other APIs

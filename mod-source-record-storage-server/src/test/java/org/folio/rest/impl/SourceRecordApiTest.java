@@ -297,8 +297,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
           .encode()
         )));
 
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
-      .compose(v -> SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, CENTRAL_TENANT_ID)))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID)))
       .onComplete(testContext.succeedingThenComplete());
   }
 

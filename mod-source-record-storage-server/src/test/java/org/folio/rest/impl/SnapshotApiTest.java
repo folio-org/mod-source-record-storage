@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -56,7 +55,8 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   @BeforeAll
   static void setUpClassSnapshotApi() throws IOException {
     rawRecord = new RawRecord()
-      .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
+      .withContent(
+        new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
   }
 
   @BeforeEach
@@ -64,7 +64,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
     WireMock.stubFor(WireMock.delete(new UrlPathPattern(new RegexPattern(INVENTORY_INSTANCES_PATH + "/.*"), true))
       .willReturn(WireMock.noContent()));
 
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         testContext.failNow(delete.cause());
       } else {
@@ -87,7 +87,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   @Test
   void shouldReturnAllSnapshotsOnGetWhenNoQueryIsSpecified() {
-    Snapshot[] snapshots = new Snapshot[] { snapshot_1, snapshot_2, snapshot_3 };
+    Snapshot[] snapshots = {snapshot_1, snapshot_2, snapshot_3};
     postSnapshots(snapshots);
 
     RestAssured.given()
@@ -139,7 +139,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   @Test
   void shouldReturnLimitedCollectionOnGet() {
-    Snapshot[] snapshots = new Snapshot[] { snapshot_1, snapshot_2, snapshot_3, snapshot_4 };
+    Snapshot[] snapshots = {snapshot_1, snapshot_2, snapshot_3, snapshot_4};
     postSnapshots(snapshots);
 
     RestAssured.given()
@@ -278,8 +278,9 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
     String recordId = UUID.randomUUID().toString();
     var marcRecordWith001 = new ParsedRecord()
-      .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", "id000100"))).encode());
-    Record record = new Record()
+      .withContent(
+        new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", "id000100"))).encode());
+    Record sourceRecord = new Record()
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(marcRecordWith001)
@@ -287,13 +288,13 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
     List<String> recordIds = Arrays.asList(recordId, UUID.randomUUID().toString());
     for (String id : recordIds) {
-      record.withId(id).withMatchedId(id)
+      sourceRecord.withId(id).withMatchedId(id)
         .withExternalIdsHolder(new ExternalIdsHolder()
           .withInstanceId(UUID.randomUUID().toString())
           .withInstanceHrid("hrid00100"));
       RestAssured.given()
         .spec(spec)
-        .body(record)
+        .body(sourceRecord)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .then()
@@ -315,7 +316,8 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_NOT_FOUND);
     }
-    verify(recordIds.size(), deleteRequestedFor(new UrlPathPattern(new RegexPattern(INVENTORY_INSTANCES_PATH + "/.*"), true)));
+    verify(recordIds.size(),
+      deleteRequestedFor(new UrlPathPattern(new RegexPattern(INVENTORY_INSTANCES_PATH + "/.*"), true)));
   }
 
   @Test
@@ -357,5 +359,4 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .body("status", is(snapshot_4.getStatus().name()))
       .body("processingStartedDate", notNullValue(Date.class));
   }
-
 }

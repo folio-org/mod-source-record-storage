@@ -1,7 +1,7 @@
 package org.folio.services;
 
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -12,7 +12,7 @@ import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.util.AdditionalFieldsUtil;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests that {@link AdditionalFieldsUtil#normalize035} correctly delegates to
@@ -29,7 +29,7 @@ public class OclcFieldNormalizationTest {
       + "]}";
 
   @Test
-  public void normalize035_delegatesToNormalizerAndRecalculatesLeader() {
+  void normalize035_delegatesToNormalizerAndRecalculatesLeader() {
     var parsedRecord = new ParsedRecord().withContent(CONTENT_WITH_035);
     var record = buildRecord(parsedRecord);
 
@@ -47,7 +47,7 @@ public class OclcFieldNormalizationTest {
   }
 
   @Test
-  public void normalize035_noParsedRecord_normalizerNotCalled() {
+  void normalize035_noParsedRecord_normalizerNotCalled() {
     var marcRecord = buildRecord(null);
 
     try (var mocked = mockStatic(MarcRecordNormalizer.class)) {

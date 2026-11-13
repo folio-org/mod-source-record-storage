@@ -1,17 +1,16 @@
 package org.folio.rest.persist;
 
-import io.vertx.core.json.JsonObject;
-import org.junit.Test;
-
-import java.util.Map;
-
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+
+import io.vertx.core.json.JsonObject;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 public class PgConnectOptionsHelperTest {
 
   @Test
-  public void testPgConnectOptions() {
+  void testPgConnectOptions() {
     var host = "localhost";
     var port = 5555;
     var user = "user";

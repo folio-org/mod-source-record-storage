@@ -8,6 +8,7 @@ import static org.folio.services.AbstractLBServiceTest.KAFKA_ENV_ID;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.instanceOf;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -20,8 +21,8 @@ import static org.mockito.Mockito.when;
 
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import io.vertx.kafka.admin.KafkaAdminClient;
 import io.vertx.kafka.admin.NewTopic;
 import java.util.List;
@@ -31,23 +32,21 @@ import org.folio.kafka.services.KafkaAdminClientService;
 import org.folio.kafka.services.KafkaTopic;
 import org.folio.services.SRSKafkaTopicService;
 import org.folio.services.SRSKafkaTopicService.SRSKafkaTopic;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(VertxExtension.class)
 public class KafkaAdminClientServiceTest {
 
   private static final String STUB_TENANT = "foo-tenant";
   private KafkaAdminClient mockClient;
   private Vertx vertx;
-  @Mock
   private SRSKafkaTopicService srsKafkaTopicService;
 
-  @Before
-  public void setUp() {
+  @BeforeEach
+  void setUp() {
     System.setProperty(KAFKA_ENV, KAFKA_ENV_ID);
     vertx = mock(Vertx.class);
     mockClient = mock(KafkaAdminClient.class);
@@ -75,7 +74,7 @@ public class KafkaAdminClientServiceTest {
   }
 
   @Test
-  public void shouldCreateTopicIfAlreadyExist(TestContext testContext) {
+  void shouldCreateTopicIfAlreadyExist(VertxTestContext testContext) {
     when(mockClient.createTopics(anyList()))
       .thenReturn(failedFuture(new TopicExistsException("x")))
       .thenReturn(failedFuture(new TopicExistsException("y")))
@@ -85,48 +84,51 @@ public class KafkaAdminClientServiceTest {
     when(mockClient.close()).thenReturn(succeededFuture());
 
     createKafkaTopicsAsync(mockClient)
-      .onComplete(testContext.asyncAssertSuccess(notUsed -> {
+      .onComplete(testContext.succeeding(notUsed -> {
         verify(mockClient, times(4)).listTopics();
         verify(mockClient, times(4)).createTopics(anyList());
         verify(mockClient, times(1)).close();
+        testContext.completeNow();
       }));
   }
 
   @Test
-  public void shouldFailIfExistExceptionIsPermanent(TestContext testContext) {
+  void shouldFailIfExistExceptionIsPermanent(VertxTestContext testContext) {
     when(mockClient.createTopics(anyList())).thenReturn(failedFuture(new TopicExistsException("x")));
     when(mockClient.listTopics()).thenReturn(succeededFuture(Set.of("old")));
     when(mockClient.close()).thenReturn(succeededFuture());
 
     createKafkaTopicsAsync(mockClient)
-      .onComplete(testContext.asyncAssertFailure(e -> {
+      .onComplete(testContext.failing(e -> {
         assertThat(e, instanceOf(TopicExistsException.class));
         verify(mockClient, times(1)).close();
+        testContext.completeNow();
       }));
   }
 
   @Test
-  public void shouldNotCreateTopicOnOther(TestContext testContext) {
+  void shouldNotCreateTopicOnOther(VertxTestContext testContext) {
     when(mockClient.createTopics(anyList())).thenReturn(failedFuture(new RuntimeException("err msg")));
     when(mockClient.listTopics()).thenReturn(succeededFuture(Set.of("old")));
     when(mockClient.close()).thenReturn(succeededFuture());
 
     createKafkaTopicsAsync(mockClient)
-      .onComplete(testContext.asyncAssertFailure(cause -> {
-          testContext.assertEquals("err msg", cause.getMessage());
+      .onComplete(testContext.failing(cause -> {
+          assertEquals("err msg", cause.getMessage());
           verify(mockClient, times(1)).close();
+          testContext.completeNow();
         }
       ));
   }
 
   @Test
-  public void shouldCreateTopicIfNotExist(TestContext testContext) {
+  void shouldCreateTopicIfNotExist(VertxTestContext testContext) {
     when(mockClient.createTopics(anyList())).thenReturn(succeededFuture());
     when(mockClient.listTopics()).thenReturn(succeededFuture(Set.of("old")));
     when(mockClient.close()).thenReturn(succeededFuture());
 
     createKafkaTopicsAsync(mockClient)
-      .onComplete(testContext.asyncAssertSuccess(notUsed -> {
+      .onComplete(testContext.succeeding(notUsed -> {
 
         @SuppressWarnings("unchecked")
         final ArgumentCaptor<List<NewTopic>> createTopicsCaptor = forClass(List.class);
@@ -136,6 +138,7 @@ public class KafkaAdminClientServiceTest {
 
         // Only these items are expected, so implicitly checks size of list
         assertThat(getTopicNames(createTopicsCaptor), containsInAnyOrder(allExpectedTopics.toArray()));
+        testContext.completeNow();
       }));
   }
 

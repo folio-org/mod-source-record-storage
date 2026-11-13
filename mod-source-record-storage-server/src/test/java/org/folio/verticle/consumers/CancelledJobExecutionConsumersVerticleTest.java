@@ -1,13 +1,28 @@
 package org.folio.verticle.consumers;
 
+import static java.time.Duration.ofSeconds;
+import static org.apache.kafka.clients.producer.ProducerConfig.BOOTSTRAP_SERVERS_CONFIG;
+import static org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG;
+import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG;
+import static org.folio.DataImportEventTypes.DI_JOB_CANCELLED;
+import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.ThreadingModel;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
+import java.util.List;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -17,30 +32,15 @@ import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.headers.FolioKafkaHeaders;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.services.caches.CancelledJobsIdsCache;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.kafka.KafkaContainer;
 
-import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.Stream;
-
-import static java.time.Duration.ofSeconds;
-import static org.apache.kafka.clients.producer.ProducerConfig.BOOTSTRAP_SERVERS_CONFIG;
-import static org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG;
-import static org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG;
-import static org.folio.DataImportEventTypes.DI_JOB_CANCELLED;
-import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
-import static org.junit.Assert.assertTrue;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
-
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(VertxExtension.class)
 public class CancelledJobExecutionConsumersVerticleTest {
 
   private static final String TENANT_ID = "diku";
@@ -54,8 +54,8 @@ public class CancelledJobExecutionConsumersVerticleTest {
   private CancelledJobsIdsCache cancelledJobsIdsCache;
   private String verticleDeploymentId;
 
-  @BeforeClass
-  public static void beforeAll() {
+  @BeforeAll
+  static void beforeAll() {
     vertx = Vertx.vertx();
     kafkaContainer.start();
     kafkaConfig = KafkaConfig.builder()
@@ -65,24 +65,26 @@ public class CancelledJobExecutionConsumersVerticleTest {
       .build();
   }
 
-  @AfterClass
-  public static void afterAll(TestContext context) {
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> kafkaContainer.stop()));
+  @AfterAll
+  static void afterAll() throws Exception {
+    CompletableFuture<Void> close = new CompletableFuture<>();
+    vertx.close().onComplete(v -> { kafkaContainer.stop(); close.complete(null); });
+    close.get(30, TimeUnit.SECONDS);
   }
 
-  @Before
-  public void setUp(TestContext context) {
+  @BeforeEach
+  void setUp(VertxTestContext testContext) {
     cancelledJobsIdsCache = new CancelledJobsIdsCache(CACHE_EXPIRATION_TIME_MINS);
-    deployVerticle(cancelledJobsIdsCache).onComplete(context.asyncAssertSuccess());
+    deployVerticle(cancelledJobsIdsCache).onComplete(testContext.succeedingThenComplete());
   }
 
-  @After
-  public void tearDown(TestContext context) {
-    undeployVerticle().onComplete(context.asyncAssertSuccess());
+  @AfterEach
+  void tearDown(VertxTestContext testContext) {
+    undeployVerticle().onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  public void shouldReadAndPutMultipleJobIdsToCache() throws ExecutionException, InterruptedException {
+  void shouldReadAndPutMultipleJobIdsToCache() throws ExecutionException, InterruptedException {
     List<String> ids = generateJobIds(100);
 
     sendJobIdsToKafka(ids);
@@ -92,7 +94,7 @@ public class CancelledJobExecutionConsumersVerticleTest {
   }
 
   @Test
-  public void shouldReadAllEventsFromTopicIfVerticleWasRestarted(TestContext context)
+  void shouldReadAllEventsFromTopicIfVerticleWasRestarted(VertxTestContext testContext)
     throws ExecutionException, InterruptedException {
 
     List<String> idsBatch1 = generateJobIds(100);
@@ -100,25 +102,25 @@ public class CancelledJobExecutionConsumersVerticleTest {
     await().atMost(ofSeconds(3))
       .untilAsserted(() -> idsBatch1.forEach(id -> assertTrue(cancelledJobsIdsCache.contains(id))));
 
-    // stop currently deployed verticle
-    Async async = context.async();
-    undeployVerticle().onComplete(context.asyncAssertSuccess(v -> async.complete()));
-
-    async.await(3000);
     List<String> idsBatch2 = generateJobIds(200);
-    sendJobIdsToKafka(idsBatch2);
 
-    // redeploy the verticle
-    Async async2 = context.async();
-    cancelledJobsIdsCache = new CancelledJobsIdsCache(CACHE_EXPIRATION_TIME_MINS);
-    deployVerticle(cancelledJobsIdsCache)
-      .onComplete(context.asyncAssertSuccess(v -> async2.complete()));
+    undeployVerticle().onComplete(testContext.succeeding(v -> {
+      try {
+        sendJobIdsToKafka(idsBatch2);
+      } catch (ExecutionException | InterruptedException e) {
+        testContext.failNow(e);
+        return;
+      }
 
-    async2.await(3000);
-    await().atMost(ofSeconds(3))
-      .untilAsserted(() -> idsBatch1.forEach(id -> assertTrue(cancelledJobsIdsCache.contains(id))));
-    await().atMost(ofSeconds(3))
-      .untilAsserted(() -> idsBatch2.forEach(id -> assertTrue(cancelledJobsIdsCache.contains(id))));
+      cancelledJobsIdsCache = new CancelledJobsIdsCache(CACHE_EXPIRATION_TIME_MINS);
+      deployVerticle(cancelledJobsIdsCache).onComplete(testContext.succeeding(id -> {
+        await().atMost(ofSeconds(3))
+          .untilAsserted(() -> idsBatch1.forEach(i -> assertTrue(cancelledJobsIdsCache.contains(i))));
+        await().atMost(ofSeconds(3))
+          .untilAsserted(() -> idsBatch2.forEach(i -> assertTrue(cancelledJobsIdsCache.contains(i))));
+        testContext.completeNow();
+      }));
+    }));
   }
 
   private Future<String> deployVerticle(CancelledJobsIdsCache cancelledJobsIdsCache) {

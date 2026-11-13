@@ -1,19 +1,20 @@
 package org.folio.services;
 
-import static java.util.Collections.singletonList;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.singletonList;
 import static org.folio.EntityLinksKafkaTopic.INSTANCE_AUTHORITY;
 import static org.folio.EntityLinksKafkaTopic.LINKS_STATS;
 import static org.folio.RecordStorageKafkaTopic.MARC_BIB;
 import static org.folio.rest.jaxrs.model.LinkUpdateReport.Status.FAIL;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -49,15 +50,15 @@ import org.folio.rest.jaxrs.model.SubfieldsChange;
 import org.folio.rest.jaxrs.model.UpdateTarget;
 import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_MARC_RECORD_LINKED_PATH = "src/test/resources/parsedMarcRecordLinked.json";
@@ -98,13 +99,11 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
   private Record secondRecord;
   private Record errorRecord;
 
-  @Before
-  public void setUp(TestContext context) {
-    MockitoAnnotations.openMocks(this);
+  @BeforeEach
+  void setUp(VertxTestContext testContext) {
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     recordService = new RecordServiceImpl(recordDao, consortiumConfigurationCache);
 
-    var async = context.async();
     var snapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())
       .withProcessingStartedDate(new Date())
@@ -149,26 +148,24 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .compose(savedSnapshot -> recordService.saveRecord(record, okapiHeaders))
       .compose(savedRecord -> recordService.saveRecord(secondRecord, okapiHeaders))
       .compose(savedRecord -> recordService.saveRecord(errorRecord, okapiHeaders))
-      .onSuccess(ar -> async.complete())
-      .onFailure(context::fail);
+      .onSuccess(ar -> testContext.completeNow())
+      .onFailure(testContext::failNow);
   }
 
-  @After
-  public void cleanUp(TestContext context) {
-    var async = context.async();
+  @AfterEach
+  void cleanUp(VertxTestContext testContext) {
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
-        context.fail(delete.cause());
+        testContext.failNow(delete.cause());
+        return;
       }
-      async.complete();
+      testContext.completeNow();
     });
   }
 
   @Test
   @SneakyThrows
-  public void shouldUpdateBibRecordAndSendRecordUpdatedEvent(TestContext context) {
-    var async = context.async();
-
+  void shouldUpdateBibRecordAndSendRecordUpdatedEvent(VertxTestContext testContext) {
     var parsedRecord = record.getParsedRecord();
     var updateTargets = buildUpdateTargets();
     var event = buildLinkEventForUpdate(updateTargets);
@@ -177,36 +174,37 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     send(event, traceHeader);
 
     var keyValues = readConsumerRecordsFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 1);
-    context.assertEquals(1, keyValues.size());
+    assertEquals(1, keyValues.size());
     var actualHeaders = keyValues.getFirst().headers();
     OKAPI_HEADERS.forEach((key, value) ->
-      context.assertEquals(value, new String(actualHeaders.lastHeader(key).value(), UTF_8)));
+      assertEquals(value, new String(actualHeaders.lastHeader(key).value(), UTF_8)));
     var actualOutgoingEvent = objectMapper.readValue(keyValues.getFirst().value(), MarcBibUpdate.class);
 
     recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getNew -> {
       if (getNew.failed()) {
-        context.fail(getNew.cause());
+        testContext.failNow(getNew.cause());
+        return;
       }
-      context.assertTrue(getNew.result().isPresent());
+      assertTrue(getNew.result().isPresent());
       var updatedRecord = getNew.result().get();
 
-      assertNewDatabaseRecord(context, updatedRecord, parsedRecord);
-      assertOutgoingEvent(context, event, actualOutgoingEvent, updatedRecord, updateTargets);
+      assertNewDatabaseRecord(updatedRecord, parsedRecord);
+      assertOutgoingEvent(event, actualOutgoingEvent, updatedRecord, updateTargets);
 
       recordDao.getRecordById(record.getId(), TENANT_ID)
-        .onComplete(assertOldDatabaseRecord(context, async, parsedRecord));
+        .onComplete(assertOldDatabaseRecord(testContext, parsedRecord));
     });
   }
 
   @Test
-  public void shouldUpdateMultipleRecordsAndSendMultipleRecordUpdatedEvents(TestContext context) {
+  void shouldUpdateMultipleRecordsAndSendMultipleRecordUpdatedEvents(VertxTestContext testContext) {
     var updateTargets = buildUpdateTargets(INSTANCE_ID, UUID.randomUUID().toString(), SECOND_INSTANCE_ID);
     var event = buildLinkEventForUpdate(updateTargets);
 
     var traceHeader = UUID.randomUUID().toString();
     send(event, traceHeader);
     var values = readValuesFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 2);
-    context.assertEquals(2, values.size());
+    assertEquals(2, values.size());
 
     var eventsInstanceIds = values.stream()
       .map(value -> {
@@ -219,7 +217,8 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
       .filter(Objects::nonNull)
       .toList();
 
-    context.assertTrue(List.of(INSTANCE_ID, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
+    assertTrue(List.of(INSTANCE_ID, SECOND_INSTANCE_ID).containsAll(eventsInstanceIds));
+    testContext.completeNow();
   }
 
   /**
@@ -227,9 +226,7 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
    */
   @Test
   @SneakyThrows
-  public void shouldUpdateBibRecordForDeleteEventAndSendRecordUpdatedEvent(TestContext context) {
-    var async = context.async();
-
+  void shouldUpdateBibRecordForDeleteEventAndSendRecordUpdatedEvent(VertxTestContext testContext) {
     var parsedRecord = record.getParsedRecord();
     var updateTargets = buildUpdateTargets();
     var event = buildLinkEvent(updateTargets, BibAuthorityLinksUpdate.Type.DELETE);
@@ -237,38 +234,40 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     var traceHeader = UUID.randomUUID().toString();
     send(event, traceHeader);
     var values = readValuesFromKafka(KAFKA_SRS_BIB_PRODUCER_TOPIC, traceHeader, 1);
-    context.assertEquals(1, values.size());
+    assertEquals(1, values.size());
     var actualOutgoingEvent = objectMapper.readValue(values.getFirst(), MarcBibUpdate.class);
 
     recordDao.getRecordByMatchedId(record.getMatchedId(), TENANT_ID).onComplete(getNew -> {
       if (getNew.failed()) {
-        context.fail(getNew.cause());
+        testContext.failNow(getNew.cause());
+        return;
       }
-      context.assertTrue(getNew.result().isPresent());
+      assertTrue(getNew.result().isPresent());
       var updatedRecord = getNew.result().get();
 
-      assertNewDatabaseRecord(context, updatedRecord, parsedRecord);
-      assertOutgoingEvent(context, event, actualOutgoingEvent, updatedRecord, updateTargets);
+      assertNewDatabaseRecord(updatedRecord, parsedRecord);
+      assertOutgoingEvent(event, actualOutgoingEvent, updatedRecord, updateTargets);
 
       recordDao.getRecordById(record.getId(), TENANT_ID)
-        .onComplete(assertOldDatabaseRecord(context, async, parsedRecord));
+        .onComplete(assertOldDatabaseRecord(testContext, parsedRecord));
     });
   }
 
   @Test
   @SneakyThrows
-  public void shouldUpdateMultipleRecordsAndSendOneFailedLinkUpdateReport(TestContext context) {
+  void shouldUpdateMultipleRecordsAndSendOneFailedLinkUpdateReport(VertxTestContext testContext) {
     var event = buildLinkEventForUpdate(buildUpdateTargets(INSTANCE_ID, SECOND_INSTANCE_ID, ERROR_INSTANCE_ID));
     var traceHeader = UUID.randomUUID().toString();
 
     send(event, traceHeader);
     var values = readValuesFromKafka(KAFKA_LINK_STATS_PRODUCER_TOPIC, traceHeader, 1);
-    context.assertEquals(1, values.size());
+    assertEquals(1, values.size());
 
     var report = objectMapper.readValue(values.getFirst(), LinkUpdateReport.class);
-    context.assertEquals(FAIL, report.getStatus());
-    context.assertEquals(ERROR_INSTANCE_ID, report.getInstanceId());
-    context.assertEquals(ERROR_RECORD_DESCRIPTION, report.getFailCause());
+    assertEquals(FAIL, report.getStatus());
+    assertEquals(ERROR_INSTANCE_ID, report.getInstanceId());
+    assertEquals(ERROR_RECORD_DESCRIPTION, report.getFailCause());
+    testContext.completeNow();
   }
 
   private void send(Object payload, String traceValue) {
@@ -366,42 +365,42 @@ public class AuthorityLinkChunkKafkaHandlerTest extends AbstractLBServiceTest {
     return buildLinkEvent(updateTargets, BibAuthorityLinksUpdate.Type.UPDATE);
   }
 
-  private void assertOutgoingEvent(TestContext context, BibAuthorityLinksUpdate event, MarcBibUpdate actualOutgoingEvent,
+  private void assertOutgoingEvent(BibAuthorityLinksUpdate event, MarcBibUpdate actualOutgoingEvent,
                                    Record updatedRecord, List<UpdateTarget> updateTargets) {
-    context.assertEquals(event.getJobId(), actualOutgoingEvent.getJobId());
-    context.assertEquals(getLinksCount(updateTargets), actualOutgoingEvent.getLinkIds().size());
-    context.assertEquals(LINK_ID, actualOutgoingEvent.getLinkIds().getFirst());
-    context.assertEquals(event.getTenant(), actualOutgoingEvent.getTenant());
-    context.assertEquals(event.getTs(), actualOutgoingEvent.getTs());
-    context.assertEquals(MarcBibUpdate.Type.UPDATE, actualOutgoingEvent.getType());
-    context.assertEquals(updatedRecord.getId(), actualOutgoingEvent.getRecord().getId());
+    assertEquals(event.getJobId(), actualOutgoingEvent.getJobId());
+    assertEquals(getLinksCount(updateTargets), actualOutgoingEvent.getLinkIds().size());
+    assertEquals(LINK_ID, actualOutgoingEvent.getLinkIds().getFirst());
+    assertEquals(event.getTenant(), actualOutgoingEvent.getTenant());
+    assertEquals(event.getTs(), actualOutgoingEvent.getTs());
+    assertEquals(MarcBibUpdate.Type.UPDATE, actualOutgoingEvent.getType());
+    assertEquals(updatedRecord.getId(), actualOutgoingEvent.getRecord().getId());
   }
 
-  private Handler<AsyncResult<Optional<Record>>> assertOldDatabaseRecord(TestContext context, Async async,
+  private Handler<AsyncResult<Optional<Record>>> assertOldDatabaseRecord(VertxTestContext testContext,
                                                                          ParsedRecord parsedRecord) {
     return getOldFuture -> {
       if (getOldFuture.failed()) {
-        context.fail(getOldFuture.cause());
+        testContext.failNow(getOldFuture.cause());
+        return;
       }
 
-      context.assertTrue(getOldFuture.result().isPresent());
+      assertTrue(getOldFuture.result().isPresent());
       var existingRecord = getOldFuture.result().get();
 
-      context.assertEquals(State.OLD, existingRecord.getState());
-      context.assertEquals(0, existingRecord.getGeneration());
-      context.assertEquals(parsedRecord.getId(), existingRecord.getParsedRecord().getId());
-      context.assertEquals(parsedRecord.getContent(), existingRecord.getParsedRecord().getContent());
-      context.assertEquals(record.getSnapshotId(), existingRecord.getSnapshotId());
+      assertEquals(State.OLD, existingRecord.getState());
+      assertEquals(0, existingRecord.getGeneration());
+      assertEquals(parsedRecord.getId(), existingRecord.getParsedRecord().getId());
+      assertEquals(parsedRecord.getContent(), existingRecord.getParsedRecord().getContent());
+      assertEquals(record.getSnapshotId(), existingRecord.getSnapshotId());
 
-      async.complete();
+      testContext.completeNow();
     };
   }
 
-  private void assertNewDatabaseRecord(TestContext context, Record updatedRecord,
-                                       ParsedRecord parsedRecord) {
-    context.assertNotEquals(parsedRecord.getId(), updatedRecord.getParsedRecord().getId());
-    context.assertNotEquals(record.getSnapshotId(), updatedRecord.getSnapshotId());
-    context.assertEquals(record.getGeneration() + 1, updatedRecord.getGeneration());
-    context.assertEquals(USER_ID, updatedRecord.getMetadata().getUpdatedByUserId());
+  private void assertNewDatabaseRecord(Record updatedRecord, ParsedRecord parsedRecord) {
+    assertNotEquals(parsedRecord.getId(), updatedRecord.getParsedRecord().getId());
+    assertNotEquals(record.getSnapshotId(), updatedRecord.getSnapshotId());
+    assertEquals(record.getGeneration() + 1, updatedRecord.getGeneration());
+    assertEquals(USER_ID, updatedRecord.getMetadata().getUpdatedByUserId());
   }
 }

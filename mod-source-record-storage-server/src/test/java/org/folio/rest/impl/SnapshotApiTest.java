@@ -1,32 +1,5 @@
 package org.folio.rest.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.matching.RegexPattern;
-import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
-import io.restassured.RestAssured;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.util.SnapshotDaoUtil;
-import org.folio.rest.jaxrs.model.*;
-import org.folio.rest.jaxrs.model.Record;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
-
 import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.hamcrest.Matchers.empty;
@@ -35,7 +8,32 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
-@RunWith(VertxUnitRunner.class)
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
+import io.restassured.RestAssured;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.junit5.VertxTestContext;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+import org.apache.http.HttpStatus;
+import org.folio.TestUtil;
+import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.rest.jaxrs.model.ExternalIdsHolder;
+import org.folio.rest.jaxrs.model.ParsedRecord;
+import org.folio.rest.jaxrs.model.RawRecord;
+import org.folio.rest.jaxrs.model.Record;
+import org.folio.rest.jaxrs.model.Snapshot;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
 public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   public static final String INVENTORY_INSTANCES_PATH = "/inventory/instances";
@@ -55,28 +53,28 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
 
   private static RawRecord rawRecord;
 
-  @BeforeClass
-  public static void setUpClass() throws IOException {
+  @BeforeAll
+  static void setUpClassSnapshotApi() throws IOException {
     rawRecord = new RawRecord()
       .withContent(new ObjectMapper().readValue(TestUtil.readFileFromPath(RAW_MARC_RECORD_CONTENT_SAMPLE_PATH), String.class));
   }
 
-  @Before
-  public void setUp(TestContext context) {
+  @BeforeEach
+  void setUp(VertxTestContext testContext) {
     WireMock.stubFor(WireMock.delete(new UrlPathPattern(new RegexPattern(INVENTORY_INSTANCES_PATH + "/.*"), true))
       .willReturn(WireMock.noContent()));
 
-    Async async = context.async();
     SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
-        context.fail(delete.cause());
+        testContext.failNow(delete.cause());
+      } else {
+        testContext.completeNow();
       }
-      async.complete();
     });
   }
 
   @Test
-  public void shouldReturnEmptyListOnGetIfNoSnapshotsExist() {
+  void shouldReturnEmptyListOnGetIfNoSnapshotsExist() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -88,11 +86,10 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnAllSnapshotsOnGetWhenNoQueryIsSpecified(TestContext testContext) {
+  void shouldReturnAllSnapshotsOnGetWhenNoQueryIsSpecified() {
     Snapshot[] snapshots = new Snapshot[] { snapshot_1, snapshot_2, snapshot_3 };
-    postSnapshots(testContext, snapshots);
+    postSnapshots(snapshots);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -100,14 +97,12 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(snapshots.length));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnNewSnapshotsOnGetByStatusNew(TestContext testContext) {
-    postSnapshots(testContext, snapshot_1, snapshot_2, snapshot_3);
+  void shouldReturnNewSnapshotsOnGetByStatusNew() {
+    postSnapshots(snapshot_1, snapshot_2, snapshot_3);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -116,11 +111,10 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
       .body("snapshots*.status", everyItem(is(Snapshot.Status.NEW.name())));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnErrorOnGet() {
+  void shouldReturnErrorOnGet() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -144,11 +138,10 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnLimitedCollectionOnGet(TestContext testContext) {
+  void shouldReturnLimitedCollectionOnGet() {
     Snapshot[] snapshots = new Snapshot[] { snapshot_1, snapshot_2, snapshot_3, snapshot_4 };
-    postSnapshots(testContext, snapshots);
+    postSnapshots(snapshots);
 
-    Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -157,11 +150,10 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("snapshots.size()", is(3))
       .body("totalRecords", is(snapshots.length));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnBadRequestOnPostWhenNoSnapshotPassedInBody() {
+  void shouldReturnBadRequestOnPostWhenNoSnapshotPassedInBody() {
     RestAssured.given()
       .spec(spec)
       .body(new JsonObject().toString())
@@ -172,7 +164,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldCreateSnapshotOnPost() {
+  void shouldCreateSnapshotOnPost() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1)
@@ -185,7 +177,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestOnPutWhenNoSnapshotPassedInBody() {
+  void shouldReturnBadRequestOnPutWhenNoSnapshotPassedInBody() {
     RestAssured.given()
       .spec(spec)
       .body(new JsonObject().toString())
@@ -196,7 +188,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnNotFoundOnPutWhenSnapshotDoesNotExist() {
+  void shouldReturnNotFoundOnPutWhenSnapshotDoesNotExist() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_1)
@@ -207,8 +199,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldUpdateExistingSnapshotOnPut(TestContext testContext) {
-    Async async = testContext.async();
+  void shouldUpdateExistingSnapshotOnPut() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_4)
@@ -218,9 +209,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
       .body("status", is(snapshot_4.getStatus().name()));
-    async.complete();
 
-    async = testContext.async();
     snapshot_4.setStatus(Snapshot.Status.COMMIT_IN_PROGRESS);
     RestAssured.given()
       .spec(spec)
@@ -231,11 +220,10 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
       .body("status", is(snapshot_4.getStatus().name()));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnNotFoundOnGetByIdWhenSnapshotDoesNotExist() {
+  void shouldReturnNotFoundOnGetByIdWhenSnapshotDoesNotExist() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -245,8 +233,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnExistingSnapshotOnGetById(TestContext testContext) {
-    Async async = testContext.async();
+  void shouldReturnExistingSnapshotOnGetById() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_2)
@@ -256,9 +243,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .body("jobExecutionId", is(snapshot_2.getJobExecutionId()))
       .body("status", is(snapshot_2.getStatus().name()));
-    async.complete();
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
@@ -267,11 +252,10 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("jobExecutionId", is(snapshot_2.getJobExecutionId()))
       .body("status", is(snapshot_2.getStatus().name()));
-    async.complete();
   }
 
   @Test
-  public void shouldReturnNotFoundOnDeleteWhenSnapshotDoesNotExist() {
+  void shouldReturnNotFoundOnDeleteWhenSnapshotDoesNotExist() {
     RestAssured.given()
       .spec(spec)
       .when()
@@ -281,8 +265,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldDeleteExistingSnapshotOnDelete(TestContext testContext) {
-    Async async = testContext.async();
+  void shouldDeleteExistingSnapshotOnDelete() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_3)
@@ -292,7 +275,6 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .body("jobExecutionId", is(snapshot_3.getJobExecutionId()))
       .body("status", is(snapshot_3.getStatus().name()));
-    async.complete();
 
     String recordId = UUID.randomUUID().toString();
     var marcRecordWith001 = new ParsedRecord()
@@ -318,14 +300,12 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
         .statusCode(HttpStatus.SC_CREATED);
     }
 
-    async = testContext.async();
     RestAssured.given()
       .spec(spec)
       .when()
       .delete(SOURCE_STORAGE_SNAPSHOTS_PATH + "/" + snapshot_3.getJobExecutionId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
-    async.complete();
 
     for (String id : recordIds) {
       RestAssured.given()
@@ -339,7 +319,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldSetProcessingStartedDateOnPost() {
+  void shouldSetProcessingStartedDateOnPost() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_3)
@@ -353,8 +333,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldSetProcessingStartedDateOnPut(TestContext testContext) {
-    Async async = testContext.async();
+  void shouldSetProcessingStartedDateOnPut() {
     RestAssured.given()
       .spec(spec)
       .body(snapshot_4)
@@ -365,9 +344,7 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
       .body("status", is(snapshot_4.getStatus().name()))
       .body("processingStartedDate", nullValue(Date.class));
-    async.complete();
 
-    async = testContext.async();
     snapshot_4.setStatus(Snapshot.Status.PARSING_IN_PROGRESS);
     RestAssured.given()
       .spec(spec)
@@ -379,7 +356,6 @@ public class SnapshotApiTest extends AbstractRestVerticleTest {
       .body("jobExecutionId", is(snapshot_4.getJobExecutionId()))
       .body("status", is(snapshot_4.getStatus().name()))
       .body("processingStartedDate", notNullValue(Date.class));
-    async.complete();
   }
 
 }

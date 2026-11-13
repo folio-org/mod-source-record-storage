@@ -1,23 +1,25 @@
 package org.folio.services.util;
 
-import io.vertx.kafka.client.producer.KafkaHeader;
-import org.folio.DataImportEventPayload;
-import org.folio.kafka.KafkaConfig;
-import org.folio.kafka.KafkaTopicNameHelper;
-import org.folio.okapi.common.XOkapiHeaders;
-import org.junit.Test;
+import static org.folio.services.domainevent.RecordDomainEventPublisher.RECORD_DOMAIN_EVENT_TOPIC;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.vertx.kafka.client.producer.KafkaHeader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.folio.services.domainevent.RecordDomainEventPublisher.RECORD_DOMAIN_EVENT_TOPIC;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import org.folio.DataImportEventPayload;
+import org.folio.kafka.KafkaConfig;
+import org.folio.kafka.KafkaTopicNameHelper;
+import org.folio.okapi.common.XOkapiHeaders;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class EventHandlingUtilTest {
 
@@ -30,7 +32,7 @@ public class EventHandlingUtilTest {
   private static final String REQUEST_ID = "request-456";
 
   @Test
-  public void shouldCreateSubscriptionPattern() {
+  void shouldCreateSubscriptionPattern() {
     var expected = String.format("%s\\.\\w{1,}\\.%s", ENV, EVENT);
     var actual = EventHandlingUtil.createSubscriptionPattern(ENV, EVENT);
 
@@ -38,7 +40,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldConstructModuleName() {
+  void shouldConstructModuleName() {
     // When
     String moduleName = EventHandlingUtil.constructModuleName();
 
@@ -47,10 +49,11 @@ public class EventHandlingUtilTest {
     assertFalse(moduleName.isEmpty());
   }
 
-  @Test
-  public void shouldCreateTopicNameForDomainEvent() {
+  @DisplayName("should create the record domain event topic name for source record domain events")
+  @ParameterizedTest(name = "eventType={0}")
+  @ValueSource(strings = {"SOURCE_RECORD_CREATED", "SOURCE_RECORD_UPDATED", "SOURCE_RECORD_DELETED"})
+  void shouldCreateTopicNameForDomainEvent(String eventType) {
     // Given
-    String eventType = "SOURCE_RECORD_CREATED";
     KafkaConfig kafkaConfig = KafkaConfig.builder()
       .envId(ENV)
       .build();
@@ -64,39 +67,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldCreateTopicNameForSourceRecordUpdatedDomainEvent() {
-    // Given
-    String eventType = "SOURCE_RECORD_UPDATED";
-    KafkaConfig kafkaConfig = KafkaConfig.builder()
-      .envId(ENV)
-      .build();
-
-    // When
-    String topicName = EventHandlingUtil.createTopicName(eventType, TENANT, kafkaConfig);
-
-    // Then
-    String expected = KafkaTopicNameHelper.formatTopicName(ENV, TENANT, RECORD_DOMAIN_EVENT_TOPIC);
-    assertEquals(expected, topicName);
-  }
-
-  @Test
-  public void shouldCreateTopicNameForSourceRecordDeletedDomainEvent() {
-    // Given
-    String eventType = "SOURCE_RECORD_DELETED";
-    KafkaConfig kafkaConfig = KafkaConfig.builder()
-      .envId(ENV)
-      .build();
-
-    // When
-    String topicName = EventHandlingUtil.createTopicName(eventType, TENANT, kafkaConfig);
-
-    // Then
-    String expected = KafkaTopicNameHelper.formatTopicName(ENV, TENANT, RECORD_DOMAIN_EVENT_TOPIC);
-    assertEquals(expected, topicName);
-  }
-
-  @Test
-  public void shouldCreateTopicNameForRegularEvent() {
+  void shouldCreateTopicNameForRegularEvent() {
     // Given
     String eventType = "DI_COMPLETED";
     KafkaConfig kafkaConfig = KafkaConfig.builder()
@@ -113,7 +84,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldConvertDataImportEventPayloadToOkapiHeaders() {
+  void shouldConvertDataImportEventPayloadToOkapiHeaders() {
     // Given
     DataImportEventPayload eventPayload = new DataImportEventPayload()
       .withOkapiUrl(OKAPI_URL)
@@ -133,7 +104,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldConvertDataImportEventPayloadToOkapiHeadersWithUserIdAndRequestId() {
+  void shouldConvertDataImportEventPayloadToOkapiHeadersWithUserIdAndRequestId() {
     // Given
     HashMap<String, String> context = new HashMap<>();
     context.put(XOkapiHeaders.USER_ID, USER_ID);
@@ -157,7 +128,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldConvertKafkaHeadersToOkapiHeaders() {
+  void shouldConvertKafkaHeadersToOkapiHeaders() {
     // Given
     List<KafkaHeader> kafkaHeaders = createKafkaHeaders();
 
@@ -173,7 +144,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldConvertKafkaHeadersToOkapiHeadersWithoutOptionalHeaders() {
+  void shouldConvertKafkaHeadersToOkapiHeadersWithoutOptionalHeaders() {
     // Given
     List<KafkaHeader> kafkaHeaders = List.of(
       KafkaHeader.header(XOkapiHeaders.URL, OKAPI_URL),
@@ -193,7 +164,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldConvertKafkaHeadersToOkapiHeadersWithTenantOverride() {
+  void shouldConvertKafkaHeadersToOkapiHeadersWithTenantOverride() {
     // Given
     String overrideTenant = "override-tenant";
     List<KafkaHeader> kafkaHeaders = createKafkaHeaders();
@@ -210,7 +181,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldConvertKafkaHeadersToOkapiHeadersWithNullTenantOverride() {
+  void shouldConvertKafkaHeadersToOkapiHeadersWithNullTenantOverride() {
     // Given
     List<KafkaHeader> kafkaHeaders = createKafkaHeaders();
 
@@ -226,7 +197,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldCreateProducerRecordWithAllFields() {
+  void shouldCreateProducerRecordWithAllFields() {
     // Given
     String eventPayload = "{\"test\":\"data\"}";
     String eventType = "TEST_EVENT";
@@ -254,7 +225,7 @@ public class EventHandlingUtilTest {
   }
 
   @Test
-  public void shouldCreateProducerRecordWithDomainEventType() {
+  void shouldCreateProducerRecordWithDomainEventType() {
     // Given
     String eventPayload = "{\"recordId\":\"123\"}";
     String eventType = "SOURCE_RECORD_CREATED";

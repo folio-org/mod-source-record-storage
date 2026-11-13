@@ -3,10 +3,10 @@ package org.folio.client;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import io.vertx.core.Vertx;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 
 public abstract class AbstractClientTest {
   protected static final String TENANT_ID = "diku";
@@ -15,20 +15,20 @@ public abstract class AbstractClientTest {
   protected static Vertx vertx;
   public static WireMockServer wireMockServer;
 
-  @BeforeClass
-  public static void setUpClass() throws Exception {
+  @BeforeAll
+  public static void setUpClass() {
     vertx = Vertx.vertx();
-
     wireMockServer = new WireMockServer(new WireMockConfiguration().dynamicPort());
     wireMockServer.start();
   }
 
-  @AfterClass
-  public static void tearDownClass(TestContext context) {
-    Async async = context.async();
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> {
+  @AfterAll
+  public static void tearDownClass() throws Exception {
+    CompletableFuture<Void> close = new CompletableFuture<>();
+    vertx.close().onComplete(v -> {
       wireMockServer.stop();
-      async.complete();
-    }));
+      close.complete(null);
+    });
+    close.get(30, TimeUnit.SECONDS);
   }
 }

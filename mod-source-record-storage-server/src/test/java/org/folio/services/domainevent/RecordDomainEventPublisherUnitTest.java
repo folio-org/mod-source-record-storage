@@ -21,14 +21,14 @@ import org.folio.rest.jaxrs.model.ParsedRecord;
 import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.services.kafka.KafkaSender;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class RecordDomainEventPublisherUnitTest {
 
   @InjectMocks
@@ -37,7 +37,7 @@ public class RecordDomainEventPublisherUnitTest {
   private KafkaSender kafkaSender;
 
   @Test
-  public void publishRecordCreated_shouldSendNoEvents_ifDomainEventsAreNotEnabled() {
+  void publishRecordCreated_shouldSendNoEvents_ifDomainEventsAreNotEnabled() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", false);
     var aRecord = new Record();
@@ -51,7 +51,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordUpdated_shouldSendNoEvents_ifDomainEventsAreNotEnabled() {
+  void publishRecordUpdated_shouldSendNoEvents_ifDomainEventsAreNotEnabled() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", false);
     var aRecord = new Record();
@@ -65,7 +65,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordDeleted_shouldSendNoEvents_ifDomainEventsAreNotEnabled() {
+  void publishRecordDeleted_shouldSendNoEvents_ifDomainEventsAreNotEnabled() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", false);
     var aRecord = new Record();
@@ -79,7 +79,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordCreated_shouldSendNoEvents_ifRecordHasNoType() {
+  void publishRecordCreated_shouldSendNoEvents_ifRecordHasNoType() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record();
@@ -93,7 +93,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordUpdated_shouldSendNoEvents_ifRecordHasNoType() {
+  void publishRecordUpdated_shouldSendNoEvents_ifRecordHasNoType() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record();
@@ -107,7 +107,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordDeleted_shouldSendNoEvents_ifRecordHasNoType() {
+  void publishRecordDeleted_shouldSendNoEvents_ifRecordHasNoType() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record();
@@ -121,7 +121,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordCreated_shouldSendNoEvents_ifRecordContainsNoParsedContent() {
+  void publishRecordCreated_shouldSendNoEvents_ifRecordContainsNoParsedContent() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record().withRecordType(Record.RecordType.MARC_BIB);
@@ -135,7 +135,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordUpdated_shouldSendNoEvents_ifRecordContainsNoParsedContent() {
+  void publishRecordUpdated_shouldSendNoEvents_ifRecordContainsNoParsedContent() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record().withRecordType(Record.RecordType.MARC_BIB);
@@ -149,7 +149,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordDeleted_shouldSendNoEvents_ifRecordContainsNoParsedContent() {
+  void publishRecordDeleted_shouldSendNoEvents_ifRecordContainsNoParsedContent() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var aRecord = new Record().withRecordType(Record.RecordType.MARC_BIB);
@@ -163,7 +163,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordUpdated_shouldSendNoEvents_ifOldAndNewRecordsAreNull() {
+  void publishRecordUpdated_shouldSendNoEvents_ifOldAndNewRecordsAreNull() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var headers = Map.of(XOkapiHeaders.TENANT, "TENANT", XOkapiHeaders.URL, "OKAPI_URL", XOkapiHeaders.TOKEN, "TOKEN");
@@ -176,7 +176,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordCreated_shouldSendEvent_ifRecordIsValid() {
+  void publishRecordCreated_shouldSendEvent_ifRecordIsValid() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var parsedContent = "parsedContent";
@@ -200,7 +200,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordUpdated_shouldSendEvent_ifRecordIsValid() {
+  void publishRecordUpdated_shouldSendEvent_ifRecordIsValid() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var parsedContent = "parsedContent";
@@ -230,7 +230,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordDeleted_shouldSendEvent_ifRecordIsValid() {
+  void publishRecordDeleted_shouldSendEvent_ifRecordIsValid() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var parsedContent = "parsedContent";
@@ -254,7 +254,7 @@ public class RecordDomainEventPublisherUnitTest {
   }
 
   @Test
-  public void publishRecordCreatedWithoutTokenInKafkaHeader() {
+  void publishRecordCreatedWithoutTokenInKafkaHeader() {
     // given
     ReflectionTestUtils.setField(publisher, "domainEventsEnabled", true);
     var parsedContent = "parsedContent";

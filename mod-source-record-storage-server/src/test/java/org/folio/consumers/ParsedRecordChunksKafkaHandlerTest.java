@@ -1,10 +1,21 @@
 package org.folio.consumers;
 
+import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
 import io.vertx.kafka.client.producer.KafkaHeader;
+import java.util.List;
+import java.util.UUID;
 import org.folio.kafka.KafkaConfig;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Event;
@@ -13,25 +24,13 @@ import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.services.RecordService;
 import org.folio.services.caches.CancelledJobsIdsCache;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.UUID;
-
-import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class ParsedRecordChunksKafkaHandlerTest {
 
   private static final String KAFKA_RECORD_KEY = "test-key";
@@ -45,14 +44,14 @@ public class ParsedRecordChunksKafkaHandlerTest {
   private KafkaConfig kafkaConfig;
   private ParsedRecordChunksKafkaHandler handler;
 
-  @Before
-  public void setUp() {
+  @BeforeEach
+  void setUp() {
     Vertx vertx = Vertx.vertx();
     handler = new ParsedRecordChunksKafkaHandler(recordService, cancelledJobsIdsCache, vertx, kafkaConfig);
   }
 
   @Test
-  public void shouldSkipEventProcessingIfHeadersContainCancelledJobId() {
+  void shouldSkipEventProcessingIfHeadersContainCancelledJobId() {
     // Given
     String cancelledJobId = UUID.randomUUID().toString();
     when(cancelledJobsIdsCache.contains(cancelledJobId)).thenReturn(true);
@@ -73,7 +72,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
   }
 
   @Test
-  public void shouldProcessEventWhenJobIsNotCancelled() {
+  void shouldProcessEventWhenJobIsNotCancelled() {
     // Given
     String jobId = UUID.randomUUID().toString();
     RecordCollection recordCollection = new RecordCollection()
@@ -109,7 +108,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
   }
 
   @Test
-  public void shouldReturnFailedFutureWhenRecordServiceFails() {
+  void shouldReturnFailedFutureWhenRecordServiceFails() {
     // Given
     String jobId = UUID.randomUUID().toString();
     RecordCollection recordCollection = new RecordCollection()
@@ -138,7 +137,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
   }
 
   @Test
-  public void shouldReturnFailedFutureWhenKafkaProducerFails() {
+  void shouldReturnFailedFutureWhenKafkaProducerFails() {
     // Given
     String jobId = UUID.randomUUID().toString();
     RecordCollection recordCollection = new RecordCollection()

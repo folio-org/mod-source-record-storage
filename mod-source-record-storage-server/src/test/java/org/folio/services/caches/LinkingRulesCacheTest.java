@@ -6,6 +6,9 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonList;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -16,10 +19,8 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxException;
 import io.vertx.core.json.Json;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.RunTestOnContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,14 +30,14 @@ import org.folio.LinkingRuleDto;
 import org.folio.client.InstanceLinkClient;
 import org.folio.dataimport.util.ConnectionParams;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(VertxExtension.class)
 public class LinkingRulesCacheTest {
 
   private static final String TENANT_ID = "diku";
@@ -50,20 +51,14 @@ public class LinkingRulesCacheTest {
     .withSubfieldModifications(emptyList()));
 
   public static WireMockServer mockServer;
-  private static Vertx vertx = Vertx.vertx();
   private static ConnectionParams params;
 
+  private Vertx vertx;
   private final InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
-  private final LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx, CACHE_EXPIRATION_TIME);
+  private LinkingRulesCache linkingRulesCache;
 
-  @Rule
-  public RunTestOnContext rule = new RunTestOnContext();
-
-
-  @BeforeClass
-  public static void setUp() {
-    vertx = Vertx.vertx();
-
+  @BeforeAll
+  static void setUp() {
     mockServer = new WireMockServer(new WireMockConfiguration().dynamicPort());
     mockServer.start();
 
@@ -76,89 +71,94 @@ public class LinkingRulesCacheTest {
       XOkapiHeaders.URL, mockServer.baseUrl()
     ));
   }
-  @AfterClass
-  public static void tearDownClass(TestContext context) {
-    vertx.close().onComplete(context.asyncAssertSuccess(res -> mockServer.stop()));
+
+  @BeforeEach
+  void initCache(Vertx vertx) {
+    this.vertx = vertx;
+    this.linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx, CACHE_EXPIRATION_TIME);
   }
 
-  @After
-  public void tearDown() {
+  @AfterAll
+  static void tearDownClass() {
+    mockServer.stop();
+  }
+
+  @AfterEach
+  void tearDown() {
     mockServer.resetRequests();
   }
 
   @Test
-  public void shouldReturnLinkingRules(TestContext context) {
-    Async async = context.async();
+  void shouldReturnLinkingRules(VertxTestContext testContext) {
+    vertx.runOnContext(v -> {
+      Future<Optional<List<LinkingRuleDto>>> optionalFuture = linkingRulesCache.get(params);
 
-    Future<Optional<List<LinkingRuleDto>>> optionalFuture = linkingRulesCache.get(params);
-
-    optionalFuture.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertTrue(ar.result().isPresent());
-      List<LinkingRuleDto> actualLinkingRules = ar.result().get();
-      context.assertEquals(linkingRules.getFirst().getId(), actualLinkingRules.getFirst().getId());
-      context.assertEquals(linkingRules.getFirst().getAuthorityField(), actualLinkingRules.getFirst().getAuthorityField());
-      context.assertEquals(linkingRules.getFirst().getAuthoritySubfields(), actualLinkingRules.getFirst().getAuthoritySubfields());
-      context.assertEquals(linkingRules.getFirst().getBibField(), actualLinkingRules.getFirst().getBibField());
-      context.assertEquals(linkingRules.getFirst().getSubfieldModifications(), actualLinkingRules.getFirst().getSubfieldModifications());
-      context.assertEquals(linkingRules.getFirst().getValidation(), actualLinkingRules.getFirst().getValidation());
-      async.complete();
+      optionalFuture.onComplete(testContext.succeeding(result -> {
+        assertTrue(result.isPresent());
+        List<LinkingRuleDto> actualLinkingRules = result.get();
+        assertEquals(linkingRules.getFirst().getId(), actualLinkingRules.getFirst().getId());
+        assertEquals(linkingRules.getFirst().getAuthorityField(), actualLinkingRules.getFirst().getAuthorityField());
+        assertEquals(linkingRules.getFirst().getAuthoritySubfields(), actualLinkingRules.getFirst().getAuthoritySubfields());
+        assertEquals(linkingRules.getFirst().getBibField(), actualLinkingRules.getFirst().getBibField());
+        assertEquals(linkingRules.getFirst().getSubfieldModifications(), actualLinkingRules.getFirst().getSubfieldModifications());
+        assertEquals(linkingRules.getFirst().getValidation(), actualLinkingRules.getFirst().getValidation());
+        testContext.completeNow();
+      }));
     });
   }
 
   @Test
-  public void shouldReturnLinkingRulesFromCache(TestContext context) throws IllegalAccessException {
-    Async async = context.async();
+  void shouldReturnLinkingRulesFromCache(VertxTestContext testContext) throws IllegalAccessException {
     FieldUtils.writeField(linkingRulesCache, "cache", Caffeine.newBuilder()
       .expireAfterWrite(2, TimeUnit.SECONDS)
       .executor(task -> vertx.runOnContext(v -> task.run()))
       .buildAsync(), true);
 
-    Future<Optional<List<LinkingRuleDto>>> optionalFuture = linkingRulesCache.get(params);
+    vertx.runOnContext(v -> {
+      Future<Optional<List<LinkingRuleDto>>> optionalFuture = linkingRulesCache.get(params);
 
-    optionalFuture.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertTrue(ar.result().isPresent());
+      optionalFuture.onComplete(testContext.succeeding(result -> {
+        assertTrue(result.isPresent());
 
-      Future<Optional<List<LinkingRuleDto>>> optionalFuture1 = linkingRulesCache.get(params);
+        Future<Optional<List<LinkingRuleDto>>> optionalFuture1 = linkingRulesCache.get(params);
 
-      optionalFuture1.onComplete(ar1 -> {
-        context.assertTrue(ar1.succeeded());
-        context.assertTrue(ar1.result().isPresent());
+        optionalFuture1.onComplete(testContext.succeeding(result1 -> {
+          assertTrue(result1.isPresent());
 
-        List<LinkingRuleDto> actualLinkingRules = ar1.result().get();
+          List<LinkingRuleDto> actualLinkingRules = result1.get();
 
-        context.assertEquals(linkingRules.getFirst().getId(), actualLinkingRules.getFirst().getId());
-        context.assertEquals(linkingRules.getFirst().getAuthorityField(), actualLinkingRules.getFirst().getAuthorityField());
-        context.assertEquals(linkingRules.getFirst().getAuthoritySubfields(), actualLinkingRules.getFirst().getAuthoritySubfields());
-        context.assertEquals(linkingRules.getFirst().getBibField(), actualLinkingRules.getFirst().getBibField());
-        context.assertEquals(linkingRules.getFirst().getSubfieldModifications(), actualLinkingRules.getFirst().getSubfieldModifications());
-        context.assertEquals(linkingRules.getFirst().getValidation(), actualLinkingRules.getFirst().getValidation());
+          assertEquals(linkingRules.getFirst().getId(), actualLinkingRules.getFirst().getId());
+          assertEquals(linkingRules.getFirst().getAuthorityField(), actualLinkingRules.getFirst().getAuthorityField());
+          assertEquals(linkingRules.getFirst().getAuthoritySubfields(), actualLinkingRules.getFirst().getAuthoritySubfields());
+          assertEquals(linkingRules.getFirst().getBibField(), actualLinkingRules.getFirst().getBibField());
+          assertEquals(linkingRules.getFirst().getSubfieldModifications(), actualLinkingRules.getFirst().getSubfieldModifications());
+          assertEquals(linkingRules.getFirst().getValidation(), actualLinkingRules.getFirst().getValidation());
 
-        try {
-          mockServer.verify(1, getRequestedFor(urlPathEqualTo(LINKING_RULES_URL)));
-        } catch (VerificationException e) {
-          context.fail(e);
-        }
+          try {
+            mockServer.verify(1, getRequestedFor(urlPathEqualTo(LINKING_RULES_URL)));
+          } catch (VerificationException e) {
+            testContext.failNow(e);
+            return;
+          }
 
-        async.complete();
-      });
+          testContext.completeNow();
+        }));
+      }));
     });
   }
 
   @Test
-  public void shouldFailOnException(TestContext context) {
-    Async async = context.async();
-
+  void shouldFailOnException(VertxTestContext testContext) {
     ConnectionParams params = new ConnectionParams(emptyMap());
 
-    Future<Optional<List<LinkingRuleDto>>> optionalFuture = linkingRulesCache.get(params);
+    vertx.runOnContext(v -> {
+      Future<Optional<List<LinkingRuleDto>>> optionalFuture = linkingRulesCache.get(params);
 
-    optionalFuture.onComplete(ar -> {
-      context.assertTrue(ar.failed());
-      context.assertTrue(ar.cause() instanceof VertxException);
-
-      async.complete();
+      optionalFuture.onComplete(ar -> {
+        assertTrue(ar.failed());
+        assertInstanceOf(VertxException.class, ar.cause());
+        testContext.completeNow();
+      });
     });
   }
 

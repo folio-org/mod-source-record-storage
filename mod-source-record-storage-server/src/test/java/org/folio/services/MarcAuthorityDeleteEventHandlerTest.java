@@ -5,6 +5,11 @@ import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -14,9 +19,7 @@ import static org.mockito.Mockito.spy;
 import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.junit5.VertxTestContext;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,14 +41,13 @@ import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.services.caches.ConsortiumConfigurationCache;
 import org.folio.services.domainevent.RecordDomainEventPublisher;
 import org.folio.services.handlers.actions.MarcAuthorityDeleteEventHandler;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(VertxUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
 
   private static final String PARSED_CONTENT =
@@ -58,9 +60,8 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
   private EventHandler eventHandler;
   private Record record;
 
-  @Before
-  public void before(TestContext testContext) {
-    MockitoAnnotations.openMocks(this);
+  @BeforeEach
+  void before(VertxTestContext testContext) {
     recordService = new RecordServiceImpl(new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher),
       consortiumConfigurationCache);
     eventHandler = new MarcAuthorityDeleteEventHandler(recordService);
@@ -82,12 +83,11 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withAuthorityId(UUID.randomUUID().toString()));
     SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), snapshot)
-      .onComplete(testContext.asyncAssertSuccess());
+      .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  public void shouldDeleteRecord(TestContext context) {
-    Async async = context.async();
+  void shouldDeleteRecord(VertxTestContext testContext) {
     // given
     record.setParsedRecord(new ParsedRecord().withId(record.getId()).withContent(PARSED_CONTENT));
     HashMap<String, String> payloadContext = new HashMap<>();
@@ -108,32 +108,31 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     recordService.saveRecord(record, okapiHeaders)
       // when
-      .onFailure(context::fail)
+      .onFailure(testContext::failNow)
       .onSuccess(ar -> eventHandler.handle(dataImportEventPayload)
         // then
         .whenComplete((eventPayload, throwable) -> {
-          context.assertNull(throwable);
-          context.assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), eventPayload.getEventType());
-          context.assertNull(eventPayload.getContext().get("MATCHED_MARC_AUTHORITY"));
+          assertNull(throwable);
+          assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), eventPayload.getEventType());
+          assertNull(eventPayload.getContext().get("MATCHED_MARC_AUTHORITY"));
           var deletedRecordJson = eventPayload.getContext().get("DELETED_MARC_AUTHORITY");
-          context.assertNotNull(deletedRecordJson);
-          context.assertEquals(record.getExternalIdsHolder().getAuthorityId(), eventPayload.getContext().get("AUTHORITY_RECORD_ID"));
+          assertNotNull(deletedRecordJson);
+          assertEquals(record.getExternalIdsHolder().getAuthorityId(), eventPayload.getContext().get("AUTHORITY_RECORD_ID"));
           recordService.getRecordById(record.getId(), TENANT_ID)
             .onComplete(optionalDeletedRecordAr -> {
-              context.assertTrue(optionalDeletedRecordAr.succeeded());
-              context.assertTrue(optionalDeletedRecordAr.result().isPresent());
+              assertTrue(optionalDeletedRecordAr.succeeded());
+              assertTrue(optionalDeletedRecordAr.result().isPresent());
               Record deletedRecord = optionalDeletedRecordAr.result().get();
-//              context.assertTrue(deletedRecord.getDeleted());
-//              context.assertEquals(deletedRecord.getLeaderRecordStatus(), "d");
-              async.complete();
+//              assertTrue(deletedRecord.getDeleted());
+//              assertEquals(deletedRecord.getLeaderRecordStatus(), "d");
+              testContext.completeNow();
             });
         })
       );
   }
 
   @Test
-  public void shouldCompleteExceptionallyIfNoRecordInPayload(TestContext context) {
-    Async async = context.async();
+  void shouldCompleteExceptionallyIfNoRecordInPayload(VertxTestContext testContext) {
     // given
     HashMap<String, String> payloadContext = new HashMap<>();
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
@@ -153,15 +152,14 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     CompletableFuture<DataImportEventPayload> future = eventHandler.handle(dataImportEventPayload);
     // then
     future.whenComplete((eventPayload, throwable) -> {
-      context.assertNotNull(throwable);
-      context.assertEquals("Failed to handle event payload, cause event payload context does not contain required data to modify MARC record", throwable.getMessage());
-      async.complete();
+      assertNotNull(throwable);
+      assertEquals("Failed to handle event payload, cause event payload context does not contain required data to modify MARC record", throwable.getMessage());
+      testContext.completeNow();
     });
   }
 
   @Test
-  public void shouldHandleErrorDuringRecordDeletion(TestContext context) {
-    Async async = context.async();
+  void shouldHandleErrorDuringRecordDeletion(VertxTestContext testContext) {
     // given
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put("MATCHED_MARC_AUTHORITY", Json.encode(record));
@@ -190,15 +188,14 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
 
     // then
     future.whenComplete((eventPayload, throwable) -> {
-      context.assertNotNull(throwable);
-      context.assertEquals("Deletion error", throwable.getMessage());
-      async.complete();
+      assertNotNull(throwable);
+      assertEquals("Deletion error", throwable.getMessage());
+      testContext.completeNow();
     });
   }
 
   @Test
-  public void shouldCompleteIfNoRecordStored(TestContext context) {
-    Async async = context.async();
+  void shouldCompleteIfNoRecordStored(VertxTestContext testContext) {
     // given
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put("MATCHED_MARC_AUTHORITY", Json.encode(record));
@@ -219,13 +216,13 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     CompletableFuture<DataImportEventPayload> future = eventHandler.handle(dataImportEventPayload);
     // then
     future.whenComplete((eventPayload, throwable) -> {
-      context.assertNull(throwable);
-      async.complete();
+      assertNull(throwable);
+      testContext.completeNow();
     });
   }
 
   @Test
-  public void actionProfileIsEligible() {
+  void actionProfileIsEligible() {
     // given
     ActionProfile actionProfile = new ActionProfile()
       .withId(UUID.randomUUID().toString())
@@ -249,11 +246,11 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     boolean isEligible = eventHandler.isEligible(dataImportEventPayload);
 
     // then
-    Assert.assertTrue(isEligible);
+    assertTrue(isEligible);
   }
 
   @Test
-  public void actionProfileIsNotEligible() {
+  void actionProfileIsNotEligible() {
     // given
     ActionProfile actionProfile = new ActionProfile()
       .withId(UUID.randomUUID().toString())
@@ -277,6 +274,6 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
     boolean isEligible = eventHandler.isEligible(dataImportEventPayload);
 
     // then
-    Assert.assertFalse(isEligible);
+    assertFalse(isEligible);
   }
 }

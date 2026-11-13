@@ -96,7 +96,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     .withDescription("Oops... something happened")
     .withContent("Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.");
 
-  private static Record record_1 = new Record()
+  private static Record sourceRecord1 = new Record()
     .withId(FIRST_UUID)
     .withSnapshotId(snapshot_1.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -108,7 +108,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
       .withInstanceHrid(HRID));
-  private static Record record_2 = new Record()
+  private static Record sourceRecord2 = new Record()
     .withId(SECOND_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -120,7 +120,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     .withExternalIdsHolder(new ExternalIdsHolder()
       .withInstanceId(UUID.randomUUID().toString())
       .withInstanceHrid(MARC_RECORD_HRID));
-  private static Record record_3 = new Record()
+  private static Record sourceRecord3 = new Record()
     .withId(THIRD_UUID)
     .withSnapshotId(snapshot_2.getJobExecutionId())
     .withRecordType(Record.RecordType.MARC_BIB)
@@ -147,8 +147,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @BeforeEach
   void setUp(VertxTestContext testContext) {
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
-      .compose(v -> SnapshotDaoUtil.save(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID), TestMocks.getSnapshots()))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), TestMocks.getSnapshots()))
       .onComplete(save -> {
         if (save.failed()) {
           testContext.failNow(save.cause());
@@ -161,8 +161,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   void shouldPostSourceStorageBatchMarcRecords() {
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
-      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .filter(sourceRecord -> sourceRecord.getRecordType().equals(RecordType.MARC_BIB))
+      .map(sourceRecord -> sourceRecord.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
@@ -182,8 +182,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   void shouldPostSourceStorageBatchEdifactRecords() {
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.EDIFACT))
-      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .filter(sourceRecord -> sourceRecord.getRecordType().equals(RecordType.EDIFACT))
+      .map(sourceRecord -> sourceRecord.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
@@ -202,7 +202,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @Test
   void shouldPostFetchParsedRecordsBatchWithDeletedWhenIncludeDeleteTrue() {
-    Record record_1 = new Record()
+    Record bibRecord1 = new Record()
       .withId(FIRST_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -214,7 +214,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(HRID));
-    Record record_2 = new Record()
+    Record bibRecord2 = new Record()
       .withId(SECOND_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -226,7 +226,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(MARC_RECORD_HRID));
-    Record record_3 = new Record()
+    Record bibRecord3 = new Record()
       .withId(THIRD_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -240,12 +240,12 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
         .withInstanceHrid(HRID));
 
     var externalIds = List.of(
-      record_1.getExternalIdsHolder().getInstanceId(),
-      record_2.getExternalIdsHolder().getInstanceId(),
-      record_3.getExternalIdsHolder().getInstanceId()
+      bibRecord1.getExternalIdsHolder().getInstanceId(),
+      bibRecord2.getExternalIdsHolder().getInstanceId(),
+      bibRecord3.getExternalIdsHolder().getInstanceId()
     );
     postSnapshots(snapshot_1, snapshot_2, snapshot_3);
-    postRecords(record_1, record_2, record_3);
+    postRecords(bibRecord1, bibRecord2, bibRecord3);
 
     Conditions conditions = new Conditions()
       .withIdType(IdType.INSTANCE.name())
@@ -270,7 +270,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @Test
   void shouldPostFetchParsedRecordsBatchWithActualWhenIncludeDeleteFalse() {
-    Record record_1 = new Record()
+    Record bibRecord1 = new Record()
       .withId(FIRST_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -282,7 +282,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(HRID));
-    Record record_2 = new Record()
+    Record bibRecord2 = new Record()
       .withId(SECOND_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -294,7 +294,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(MARC_RECORD_HRID));
-    Record record_3 = new Record()
+    Record bibRecord3 = new Record()
       .withId(THIRD_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -308,12 +308,12 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
         .withInstanceHrid(HRID));
 
     var externalIds = List.of(
-      record_1.getExternalIdsHolder().getInstanceId(),
-      record_2.getExternalIdsHolder().getInstanceId(),
-      record_3.getExternalIdsHolder().getInstanceId()
+      bibRecord1.getExternalIdsHolder().getInstanceId(),
+      bibRecord2.getExternalIdsHolder().getInstanceId(),
+      bibRecord3.getExternalIdsHolder().getInstanceId()
     );
     postSnapshots(snapshot_1, snapshot_2, snapshot_3);
-    postRecords(record_1, record_2, record_3);
+    postRecords(bibRecord1, bibRecord2, bibRecord3);
 
     Conditions conditions = new Conditions()
       .withIdType(IdType.INSTANCE.name())
@@ -337,7 +337,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @Test
   void shouldPostFetchParsedRecordsBatchWithActualWhenIncludeDeleteNotExists() {
-    Record record_1 = new Record()
+    Record bibRecord1 = new Record()
       .withId(FIRST_UUID)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -349,7 +349,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(HRID));
-    Record record_2 = new Record()
+    Record bibRecord2 = new Record()
       .withId(SECOND_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -361,7 +361,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withInstanceId(UUID.randomUUID().toString())
         .withInstanceHrid(MARC_RECORD_HRID));
-    Record record_3 = new Record()
+    Record bibRecord3 = new Record()
       .withId(THIRD_UUID)
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -375,12 +375,12 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
         .withInstanceHrid(HRID));
 
     var externalIds = List.of(
-      record_1.getExternalIdsHolder().getInstanceId(),
-      record_2.getExternalIdsHolder().getInstanceId(),
-      record_3.getExternalIdsHolder().getInstanceId()
+      bibRecord1.getExternalIdsHolder().getInstanceId(),
+      bibRecord2.getExternalIdsHolder().getInstanceId(),
+      bibRecord3.getExternalIdsHolder().getInstanceId()
     );
     postSnapshots(snapshot_1, snapshot_2, snapshot_3);
-    postRecords(record_1, record_2, record_3);
+    postRecords(bibRecord1, bibRecord2, bibRecord3);
 
     Conditions conditions = new Conditions()
       .withIdType(IdType.INSTANCE.name())
@@ -404,7 +404,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
   @Test
   void shouldPostFetchEmptyParsedRecordsBatch() {
-    var externalIds = List.of(record_1.getExternalIdsHolder().getInstanceId());
+    var externalIds = List.of(sourceRecord1.getExternalIdsHolder().getInstanceId());
 
     Conditions conditions = new Conditions()
       .withIdType(IdType.INSTANCE.name())
@@ -428,12 +428,12 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   void shouldPostFetchParsedRecordsBatch() {
     var externalIds = List.of(
-      record_1.getExternalIdsHolder().getInstanceId(),
-      record_2.getExternalIdsHolder().getInstanceId(),
-      record_3.getExternalIdsHolder().getInstanceId()
+      sourceRecord1.getExternalIdsHolder().getInstanceId(),
+      sourceRecord2.getExternalIdsHolder().getInstanceId(),
+      sourceRecord3.getExternalIdsHolder().getInstanceId()
     );
     postSnapshots(snapshot_1, snapshot_2, snapshot_3);
-    postRecords(record_1, record_2, record_3);
+    postRecords(sourceRecord1, sourceRecord2, sourceRecord3);
 
     Conditions conditions = new Conditions()
       .withIdType(IdType.INSTANCE.name())
@@ -458,7 +458,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   void shouldFailWhenPostSourceStorageBatchRecordsWithMultipleSnapshots() {
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
+      .filter(sourceRecord -> sourceRecord.getRecordType().equals(RecordType.MARC_BIB))
       .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
@@ -476,7 +476,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   void shouldFailWhenPostSourceStorageBatchRecordsWithMultipleRecordTypes() {
     List<Record> expected = TestMocks.getRecords().stream()
-      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .map(sourceRecord -> sourceRecord.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
@@ -508,25 +508,25 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     List<Snapshot> snapshots = Arrays.asList(snapshot1, snapshot2, snapshot3, snapshot4);
 
     List<Record> records = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
-      .map(record -> {
-        RawRecord rawRecord = record.getRawRecord();
-        if (nonNull(rawRecord)) {
-          rawRecord.setId(null);
+      .filter(sourceRecord -> sourceRecord.getRecordType().equals(RecordType.MARC_BIB))
+      .map(sourceRecord -> {
+        RawRecord rawBibRecord = sourceRecord.getRawRecord();
+        if (nonNull(rawBibRecord)) {
+          rawBibRecord.setId(null);
         }
-        ParsedRecord parsedRecord = record.getParsedRecord();
+        ParsedRecord parsedRecord = sourceRecord.getParsedRecord();
         if (nonNull(parsedRecord)) {
           parsedRecord.setId(null);
         }
-        ErrorRecord errorRecord = record.getErrorRecord();
-        if (nonNull(errorRecord)) {
-          errorRecord.setId(null);
+        ErrorRecord errorBibRecord = sourceRecord.getErrorRecord();
+        if (nonNull(errorBibRecord)) {
+          errorBibRecord.setId(null);
         }
-        return record
+        return sourceRecord
           .withId(null)
-          .withRawRecord(rawRecord)
+          .withRawRecord(rawBibRecord)
           .withParsedRecord(parsedRecord)
-          .withErrorRecord(errorRecord);
+          .withErrorRecord(errorBibRecord);
       })
       .toList();
 
@@ -543,7 +543,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
         .statusCode(HttpStatus.SC_CREATED);
 
       records = records.stream()
-        .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
+        .map(sourceRecord -> sourceRecord.withSnapshotId(snapshot.getJobExecutionId()))
         .toList();
 
       RecordCollection recordCollection = new RecordCollection()
@@ -585,19 +585,19 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       }
 
       // assert new records state and generation
-      for (Record record : response.getRecords()) {
+      for (Record sourceRecord : response.getRecords()) {
         RestAssured.given()
           .spec(spec)
           .when()
-          .get(SOURCE_STORAGE_RECORDS_PATH + "/" + record.getId())
+          .get(SOURCE_STORAGE_RECORDS_PATH + "/" + sourceRecord.getId())
           .then()
           .statusCode(HttpStatus.SC_OK)
-          .body("id", is(record.getId()))
-          .body("matchedId", is(record.getMatchedId()))
+          .body("id", is(sourceRecord.getId()))
+          .body("matchedId", is(sourceRecord.getMatchedId()))
           .body("state", is(Record.State.ACTUAL.name()))
           .body("generation", is(i));
 
-        previousRecordIds.add(record.getId());
+        previousRecordIds.add(sourceRecord.getId());
       }
     }
   }
@@ -606,8 +606,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   void shouldFailWithSnapshotNotFoundException() {
     String snapshotId = "c698cfde-14e1-4edf-8b54-d9d43895571e";
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
-      .map(record -> record.withSnapshotId(snapshotId))
+      .filter(sourceRecord -> sourceRecord.getRecordType().equals(RecordType.MARC_BIB))
+      .map(sourceRecord -> sourceRecord.withSnapshotId(snapshotId))
       .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
@@ -639,8 +639,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body("status", is(snapshot.getStatus().name()));
 
     List<Record> expected = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
-      .map(record -> record.withSnapshotId(snapshot.getJobExecutionId()))
+      .filter(sourceRecord -> sourceRecord.getRecordType().equals(RecordType.MARC_BIB))
+      .map(sourceRecord -> sourceRecord.withSnapshotId(snapshot.getJobExecutionId()))
       .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(expected)
@@ -707,7 +707,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
         .withInstanceHrid(VALID_HRID))
       .withState(Record.State.OLD);
 
-    postRecords(record_1, record_2, record_3, recordWithOldStatus);
+    postRecords(sourceRecord1, sourceRecord2, sourceRecord3, recordWithOldStatus);
 
     RestAssured.given()
       .spec(spec)
@@ -736,7 +736,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
         .withInstanceHrid(VALID_HRID))
       .withState(Record.State.OLD);
 
-    postRecords(record_1, record_2, record_3, recordMarcHoldings);
+    postRecords(sourceRecord1, sourceRecord2, sourceRecord3, recordMarcHoldings);
 
     RestAssured.given()
       .spec(spec)
@@ -765,7 +765,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
         .withInstanceHrid(VALID_HRID))
       .withState(Record.State.OLD);
 
-    postRecords(record_1, record_2, record_3, recordWithOldStatus);
+    postRecords(sourceRecord1, sourceRecord2, sourceRecord3, recordWithOldStatus);
 
     RestAssured.given()
       .spec(spec)
@@ -781,7 +781,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     postSnapshots(snapshot_1);
 
     RecordCollection recordCollection = new RecordCollection()
-      .withRecords(Arrays.asList(record_1, record_4))
+      .withRecords(Arrays.asList(sourceRecord1, record_4))
       .withTotalRecords(2);
 
     RestAssured.given()
@@ -792,7 +792,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .body("records*.snapshotId", everyItem(is(snapshot_1.getJobExecutionId())))
-      .body("records*.recordType", everyItem(is(record_1.getRecordType().name())))
+      .body("records*.recordType", everyItem(is(sourceRecord1.getRecordType().name())))
       .body("records*.rawRecord.content", notNullValue())
       .body("records*.additionalInfo.suppressDiscovery", everyItem(is(false)))
       .body("records*.metadata", notNullValue())
@@ -819,7 +819,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     postSnapshots(snapshot_2);
 
     RecordCollection recordCollection = new RecordCollection()
-      .withRecords(Arrays.asList(record_2, record_3))
+      .withRecords(Arrays.asList(sourceRecord2, sourceRecord3))
       .withTotalRecords(2);
 
     RecordsBatchResponse createdRecordCollection = RestAssured.given()
@@ -833,17 +833,17 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
 
     Record createdRecord = createdRecordCollection.getRecords().getFirst();
     assertThat(createdRecord.getId(), notNullValue());
-    assertThat(createdRecord.getSnapshotId(), is(record_2.getSnapshotId()));
-    assertThat(createdRecord.getRecordType(), is(record_2.getRecordType()));
-    assertThat(createdRecord.getRawRecord().getContent(), is(record_2.getRawRecord().getContent()));
+    assertThat(createdRecord.getSnapshotId(), is(sourceRecord2.getSnapshotId()));
+    assertThat(createdRecord.getRecordType(), is(sourceRecord2.getRecordType()));
+    assertThat(createdRecord.getRawRecord().getContent(), is(sourceRecord2.getRawRecord().getContent()));
     assertThat(createdRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
 
     createdRecord = createdRecordCollection.getRecords().get(1);
     assertThat(createdRecord.getId(), notNullValue());
-    assertThat(createdRecord.getSnapshotId(), is(record_3.getSnapshotId()));
-    assertThat(createdRecord.getRecordType(), is(record_3.getRecordType()));
-    assertThat(createdRecord.getRawRecord().getContent(), is(record_3.getRawRecord().getContent()));
-    assertThat(createdRecord.getErrorRecord().getContent(), is(record_3.getErrorRecord().getContent()));
+    assertThat(createdRecord.getSnapshotId(), is(sourceRecord3.getSnapshotId()));
+    assertThat(createdRecord.getRecordType(), is(sourceRecord3.getRecordType()));
+    assertThat(createdRecord.getRawRecord().getContent(), is(sourceRecord3.getRawRecord().getContent()));
+    assertThat(createdRecord.getErrorRecord().getContent(), is(sourceRecord3.getErrorRecord().getContent()));
     assertThat(createdRecord.getAdditionalInfo().getSuppressDiscovery(), is(false));
   }
 
@@ -852,7 +852,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
     postSnapshots(snapshot_1);
 
     RecordCollection recordCollection = new RecordCollection()
-      .withRecords(Arrays.asList(record_1, record_4))
+      .withRecords(Arrays.asList(sourceRecord1, record_4))
       .withTotalRecords(2);
 
     RestAssured.given()
@@ -863,7 +863,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .body("records*.snapshotId", everyItem(is(snapshot_1.getJobExecutionId())))
-      .body("records*.recordType", everyItem(is(record_1.getRecordType().name())))
+      .body("records*.recordType", everyItem(is(sourceRecord1.getRecordType().name())))
       .body("records*.rawRecord.content", notNullValue())
       .body("records*.additionalInfo.suppressDiscovery", everyItem(is(false)))
       .body("records*.metadata", notNullValue())
@@ -876,8 +876,8 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   void shouldPutSourceStorageBatchParsedRecords() {
     List<Record> original = TestMocks.getRecords().stream()
-      .filter(record -> record.getRecordType().equals(RecordType.MARC_BIB))
-      .map(record -> record.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
+      .filter(sourceRecord -> sourceRecord.getRecordType().equals(RecordType.MARC_BIB))
+      .map(sourceRecord -> sourceRecord.withSnapshotId(TestMocks.getSnapshot(0).getJobExecutionId()))
       .toList();
     RecordCollection recordCollection = new RecordCollection()
       .withRecords(original)
@@ -894,7 +894,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       .body("totalRecords", is(original.size()));
 
     List<Record> updated = original.stream()
-      .map(record -> record.withExternalIdsHolder(record.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))
+      .map(sourceRecord -> sourceRecord.withExternalIdsHolder(sourceRecord.getExternalIdsHolder().withInstanceId(UUID.randomUUID().toString())))
       .toList();
     recordCollection
       .withRecords(updated)
@@ -1207,7 +1207,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
   @Test
   void shouldReturnBadRequestWhenQueryParamListExceedMaxSize(){
     postSnapshots(snapshot_1, snapshot_2);
-    postRecords(record_1, record_2, record_3);
+    postRecords(sourceRecord1, sourceRecord2, sourceRecord3);
 
     RestAssured.given()
       .spec(spec)

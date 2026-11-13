@@ -8,22 +8,18 @@ import org.folio.TestUtil;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.Envs;
 import org.jooq.DSLContext;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.cert.CertPathValidatorException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -44,8 +40,9 @@ class PostgresClientFactorySslTest {
   @TempDir
   Path tempHomeDir;
 
-  private Path certFilePath;
   private String originalUserHome;
+
+  private PostgresClientFactory postgresClientFactory;
 
   private static final String SERVER_PEM = TestUtil.resourceToString("/tls/server-san.crt");
   private static final String SERVER_WRONG_PEM = TestUtil.resourceToString("/tls/server_wrong.crt");
@@ -55,31 +52,25 @@ class PostgresClientFactorySslTest {
   private static final String POSTGRES = "postgres";
 
   @Container
-  private static final PostgreSQLContainer<?> postgres =
-    new PostgreSQLContainer<>(PostgresTesterContainer.getImageName())
-      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server.key", 0444), "/server.key")
-      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server-san.crt", 0444), "/server.crt")
-      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/init.sh", 0555), "/docker-entrypoint-initdb.d/init.sh")
+  private static final PostgreSQLContainer postgres =
+    new PostgreSQLContainer(PostgresTesterContainer.getImageName())
+      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server.key", 292), "/server.key")
+      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/server-san.crt", 292), "/server.crt")
+      .withCopyFileToContainer(MountableFile.forClasspathResource("tls/init.sh", 365), "/docker-entrypoint-initdb.d/init.sh")
       .withExposedPorts(5432)
       .withUsername(USERNAME)
       .withPassword(PASSWORD)
       .withDatabaseName(POSTGRES);
 
   @BeforeEach
-  void setUpEach() throws IOException {
+  void setUpEach() {
+    // point HOME at an empty directory: both clients must trust DB_SERVER_PEM only, and must not
+    // depend on the JDBC driver's default trust store location, ~/.postgresql/root.crt
     originalUserHome = System.getProperty("user.home");
     System.setProperty("user.home", tempHomeDir.toString());
-
-    certFilePath = Paths.get(tempHomeDir.toString(), ".postgresql", "root.crt");
-    Files.createDirectories(certFilePath.getParent());
   }
 
-  static void setConfig(Map<String, String> map) {
-    Envs.setEnv(map);
-    new PostgresClientFactory(null);
-  }
-
-  void config(String pem) {
+  void config(Vertx vertx, String pem) {
     var map = Map.of(
       "DB_HOST", postgres.getHost(),
       "DB_PORT", "" + postgres.getFirstMappedPort(),
@@ -92,38 +83,49 @@ class PostgresClientFactorySslTest {
       map.put("DB_SERVER_PEM", pem);
       map = Map.copyOf(map);
     }
-    setConfig(map);
+    Envs.setEnv(map);
+    postgresClientFactory = new PostgresClientFactory(vertx.getDelegate());
   }
 
+  @DisplayName("should connect the reactive pool when DB_SERVER_PEM matches the server certificate")
   @Test
-  void reactiveSsl(Vertx vertx, VertxTestContext vtc) throws IOException {
-    config(SERVER_PEM);
-    Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
-    PostgresClientFactory.getQueryExecutor(vertx, "reactivessl").execute(DSLContext::selectOne)
+  void shouldConnectReactivePool_whenServerPemMatchesServerCertificate(Vertx vertx, VertxTestContext vtc) {
+    // given
+    config(vertx, SERVER_PEM);
+
+    // when
+    postgresClientFactory.getQueryExecutor("reactivessl").execute(DSLContext::selectOne)
+      // then
       .onComplete(vtc.succeeding(rowSet -> {
         assertThat(rowSet.size(), is(1));
         vtc.completeNow();
       }));
   }
 
+  @DisplayName("should fail the reactive pool connection when DB_SERVER_PEM is not configured")
   @Test
-  void reactiveNoSsl(Vertx vertx, VertxTestContext vtc) throws IOException {
-    // client without SERVER_PEM must not connect to server
-    config(null);
-    Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
-    PostgresClientFactory.getQueryExecutor(vertx, "reactivenossl").execute(DSLContext::selectOne)
+  void shouldFailReactiveConnection_whenServerPemIsNotConfigured(Vertx vertx, VertxTestContext vtc) {
+    // given a client without SERVER_PEM, which must not connect to the server
+    config(vertx, null);
+
+    // when
+    postgresClientFactory.getQueryExecutor("reactivenossl").execute(DSLContext::selectOne)
+      // then
       .onComplete(vtc.failing(e -> {
         assertThat(e.getMessage(), containsString("no encryption"));
         vtc.completeNow();
       }));
   }
 
+  @DisplayName("should fail the reactive pool connection when DB_SERVER_PEM does not match the server certificate")
   @Test
-  void reactiveWrongCert(Vertx vertx, VertxTestContext vtc) throws IOException {
-    // client must reject if SERVER_PEM doesn't match the server key
-    config(SERVER_WRONG_PEM);
-    Files.writeString(certFilePath, SERVER_WRONG_PEM, StandardCharsets.UTF_8);
-    PostgresClientFactory.getQueryExecutor(vertx, "reactivewrongcert").execute(DSLContext::selectOne)
+  void shouldFailReactiveConnection_whenServerPemDoesNotMatchServerCertificate(Vertx vertx, VertxTestContext vtc) {
+    // given a certificate that doesn't match the server key, which the client must reject
+    config(vertx, SERVER_WRONG_PEM);
+
+    // when
+    postgresClientFactory.getQueryExecutor("reactivewrongcert").execute(DSLContext::selectOne)
+      // then
       .onComplete(vtc.failing(e -> {
         assertThat(e.getMessage(), containsString("SSL handshake failed"));
         vtc.completeNow();
@@ -131,45 +133,54 @@ class PostgresClientFactorySslTest {
   }
 
   int jdbc3(String tenant) throws SQLException {
-    try (Statement statement = new PostgresClientFactory(null).getConnection(tenant).createStatement();
+    try (Statement statement = postgresClientFactory.getConnection(tenant).createStatement();
          ResultSet resultSet = statement.executeQuery("SELECT 3")) {
       resultSet.next();
       return resultSet.getInt(1);
     }
   }
 
+  @DisplayName("should connect the JDBC data source when DB_SERVER_PEM matches the server certificate")
   @Test
-  void jdbcSsl() throws SQLException, IOException {
-    config(SERVER_PEM);
-    Files.writeString(certFilePath, SERVER_PEM, StandardCharsets.UTF_8);
+  void shouldConnectJdbcDataSource_whenServerPemMatchesServerCertificate(Vertx vertx) throws SQLException {
+    // given
+    config(vertx, SERVER_PEM);
+
+    // when + then
     assertThat(jdbc3("jdbcssl"), is(3));
   }
 
+  @DisplayName("should fail the JDBC connection when DB_SERVER_PEM is not configured")
   @Test
-  void jdbcNoSsl() {
-    // client without SERVER_PEM must not connect to server
-    config(null);
+  void shouldFailJdbcConnection_whenServerPemIsNotConfigured(Vertx vertx) {
+    // given a client without SERVER_PEM, which must not connect to the server
+    config(vertx, null);
+
+    // when
     var e = assertThrows(HikariPool.PoolInitializationException.class, () -> jdbc3("jdbcnossl"));
+
+    // then
     assertThat(e.getCause().getMessage(), containsString("no encryption"));
   }
 
+  @DisplayName("should fail the JDBC connection when DB_SERVER_PEM does not match the server certificate")
   @Test
-  void jdbcWrongCert() throws IOException {
-    // client must reject if SERVER_PEM doesn't match the server key
-    config(SERVER_WRONG_PEM);
-    Files.writeString(certFilePath, SERVER_WRONG_PEM, StandardCharsets.UTF_8);
+  void shouldFailJdbcConnection_whenServerPemDoesNotMatchServerCertificate(Vertx vertx) {
+    // given a certificate that doesn't match the server key, which the client must reject
+    config(vertx, SERVER_WRONG_PEM);
+
+    // when
     var e = assertThrows(HikariPool.PoolInitializationException.class, () -> jdbc3("jdbcwrongssl"));
+
+    // then
     assertThat(e.getCause().getCause().getCause().getCause(), is(instanceOf(CertPathValidatorException.class)));
   }
 
   @AfterEach
   void tearDownEach() {
     System.setProperty("user.home", originalUserHome);
-  }
-
-  @AfterAll
-  static void afterAll() {
-    setConfig(Map.of());
+    postgresClientFactory.closeAll();
+    Envs.setEnv(Map.of());
   }
 
 }

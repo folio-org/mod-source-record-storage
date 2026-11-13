@@ -38,6 +38,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.folio.SharedPostgresContainer;
 import org.folio.TestUtil;
+import org.folio.processing.events.EventManager;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.kafka.KafkaConfig;
@@ -99,6 +100,11 @@ public abstract class AbstractLBServiceTest {
     // the following postTenant call would then fail with a misleading connection-refused error.
     PORT = NetworkUtils.nextFreePort();
     OKAPI_URL = "http://localhost:" + PORT;
+    // EventManager keeps its handlers in a static registry: without clearing it, handlers
+    // registered by a previous test class stay behind and run with the PostgresClientFactory and
+    // the Vertx of that class, both already closed. The module registers its own handlers again
+    // while the RestVerticle below is deployed.
+    EventManager.clearEventHandlers();
     vertx = Vertx.vertx();
 
     kafkaContainer.start();
@@ -151,7 +157,7 @@ public abstract class AbstractLBServiceTest {
       try {
         String fullModuleName = getFullModuleName();
         tenantClient.postTenant(new TenantAttributes().withModuleTo(fullModuleName), res2 -> {
-          postgresClientFactory = new PostgresClientFactory(vertx);
+          postgresClientFactory = TestUtil.getPostgresClientFactory(vertx);
           if (!res2.succeeded()) {
             setup.completeExceptionally(new RuntimeException("postTenant failed", res2.cause()));
             return;
@@ -191,7 +197,7 @@ public abstract class AbstractLBServiceTest {
     // Clear the factory caches so the next class rebuilds its pools, but never stop the shared
     // container/tester - it stays up for the whole JVM fork and is reaped at JVM exit.
     CompletableFuture<Void> close = new CompletableFuture<>();
-    PostgresClientFactory.closeAll()
+    postgresClientFactory.closeAll()
       .onComplete(closed -> currentVertx.close().onComplete(v -> {
         wireMockServer.stop();
         kafkaContainer.stop();
@@ -239,8 +245,8 @@ public abstract class AbstractLBServiceTest {
       .format(ZonedDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()));
   }
 
-  protected void validate005Field(String expectedDate, Record record) {
-    String actualDate = AdditionalFieldsUtil.getValueFromControlledField(record, TAG_005);
+  protected void validate005Field(String expectedDate, Record marcRecord) {
+    String actualDate = AdditionalFieldsUtil.getValueFromControlledField(marcRecord, TAG_005);
     assertNotNull(actualDate);
     assertEquals(expectedDate.substring(0, 10), actualDate.substring(0, 10));
   }

@@ -184,7 +184,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
   @BeforeEach
   void setUp(VertxTestContext testContext) {
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         testContext.failNow(delete.cause());
       } else {

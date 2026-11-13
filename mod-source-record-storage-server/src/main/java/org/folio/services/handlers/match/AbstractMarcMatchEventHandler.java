@@ -102,15 +102,24 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       String record = context.get(typeConnection.getMarcType().value());
       MatchDetail matchDetail = retrieveMatchDetail(payload);
       if (isValidMatchDetail(matchDetail)) {
-        List<MatchField> matchFields = prepareMatchFields(record, matchDetail, payload);
-        return retrieveMarcRecords(matchFields, payload, payload.getTenant())
-          .compose(localMatchedRecords -> {
+        List<SubMatchProfileData> subMatchesData = retrieveSubMatchProfilesData(payload);
+        List<MatchField> matchFields = prepareMatchFields(record, matchDetail, subMatchesData);
+        return retrieveMarcRecords(matchFields, subMatchesData, payload, payload.getTenant())
+          .compose(localResult -> {
             if (isConsortiumAvailable()) {
-              return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchFields, localMatchedRecords);
+              // central tenant lookup uses the current match profile criteria only
+              return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchFields.subList(0, 1), localResult.records())
+                .map(records -> new MatchResult(records, localResult.lastSubMatchNode()));
             }
-            return Future.succeededFuture(localMatchedRecords);
+            return Future.succeededFuture(localResult);
           })
-          .compose(recordList -> processSucceededResult(recordList, payload))
+          .compose(result -> {
+            if (result.lastSubMatchNode() != null) {
+              // records satisfy criteria of the whole chain, so the last submatch profile becomes the current node
+              payload.setCurrentNode(result.lastSubMatchNode());
+            }
+            return processSucceededResult(result.records(), payload);
+          })
           .recover(throwable -> Future.failedFuture(mapToMatchException(throwable)))
           .toCompletionStage().toCompletableFuture();
       }
@@ -130,7 +139,8 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
         if (consortiumConfigurationOptional.isPresent() && !consortiumConfigurationOptional.get().getCentralTenantId().equals(payload.getTenant())) {
           LOG.debug("matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords:: Matching on centralTenant with id: {}",
             consortiumConfigurationOptional.get().getCentralTenantId());
-          return retrieveMarcRecords(matchFields, payload, consortiumConfigurationOptional.get().getCentralTenantId())
+          return retrieveMarcRecords(matchFields, List.of(), payload, consortiumConfigurationOptional.get().getCentralTenantId())
+            .map(MatchResult::records)
             .onSuccess(result -> {
               if (!result.isEmpty()) {
                 payload.getContext().put(CENTRAL_TENANT_ID, consortiumConfigurationOptional.get().getCentralTenantId());
@@ -147,14 +157,14 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   }
 
   /**
-   * Retrieves records for the given criteria. The first criterion belongs to the current match profile, the optional
-   * second one belongs to its submatch profile. When both are present they are applied in a single query, so a
-   * record satisfying both is not lost because of the fetch limit applied to the parent criterion only.
-   * If nothing satisfies both, the parent criterion alone is used, so that the parent match result
+   * Retrieves records for the given criteria. The first criterion belongs to the current match profile, the others
+   * belong to the chain of its submatch profiles. When there are several they are applied in a single query, so a
+   * record satisfying all of them is not lost because of the fetch limit applied to the parent criterion only.
+   * If nothing satisfies all of them, the parent criterion alone is used, so that the parent match result
    * (and routing of the submatch outcome) stays the same as without combining.
    */
-  private Future<List<Record>> retrieveMarcRecords(List<MatchField> matchFields, DataImportEventPayload payload,
-                                                   String tenant) {
+  private Future<MatchResult> retrieveMarcRecords(List<MatchField> matchFields, List<SubMatchProfileData> subMatchesData,
+                                                  DataImportEventPayload payload, String tenant) {
     List<String> matchedRecordIds = getMatchedRecordIds(payload);
     if (matchFields.size() > 1) {
       LOG.debug("retrieveMarcRecords:: Process combined match of {} fields, tenant {}", matchFields.size(), tenant);
@@ -162,13 +172,15 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
           isNonNullExternalIdRequired(), 0, fetchRecordsLimit, tenant)
         .compose(records -> {
           if (!records.isEmpty()) {
-            return Future.succeededFuture(records);
+            return Future.succeededFuture(new MatchResult(records, subMatchesData.getLast().profileWrapper()));
           }
           LOG.debug("retrieveMarcRecords:: Combined match found nothing, fallback to the current match profile only");
-          return retrieveMarcRecords(matchFields.getFirst(), matchedRecordIds, tenant);
+          return retrieveMarcRecords(matchFields.getFirst(), matchedRecordIds, tenant)
+            .map(fallback -> new MatchResult(fallback, null));
         });
     }
-    return retrieveMarcRecords(matchFields.getFirst(), matchedRecordIds, tenant);
+    return retrieveMarcRecords(matchFields.getFirst(), matchedRecordIds, tenant)
+      .map(records -> new MatchResult(records, null));
   }
 
   private Future<List<Record>> retrieveMarcRecords(MatchField matchField, List<String> matchedRecordIds,
@@ -187,23 +199,10 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   abstract boolean isConsortiumAvailable();
 
-  /* Creates match fields of the current match profile and of its chain of eligible submatch profiles */
-  private List<MatchField> prepareMatchFields(String record, MatchDetail matchDetail, DataImportEventPayload payload) {
-    List<MatchField> matchFields = new ArrayList<>();
-    matchFields.add(prepareMatchField(record, matchDetail));
-    retrieveSubMatchDetails(payload)
-      .forEach(subMatchDetail -> matchFields.add(prepareMatchField(record, subMatchDetail)));
-    LOG.debug("prepareMatchFields:: Prepared {} match field(s) to be processed in one query", matchFields.size());
-    return matchFields;
-  }
-
-  /*
-   * Walks down the chain of first child profiles that are match profiles linked via MATCH and collects their
-   * match details. The chain stops at the first profile that can't be combined into the query.
-   */
-  private List<MatchDetail> retrieveSubMatchDetails(DataImportEventPayload payload) {
-    List<MatchDetail> subMatchDetails = new ArrayList<>();
+  private List<SubMatchProfileData> retrieveSubMatchProfilesData(DataImportEventPayload payload) {
+    List<SubMatchProfileData> subMatches = new ArrayList<>();
     ProfileSnapshotWrapper node = payload.getCurrentNode();
+
     while (hasMatchChild(node)) {
       ProfileSnapshotWrapper child = node.getChildSnapshotWrappers().getFirst();
       Object content = child.getContent();
@@ -218,14 +217,23 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       }
       MatchDetail subMatchDetail = subMatchProfile.getMatchDetails().getFirst();
       if (!isValidMatchDetail(subMatchDetail)) {
-        LOG.debug("retrieveSubMatchDetails:: Submatch detail is not valid, the chain is stopped");
+        LOG.debug("retrieveSubMatchProfilesData:: Submatch detail is not valid, the chain is stopped");
         break;
       }
-      subMatchDetails.add(subMatchDetail);
+      subMatches.add(new SubMatchProfileData(child, subMatchDetail));
       node = child;
     }
-    return subMatchDetails;
+    return subMatches;
   }
+
+  private List<MatchField> prepareMatchFields(String record, MatchDetail matchDetail, List<SubMatchProfileData> subMatchesData) {
+    List<MatchField> matchFields = new ArrayList<>();
+    matchFields.add(prepareMatchField(record, matchDetail));
+    subMatchesData.forEach(subMatch -> matchFields.add(prepareMatchField(record, subMatch.matchDetail())));
+    LOG.debug("prepareMatchFields:: Prepared {} match field(s) to be processed in one query", matchFields.size());
+    return matchFields;
+  }
+
   /* Creates a {@link MatchField} from the given {@link MatchDetail} */
   private MatchField prepareMatchField(String record, MatchDetail matchDetail) {
     List<Field> matchDetailFields = matchDetail.getExistingMatchExpression().getFields();
@@ -390,4 +398,11 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
     return Collections.emptyList();
   }
+
+  private record MatchResult(List<Record> records, ProfileSnapshotWrapper lastSubMatchNode) {
+  }
+
+  private record SubMatchProfileData(ProfileSnapshotWrapper profileWrapper, MatchDetail matchDetail) {
+  }
+
 }

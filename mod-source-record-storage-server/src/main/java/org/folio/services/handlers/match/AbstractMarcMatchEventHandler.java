@@ -107,15 +107,13 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
         return retrieveMarcRecords(matchFields, subMatchesData, payload, payload.getTenant())
           .compose(localResult -> {
             if (isConsortiumAvailable()) {
-              // central tenant lookup uses the current match profile criteria only
-              return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchFields.subList(0, 1), localResult.records())
+              return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchFields, localResult.records())
                 .map(records -> new MatchResult(records, localResult.lastSubMatchNode()));
             }
             return Future.succeededFuture(localResult);
           })
           .compose(result -> {
             if (result.lastSubMatchNode() != null) {
-              // records satisfy criteria of the whole chain, so the last submatch profile becomes the current node
               payload.setCurrentNode(result.lastSubMatchNode());
             }
             return processSucceededResult(result.records(), payload);
@@ -156,13 +154,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return throwable instanceof MatchingException ? throwable : new MatchingException(throwable);
   }
 
-  /**
-   * Retrieves records for the given criteria. The first criterion belongs to the current match profile, the others
-   * belong to the chain of its submatch profiles. When there are several they are applied in a single query, so a
-   * record satisfying all of them is not lost because of the fetch limit applied to the parent criterion only.
-   * If nothing satisfies all of them, the parent criterion alone is used, so that the parent match result
-   * (and routing of the submatch outcome) stays the same as without combining.
-   */
   private Future<MatchResult> retrieveMarcRecords(List<MatchField> matchFields, List<SubMatchProfileData> subMatchesData,
                                                   DataImportEventPayload payload, String tenant) {
     List<String> matchedRecordIds = getMatchedRecordIds(payload);

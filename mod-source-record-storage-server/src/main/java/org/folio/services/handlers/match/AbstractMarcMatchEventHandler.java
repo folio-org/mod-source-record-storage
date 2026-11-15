@@ -37,8 +37,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
@@ -99,11 +99,11 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       payload.getEventsChain().add(payload.getEventType());
       payload.setAdditionalProperty(USER_ID_HEADER, context.get(USER_ID_HEADER));
 
-      String record = context.get(typeConnection.getMarcType().value());
+      String incomingRecord = context.get(typeConnection.getMarcType().value());
       MatchDetail matchDetail = retrieveMatchDetail(payload);
       if (isValidMatchDetail(matchDetail)) {
         List<SubMatchProfileData> subMatchesData = retrieveSubMatchProfilesData(payload);
-        List<MatchField> matchFields = prepareMatchFields(record, matchDetail, subMatchesData);
+        List<MatchField> matchFields = prepareMatchFields(incomingRecord, matchDetail, subMatchesData);
         return retrieveMarcRecords(matchFields, subMatchesData, payload, payload.getTenant())
           .compose(localResult -> {
             if (isConsortiumAvailable()) {
@@ -112,12 +112,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
             }
             return Future.succeededFuture(localResult);
           })
-          .compose(result -> {
-            if (result.lastSubMatchNode() != null) {
-              payload.setCurrentNode(result.lastSubMatchNode());
-            }
-            return processSucceededResult(result.records(), payload);
-          })
+          .compose(result -> processSucceededResult(applyResultNode(result, payload), payload))
           .recover(throwable -> Future.failedFuture(mapToMatchException(throwable)))
           .toCompletionStage().toCompletableFuture();
       }
@@ -154,7 +149,8 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return throwable instanceof MatchingException ? throwable : new MatchingException(throwable);
   }
 
-  private Future<MatchResult> retrieveMarcRecords(List<MatchField> matchFields, List<SubMatchProfileData> subMatchesData,
+  private Future<MatchResult> retrieveMarcRecords(List<MatchField> matchFields,
+                                                  List<SubMatchProfileData> subMatchesData,
                                                   DataImportEventPayload payload, String tenant) {
     List<String> matchedRecordIds = getMatchedRecordIds(payload);
     if (matchFields.size() > 1) {
@@ -192,47 +188,51 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   private List<SubMatchProfileData> retrieveSubMatchProfilesData(DataImportEventPayload payload) {
     List<SubMatchProfileData> subMatches = new ArrayList<>();
-    ProfileSnapshotWrapper node = payload.getCurrentNode();
-
-    while (hasMatchChild(node)) {
-      ProfileSnapshotWrapper child = node.getChildSnapshotWrappers().getFirst();
-      Object content = child.getContent();
-      if (content == null) {
-        break;
-      }
-      MatchProfile subMatchProfile = content instanceof MatchProfile profile
-        ? profile
-        : JsonObject.mapFrom(content).mapTo(MatchProfile.class);
-      if (!isEligibleMatchProfile(subMatchProfile) || CollectionUtils.isEmpty(subMatchProfile.getMatchDetails())) {
-        break;
-      }
-      MatchDetail subMatchDetail = subMatchProfile.getMatchDetails().getFirst();
-      if (!isValidMatchDetail(subMatchDetail)) {
-        LOG.debug("retrieveSubMatchProfilesData:: Submatch detail is not valid, the chain is stopped");
-        break;
-      }
-      subMatches.add(new SubMatchProfileData(child, subMatchDetail));
-      node = child;
+    Optional<SubMatchProfileData> nextSubmatchOptional = extractSubMatchProfileData(payload.getCurrentNode());
+    while (nextSubmatchOptional.isPresent()) {
+      subMatches.add(nextSubmatchOptional.get());
+      nextSubmatchOptional = extractSubMatchProfileData(nextSubmatchOptional.get().profileWrapper());
     }
     return subMatches;
   }
 
-  private List<MatchField> prepareMatchFields(String record, MatchDetail matchDetail, List<SubMatchProfileData> subMatchesData) {
+  private Optional<SubMatchProfileData> extractSubMatchProfileData(ProfileSnapshotWrapper node) {
+    if (!hasMatchChild(node)) {
+      return Optional.empty();
+    }
+    ProfileSnapshotWrapper child = node.getChildSnapshotWrappers().getFirst();
+    if (child.getContent() == null) {
+      return Optional.empty();
+    }
+    MatchProfile subMatchProfile = toMatchProfile(child.getContent());
+    if (!isEligibleMatchProfile(subMatchProfile) || CollectionUtils.isEmpty(subMatchProfile.getMatchDetails())) {
+      return Optional.empty();
+    }
+    MatchDetail subMatchDetail = subMatchProfile.getMatchDetails().getFirst();
+    if (!isValidMatchDetail(subMatchDetail)) {
+      LOG.debug("extractSubMatchProfileData:: Submatch detail is not valid, the chain is stopped");
+      return Optional.empty();
+    }
+    return Optional.of(new SubMatchProfileData(child, subMatchDetail));
+  }
+
+  private List<MatchField> prepareMatchFields(String incomingRecord, MatchDetail matchDetail,
+                                              List<SubMatchProfileData> subMatchesData) {
     List<MatchField> matchFields = new ArrayList<>();
-    matchFields.add(prepareMatchField(record, matchDetail));
-    subMatchesData.forEach(subMatch -> matchFields.add(prepareMatchField(record, subMatch.matchDetail())));
+    matchFields.add(prepareMatchField(incomingRecord, matchDetail));
+    subMatchesData.forEach(subMatch -> matchFields.add(prepareMatchField(incomingRecord, subMatch.matchDetail())));
     LOG.debug("prepareMatchFields:: Prepared {} match field(s) to be processed in one query", matchFields.size());
     return matchFields;
   }
 
   /* Creates a {@link MatchField} from the given {@link MatchDetail} */
-  private MatchField prepareMatchField(String record, MatchDetail matchDetail) {
+  private MatchField prepareMatchField(String incomingRecord, MatchDetail matchDetail) {
     List<Field> matchDetailFields = matchDetail.getExistingMatchExpression().getFields();
     String field = matchDetailFields.get(0).getValue();
     String ind1 = matchDetailFields.get(1).getValue();
     String ind2 = matchDetailFields.get(2).getValue();
     String subfield = matchDetailFields.get(3).getValue();
-    Value value = MarcValueReaderUtil.readValueFromRecord(record, matchDetail.getIncomingMatchExpression());
+    Value<?> value = MarcValueReaderUtil.readValueFromRecord(incomingRecord, matchDetail.getIncomingMatchExpression());
     Qualifier qualifier = matchDetail.getExistingMatchExpression().getQualifier();
     return new MatchField(field, ind1, ind2, subfield, value, prepareQualifierMatch(qualifier),
       prepareComparisonPartType(qualifier));
@@ -274,7 +274,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       condition, typeConnection.getDbType(), new ArrayList<>(), 0, fetchRecordsLimit, tenantId);
   }
 
-  private String getStringValue(Value value) {
+  private String getStringValue(Value<?> value) {
     if (Value.ValueType.STRING.equals(value.getType())) {
       return String.valueOf(value.getValue());
     }
@@ -318,14 +318,19 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   /* Retrieves a {@link MatchDetail} from the given {@link DataImportEventPayload} */
   private MatchDetail retrieveMatchDetail(DataImportEventPayload dataImportEventPayload) {
-    MatchProfile matchProfile;
-    ProfileSnapshotWrapper matchingProfileWrapper = dataImportEventPayload.getCurrentNode();
-    if (matchingProfileWrapper.getContent() instanceof Map) {
-      matchProfile = new JsonObject((Map) matchingProfileWrapper.getContent()).mapTo(MatchProfile.class);
-    } else {
-      matchProfile = (MatchProfile) matchingProfileWrapper.getContent();
-    }
+    MatchProfile matchProfile = toMatchProfile(dataImportEventPayload.getCurrentNode().getContent());
     return matchProfile.getMatchDetails().getFirst();
+  }
+
+  private MatchProfile toMatchProfile(Object content) {
+    return content instanceof MatchProfile profile ? profile : JsonObject.mapFrom(content).mapTo(MatchProfile.class);
+  }
+
+  private List<Record> applyResultNode(MatchResult result, DataImportEventPayload payload) {
+    if (result.lastSubMatchNode() != null) {
+      payload.setCurrentNode(result.lastSubMatchNode());
+    }
+    return result.records();
   }
 
   /**

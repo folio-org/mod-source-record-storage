@@ -14,6 +14,7 @@ import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.FO
 import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.MULTI_MATCH_IDS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -373,7 +374,9 @@ class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
   void shouldMatchMultipleRecordsIfMatchProfileIsNextInProfileSnapshot(VertxTestContext testContext) {
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incomingRecord2));
+    String differsBy10OContent = PARSED_CONTENT2.replace("Eimermacher, Karl", "Other, Name");
 
+    ProfileSnapshotWrapper subMatchProfile = matchProfileWrapper("100", "a");
     DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withTenant(TENANT_ID)
@@ -404,12 +407,7 @@ class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
                 new Field().withLabel("indicator2").withValue(""),
                 new Field().withLabel("recordSubfield").withValue("a")
               )))
-          ))).withChildSnapshotWrappers(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())
-          .withContentType(MATCH_PROFILE)
-          .withReactTo(ReactToType.MATCH)
-          .withContent(new MatchProfile()
-            .withExistingRecordType(EntityType.MARC_AUTHORITY)
-            .withIncomingRecordType(EntityType.MARC_AUTHORITY)))));
+          ))).withChildSnapshotWrappers(List.of(subMatchProfile)));
 
     String existingRecord3Id = UUID.randomUUID().toString();
     Record existingRecord3 = new Record()
@@ -419,45 +417,24 @@ class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
       .withGeneration(0)
       .withRecordType(MARC_AUTHORITY)
       .withRawRecord(new RawRecord().withId(existingRecord3Id).withContent(rawRecordContent))
-      .withParsedRecord(new ParsedRecord().withId(existingRecord3Id).withContent(PARSED_CONTENT2))
+      .withParsedRecord(new ParsedRecord().withId(existingRecord3Id).withContent(differsBy10OContent))
       .withExternalIdsHolder(new ExternalIdsHolder()
         .withAuthorityHrid("1000650")
       )
       .withState(Record.State.ACTUAL);
 
-    String existingRecord4Id = UUID.randomUUID().toString();
-    Record existingRecord4 = new Record()
-      .withId(existingRecord4Id)
-      .withMatchedId(existingRecord4Id)
-      .withSnapshotId(existingRecordSnapshot.getJobExecutionId())
-      .withState(Record.State.ACTUAL)
-      .withGeneration(0)
-      .withRecordType(MARC_AUTHORITY)
-      .withRawRecord(new RawRecord().withId(existingRecord4Id).withContent(rawRecordContent))
-      .withParsedRecord(new ParsedRecord().withId(existingRecord4Id).withContent(PARSED_CONTENT2))
-      .withExternalIdsHolder(new ExternalIdsHolder()
-        .withAuthorityHrid("1000651")
-      );
-
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     Future<DataImportEventPayload> future = recordDao.saveRecord(existingRecord2, okapiHeaders)
       .compose(r -> recordDao.saveRecord(existingRecord3, okapiHeaders))
-      .compose(r -> recordDao.saveRecord(existingRecord4, okapiHeaders))
       .compose(r -> Future.fromCompletionStage(handler.handle(dataImportEventPayload)));
 
     future.onComplete(testContext.succeeding(updatedEventPayload -> {
       assertEquals(1, updatedEventPayload.getEventsChain().size());
       assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(), updatedEventPayload.getEventType());
-      assertTrue(updatedEventPayload.getContext().containsKey(MULTI_MATCH_IDS));
-
-      List<String> multiIds = new JsonArray(updatedEventPayload.getContext().get(MULTI_MATCH_IDS))
-        .stream()
-        .map(Object::toString)
-        .toList();
-      assertEquals(3, multiIds.size());
-      assertTrue(multiIds.contains(existingRecord2.getId()));
-      assertTrue(multiIds.contains(existingRecord3.getId()));
-      assertTrue(multiIds.contains(existingRecord4.getId()));
+      Record matchedRecord = Json.decodeValue(updatedEventPayload.getContext().get(MATCHED_MARC_KEY), Record.class);
+      assertEquals(existingRecord2.getId(), matchedRecord.getId());
+      assertFalse(updatedEventPayload.getContext().containsKey(MULTI_MATCH_IDS));
+      assertEquals(subMatchProfile.getId(), updatedEventPayload.getCurrentNode().getId());
       testContext.completeNow();
     }));
   }
@@ -657,6 +634,106 @@ class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
             assertEquals(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE, throwable.getMessage());
             testContext.completeNow();
           })))));
+  }
+
+  @Test
+  void shouldCombineMatchAndSubmatchCriteriaAndSetSubmatchAsCurrentNode(VertxTestContext testContext) {
+    Record sameBy010Only =
+      buildExistingMarcAuthority(PARSED_CONTENT2.replace("Eimermacher, Karl", "Other, Name"), "1000001");
+    ProfileSnapshotWrapper submatch = matchProfileWrapper("100", "a");
+    DataImportEventPayload payload = payloadWithSubmatchProfile("010", "a", incomingRecord2, submatch);
+
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    recordDao.saveRecord(existingRecord2, okapiHeaders)
+      .compose(r -> recordDao.saveRecord(sameBy010Only, okapiHeaders))
+      .compose(r -> Future.fromCompletionStage(handler.handle(payload)))
+      .onComplete(testContext.succeeding(resultPayload -> {
+        assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(), resultPayload.getEventType());
+        Record matchedRecord = Json.decodeValue(resultPayload.getContext().get(MATCHED_MARC_KEY), Record.class);
+        assertEquals(existingRecord2.getId(), matchedRecord.getId());
+        assertFalse(resultPayload.getContext().containsKey(MULTI_MATCH_IDS));
+        assertEquals(submatch.getId(), resultPayload.getCurrentNode().getId());
+        testContext.completeNow();
+      }));
+  }
+
+  @Test
+  void shouldCombineWholeChainOfSubmatchProfiles(VertxTestContext testContext) {
+    Record differsBy375 = buildExistingMarcAuthority(PARSED_CONTENT2.replace("\"male\"", "\"female\""), "1000651");
+    ProfileSnapshotWrapper thirdLevel = matchProfileWrapper("375", "a");
+    ProfileSnapshotWrapper secondLevel = matchProfileWrapper("100", "a", thirdLevel);
+    DataImportEventPayload payload = payloadWithSubmatchProfile("010", "a", incomingRecord2, secondLevel);
+
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    recordDao.saveRecord(existingRecord2, okapiHeaders)
+      .compose(r -> recordDao.saveRecord(differsBy375, okapiHeaders))
+      .compose(r -> Future.fromCompletionStage(handler.handle(payload)))
+      .onComplete(testContext.succeeding(resultPayload -> {
+        assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(), resultPayload.getEventType());
+        Record matchedRecord = Json.decodeValue(resultPayload.getContext().get(MATCHED_MARC_KEY), Record.class);
+        assertEquals(existingRecord2.getId(), matchedRecord.getId());
+        assertEquals(thirdLevel.getId(), resultPayload.getCurrentNode().getId());
+        testContext.completeNow();
+      }));
+  }
+
+  @Test
+  void shouldFallbackToCurrentMatchProfileIfCombinedQueryFindsNothing(VertxTestContext testContext) {
+    Record secondBy010 = buildExistingMarcAuthority(PARSED_CONTENT2, "1000651");
+    Record incomingWithOther100 = incomingRecordWithParsedContent(PARSED_CONTENT2.replace("Eimermacher, Karl", "Nobody"));
+    ProfileSnapshotWrapper submatch = matchProfileWrapper("100", "a");
+    DataImportEventPayload payload = payloadWithSubmatchProfile("010", "a", incomingWithOther100, submatch);
+    String currentNodeId = payload.getCurrentNode().getId();
+
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    recordDao.saveRecord(existingRecord2, okapiHeaders)
+      .compose(r -> recordDao.saveRecord(secondBy010, okapiHeaders))
+      .compose(r -> Future.fromCompletionStage(handler.handle(payload)))
+      .onComplete(testContext.succeeding(resultPayload -> {
+        assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(), resultPayload.getEventType());
+        assertEquals(currentNodeId, resultPayload.getCurrentNode().getId());
+        List<String> ids = new JsonArray(resultPayload.getContext().get(MULTI_MATCH_IDS)).stream()
+          .map(Object::toString).toList();
+        assertEquals(2, ids.size());
+        assertTrue(ids.contains(existingRecord2.getId()));
+        assertTrue(ids.contains(secondBy010.getId()));
+        testContext.completeNow();
+      }));
+  }
+
+  @Test
+  void shouldReturnNotMatchedIfNeitherCombinedNorCurrentCriteriaMatch(VertxTestContext testContext) {
+    ProfileSnapshotWrapper submatch = matchProfileWrapper("100", "a");
+    DataImportEventPayload payload = payloadWithSubmatchProfile("010", "a", incomingRecord2, submatch);
+    String currentNodeId = payload.getCurrentNode().getId();
+
+    Future.fromCompletionStage(handler.handle(payload))
+      .onComplete(testContext.succeeding(resultPayload -> {
+        assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED.value(), resultPayload.getEventType());
+        assertEquals(currentNodeId, resultPayload.getCurrentNode().getId());
+        testContext.completeNow();
+      }));
+  }
+
+  @Test
+  void shouldNotCombineSubmatchProfileLinkedByNonMatchRelation(VertxTestContext testContext) {
+    Record secondBy010 =
+      buildExistingMarcAuthority(PARSED_CONTENT2.replace("Eimermacher, Karl", "Other, Name"), "1000651");
+    ProfileSnapshotWrapper nonMatchSubmatch = matchProfileWrapper("100", "a").withReactTo(ReactToType.NON_MATCH);
+    DataImportEventPayload payload = payloadWithSubmatchProfile("010", "a", incomingRecord2, nonMatchSubmatch);
+    String currentNodeId = payload.getCurrentNode().getId();
+
+    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
+    recordDao.saveRecord(existingRecord2, okapiHeaders)
+      .compose(r -> recordDao.saveRecord(secondBy010, okapiHeaders))
+      .compose(r -> Future.fromCompletionStage(handler.handle(payload)))
+      .onComplete(testContext.failing(throwable -> {
+        // two records by 010 and no MATCH submatch child, so the usual "multiple records" error is expected
+        assertInstanceOf(MatchingException.class, throwable);
+        assertEquals(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE, throwable.getMessage());
+        assertEquals(currentNodeId, payload.getCurrentNode().getId());
+        testContext.completeNow();
+      }));
   }
 
   @Test
@@ -1001,4 +1078,43 @@ class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
           testContext.completeNow();
         })));
   }
+
+  private Record buildExistingMarcAuthority(String parsedContent, String hrid) {
+    String id = UUID.randomUUID().toString();
+    return new Record()
+      .withId(id)
+      .withMatchedId(id)
+      .withSnapshotId(existingRecordSnapshot.getJobExecutionId())
+      .withGeneration(0)
+      .withRecordType(MARC_AUTHORITY)
+      .withRawRecord(new RawRecord().withId(id).withContent(rawRecordContent))
+      .withParsedRecord(new ParsedRecord().withId(id).withContent(parsedContent))
+      .withExternalIdsHolder(new ExternalIdsHolder().withAuthorityHrid(hrid))
+      .withState(Record.State.ACTUAL);
+  }
+
+  private ProfileSnapshotWrapper matchProfileWrapper(String field, String subfield, ProfileSnapshotWrapper... children) {
+    return new ProfileSnapshotWrapper()
+      .withId(UUID.randomUUID().toString())
+      .withContentType(MATCH_PROFILE)
+      .withReactTo(ReactToType.MATCH)
+      .withContent(new MatchProfile()
+        .withExistingRecordType(EntityType.MARC_AUTHORITY)
+        .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+        .withMatchDetails(singletonList(new MatchDetail()
+          .withMatchCriterion(EXACTLY_MATCHES)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingMatchExpression(matchExpressionOn(field, subfield, null))
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withIncomingMatchExpression(matchExpressionOn(field, subfield, null)))))
+      .withChildSnapshotWrappers(List.of(children));
+  }
+
+  private DataImportEventPayload payloadWithSubmatchProfile(String field, String subfield, Record incomingRecord,
+                                                            ProfileSnapshotWrapper submatch) {
+    DataImportEventPayload payload = payloadMatchingOn(field, subfield, incomingRecord, null, null);
+    payload.getCurrentNode().setChildSnapshotWrappers(List.of(submatch));
+    return payload;
+  }
+
 }

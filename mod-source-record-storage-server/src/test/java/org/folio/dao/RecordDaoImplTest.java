@@ -177,6 +177,81 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   }
 
   @Test
+  void shouldReturnRecordOnGetMatchedRecordsByMultipleFieldsOnDifferentTags(VertxTestContext testContext) {
+    var field100 = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
+    var field035 = new MatchField("035", "", "", "a", StringValue.of("ocn393893"));
+
+    Future<List<Record>> future =
+      recordDao.getMatchedRecords(List.of(field100, field035), null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
+
+    future.onComplete(testContext.succeeding(result -> {
+      assertEquals(1, result.size());
+      assertEquals(marcRecord.getId(), result.getFirst().getId());
+      testContext.completeNow();
+    }));
+  }
+
+  @Test
+  void shouldReturnEmptyListOnGetMatchedRecordsIfOneOfMultipleFieldsDoesNotMatch(VertxTestContext testContext) {
+    var field100 = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
+    var field035 = new MatchField("035", "", "", "a", StringValue.of("not-existing-value"));
+
+    Future<List<Record>> future =
+      recordDao.getMatchedRecords(List.of(field100, field035), null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
+
+    future.onComplete(testContext.succeeding(result -> {
+      assertTrue(result.isEmpty());
+      testContext.completeNow();
+    }));
+  }
+
+  @Test
+  void shouldMatchMultipleFieldsOnTheSameTagAgainstDifferentFieldInstances(VertxTestContext testContext) {
+    // the record has two 035 fields: "(OCoLC)63611770" and "ocn393893", each criterion must be satisfied by its own row
+    var first035 = new MatchField("035", "", "", "a", StringValue.of("(OCoLC)63611770"));
+    var second035 = new MatchField("035", "", "", "a", StringValue.of("ocn393893"));
+
+    Future<List<Record>> future =
+      recordDao.getMatchedRecords(List.of(first035, second035), null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
+
+    future.onComplete(testContext.succeeding(result -> {
+      assertEquals(1, result.size());
+      assertEquals(marcRecord.getId(), result.getFirst().getId());
+      testContext.completeNow();
+    }));
+  }
+
+  @Test
+  void shouldCombineDefaultColumnFieldWithIndexerField(VertxTestContext testContext) {
+    var matchedIdField = new MatchField("999", "f", "f", "s", StringValue.of(marcRecord.getId()));
+    var field100 = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
+    var wrongIdField = new MatchField("999", "f", "f", "s", StringValue.of(UUID.randomUUID().toString()));
+
+    recordDao.getMatchedRecords(List.of(field100, matchedIdField), null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID)
+      .compose(result -> {
+        assertEquals(1, result.size());
+        assertEquals(marcRecord.getId(), result.getFirst().getId());
+        return recordDao.getMatchedRecords(List.of(field100, wrongIdField), null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
+      })
+      .onComplete(testContext.succeeding(result -> {
+        assertTrue(result.isEmpty());
+        testContext.completeNow();
+      }));
+  }
+
+  @Test
+  void shouldReturnEmptyListOnGetMatchedRecordsByMultipleFieldsIfOneValueIsMissing(VertxTestContext testContext) {
+    var field100 = new MatchField("100", "1", "", "a", StringValue.of("Mozart, Wolfgang Amadeus,"));
+    var missing = new MatchField("035", "", "", "a", MissingValue.getInstance());
+
+    recordDao.getMatchedRecords(List.of(field100, missing), null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID)
+      .onComplete(testContext.succeeding(result -> {
+        assertTrue(result.isEmpty());
+        testContext.completeNow();
+      }));
+  }
+
+  @Test
   void shouldReturnDeletedRecord(VertxTestContext testContext) {
     Future<Optional<Record>> future = recordDao.getRecordByExternalId(deletedRecordId, IdType.RECORD, TENANT_ID);
 

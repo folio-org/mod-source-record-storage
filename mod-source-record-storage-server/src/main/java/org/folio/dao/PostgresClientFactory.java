@@ -406,9 +406,31 @@ public class PostgresClientFactory {
   private int getTcpUserTimeout() {
     var fromEnv = System.getenv(TCP_USER_TIMEOUT_ENV);
     if (fromEnv != null) {
-      return Integer.parseInt(fromEnv);
+      return parseTcpUserTimeout(fromEnv);
     }
     return postgresConfig.getInteger(TCP_USER_TIMEOUT, DEFAULT_TCP_USER_TIMEOUT_MS);
+  }
+
+  /**
+   * Parse the {@code DB_TCP_USER_TIMEOUT} value. An invalid value falls back to the default instead
+   * of failing: pools are created lazily, so an exception here would fail every database query of
+   * the module rather than its start.
+   *
+   * @param value value of the environment variable
+   * @return timeout in milliseconds, the default when the value is not a non-negative integer
+   */
+  private int parseTcpUserTimeout(String value) {
+    try {
+      int timeout = Integer.parseInt(value.trim());
+      if (timeout >= 0) {
+        return timeout;
+      }
+    } catch (NumberFormatException e) {
+      // logged below
+    }
+    LOG.warn("getTcpUserTimeout:: Invalid {} value '{}', it must be a non-negative number of milliseconds; "
+      + "using the default {} ms", TCP_USER_TIMEOUT_ENV, value, DEFAULT_TCP_USER_TIMEOUT_MS);
+    return DEFAULT_TCP_USER_TIMEOUT_MS;
   }
 
   private DataSource getDataSource(String tenantId) {

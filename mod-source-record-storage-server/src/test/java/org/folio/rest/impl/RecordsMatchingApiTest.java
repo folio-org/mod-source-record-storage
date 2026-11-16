@@ -26,7 +26,6 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;

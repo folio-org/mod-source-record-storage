@@ -16,6 +16,7 @@ import java.util.Map;
 
 import static java.lang.String.format;
 
+@SuppressWarnings("java:S6813")
 public class SourceStorageMigrationsJobsImpl implements SourceStorageMigrationsJobs {
 
   private static final String NOT_FOUND_MSG = "Async migration job with id '%s' was not found";

@@ -21,6 +21,7 @@ import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
+@SuppressWarnings("java:S6813")
 public class SourceStorageBatchImpl implements SourceStorageBatch {
 
   private static final Logger LOG = LogManager.getLogger();

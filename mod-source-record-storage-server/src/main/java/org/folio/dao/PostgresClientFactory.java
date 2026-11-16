@@ -16,9 +16,6 @@ import io.vertx.reactivex.core.Vertx;
 import io.vertx.reactivex.pgclient.PgBuilder;
 import io.vertx.reactivex.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.List;
@@ -96,10 +93,19 @@ public class PostgresClientFactory {
 
   private static final int DB_MAXPOOLSIZE_DEFAULT_VALUE = 15;
 
+  /*
+   * Sonar java:S3749 expects every member of a Spring singleton to be injected, so that no state is
+   * shared by mistake. These members are the factory's own state on purpose: the configuration it
+   * was created with and the pools it owns, which closeAll() and closeTenant(String) release. They
+   * were static before, which shared them between factories; the caches are thread safe.
+   */
+  @SuppressWarnings("java:S3749")
   private final Vertx vertx;
 
+  @SuppressWarnings("java:S3749")
   private final String postgresConfigFilePath;
 
+  @SuppressWarnings("java:S3749")
   private final JsonObject postgresConfig;
 
   /*
@@ -109,11 +115,11 @@ public class PostgresClientFactory {
    * race would open a second pool, doubling the connections of that tenant and leaving a pool that
    * closeAll() never sees.
    */
+  @SuppressWarnings("java:S3749")
   private final Map<String, Pool> poolCache = new ConcurrentHashMap<>();
 
+  @SuppressWarnings("java:S3749")
   private final Map<String, DataSource> dataSourceCache = new ConcurrentHashMap<>();
-
-  private String serverPemPath;
 
   /*
    * Defaults are assigned here as well so that a factory created outside of Spring, as tests do,
@@ -374,7 +380,7 @@ public class PostgresClientFactory {
 
   /**
    * Require TLS and verify the server against the configured certificate, the same way the JDBC data
-   * source does with {@code sslrootcert}.
+   * source does with {@link PemSslSocketFactory}.
    *
    * @param connectOptions options to configure
    * @param serverPem      certificate in PEM format, one or more concatenated certificates
@@ -436,41 +442,12 @@ public class PostgresClientFactory {
     LOG.info("Using certificate: {}", StringUtils.isNotBlank(certificate) ? "yes" : "no");
     if (StringUtils.isNotBlank(certificate)) {
       dataSource.setSslMode(VERIFY_FULL_VALUE);
-      dataSource.setSslRootCert(getServerPemPath(certificate));
+      dataSource.setSslfactory(PemSslSocketFactory.class.getName());
+      dataSource.setSslFactoryArg(certificate);
     } else {
       dataSource.setSslMode(DISABLE_VALUE);
     }
     return dataSource;
-  }
-
-  /**
-   * Write the {@code DB_SERVER_PEM} certificate to a file so that the JDBC driver can trust it via
-   * {@code sslrootcert}. The reactive pool gets the same certificate as a value, see
-   * {@link #setUpSsl(PgConnectOptions, String)}, but the JDBC driver only accepts a path. Without
-   * this the driver falls back to its default trust store location, {@code ~/.postgresql/root.crt},
-   * which no FOLIO deployment provides, so {@code DB_SERVER_PEM} would configure TLS for the
-   * reactive pool only.
-   *
-   * <p>The configuration of a factory never changes, so the file is written once per factory. The
-   * data sources are created on worker threads, hence the synchronization.
-   *
-   * @param certificate certificate in PEM format, one or more concatenated certificates
-   * @return path of the file holding the certificate
-   */
-  private synchronized String getServerPemPath(String certificate) {
-    if (serverPemPath != null) {
-      return serverPemPath;
-    }
-    try {
-      // createTempFile creates the file with owner-only permissions on POSIX file systems
-      var path = Files.createTempFile("db-server-", ".crt");
-      path.toFile().deleteOnExit();
-      Files.writeString(path, certificate);
-      serverPemPath = path.toString();
-      return serverPemPath;
-    } catch (IOException e) {
-      throw new UncheckedIOException("Failed to store the DB_SERVER_PEM certificate", e);
-    }
   }
 
   /**

@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -23,6 +22,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +40,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       marcRecord = new ParsedRecord()
         .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
     } catch (IOException e) {
-      e.printStackTrace();
+      Assertions.fail(e);
     }
   }
 

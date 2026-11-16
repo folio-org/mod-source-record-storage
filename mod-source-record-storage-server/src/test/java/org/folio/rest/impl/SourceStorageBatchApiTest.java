@@ -28,7 +28,6 @@ import java.util.UUID;
 import org.apache.http.HttpStatus;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -46,6 +45,7 @@ import org.folio.rest.jaxrs.model.RecordsBatchResponse;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.hamcrest.Matcher;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -78,7 +78,7 @@ public class SourceStorageBatchApiTest extends AbstractRestVerticleTest {
       marcRecordWithHrId = new ParsedRecord()
         .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", HRID))).encode());
     } catch (IOException e) {
-      e.printStackTrace();
+      Assertions.fail(e);
     }
   }
 

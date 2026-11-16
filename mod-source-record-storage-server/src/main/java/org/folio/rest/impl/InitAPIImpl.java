@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Value;
 import static io.vertx.core.ThreadingModel.EVENT_LOOP;
 import static io.vertx.core.ThreadingModel.WORKER;
 
+@SuppressWarnings("java:S6813")
 public class InitAPIImpl implements InitAPI {
 
   private static final Logger LOGGER = LogManager.getLogger();

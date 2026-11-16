@@ -28,6 +28,7 @@ import org.folio.services.SnapshotService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
+@SuppressWarnings("java:S6813")
 public class ModTenantAPI extends TenantAPI {
 
   private static final Logger LOGGER = LogManager.getLogger();

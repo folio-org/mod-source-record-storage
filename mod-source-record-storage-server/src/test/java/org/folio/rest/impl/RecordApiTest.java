@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -38,6 +37,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.RecordCollection;
 import org.folio.rest.jaxrs.model.Snapshot;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -84,7 +84,7 @@ class RecordApiTest extends AbstractRestVerticleTest {
             .put("ind2", "f")))
             .add(new JsonObject().put("001", FIRST_HRID))).encode());
     } catch (IOException e) {
-      e.printStackTrace();
+      Assertions.fail(e);
     }
   }
 

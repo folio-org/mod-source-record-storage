@@ -159,16 +159,16 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
             return Future.succeededFuture(new MatchResult(records, subMatchesData.getLast().profileWrapper()));
           }
           LOG.debug("retrieveMarcRecords:: Combined match found nothing, fallback to the current match profile only");
-          return retrieveMarcRecords(matchFields.getFirst(), matchedRecordIds, tenant)
+          return retrieveMarcRecordsByMatchField(matchFields.getFirst(), matchedRecordIds, tenant)
             .map(fallback -> new MatchResult(fallback, null));
         });
     }
-    return retrieveMarcRecords(matchFields.getFirst(), matchedRecordIds, tenant)
+    return retrieveMarcRecordsByMatchField(matchFields.getFirst(), matchedRecordIds, tenant)
       .map(records -> new MatchResult(records, null));
   }
 
-  private Future<List<Record>> retrieveMarcRecords(MatchField matchField, List<String> matchedRecordIds,
-                                                   String tenant) {
+  private Future<List<Record>> retrieveMarcRecordsByMatchField(MatchField matchField, List<String> matchedRecordIds,
+                                                               String tenant) {
     if (matchField.isMatchedByRecordColumn()) {
       LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}",
         matchField.getTag(), tenant);

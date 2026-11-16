@@ -323,6 +323,7 @@ public class RecordDaoImpl implements RecordDao {
           fieldsCondition = fieldsCondition.and(getDefaultMatchFieldCondition(matchField));
           continue;
         }
+
         // each criterion gets its own alias, so criteria on the same tag are matched against different index rows
         String alias = "mi_" + aliasIndex++;
         Table<org.jooq.Record> partitionTable =

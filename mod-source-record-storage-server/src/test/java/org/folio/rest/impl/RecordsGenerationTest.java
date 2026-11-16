@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.UUID;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.ExternalIdsHolder;
 import org.folio.rest.jaxrs.model.ParsedRecord;
@@ -23,6 +22,7 @@ import org.folio.rest.jaxrs.model.RawRecord;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,7 +40,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       marcRecord = new ParsedRecord()
         .withContent(TestUtil.readFileFromPath(PARSED_MARC_RECORD_CONTENT_SAMPLE_PATH));
     } catch (IOException e) {
-      e.printStackTrace();
+      Assertions.fail(e);
     }
   }
 
@@ -60,7 +60,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
   @BeforeEach
   void setUp(VertxTestContext testContext) {
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         testContext.failNow(delete.cause());
       } else {
@@ -81,7 +81,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_CREATED);
 
-      Record record = new Record()
+      Record sourceRecord = new Record()
         .withId(matchedId)
         .withSnapshotId(snapshots.get(i).getJobExecutionId())
         .withRecordType(Record.RecordType.MARC_BIB)
@@ -94,7 +94,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
       Record created = RestAssured.given()
         .spec(spec)
-        .body(record)
+        .body(sourceRecord)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .body().as(Record.class);
@@ -130,7 +130,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED);
 
-    Record record = new Record()
+    Record sourceRecord = new Record()
       .withId(matchedId)
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
@@ -144,7 +144,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
     Record created = RestAssured.given()
       .spec(spec)
-      .body(record)
+      .body(sourceRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .body().as(Record.class);
@@ -255,7 +255,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED);
 
-    Record record_1 = new Record()
+    Record sourceRecord = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
@@ -267,13 +267,13 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(record_1)
+      .body(sourceRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED);
 
-    Record record_2 = new Record()
+    Record sourceRecord2 = new Record()
       .withSnapshotId(snapshot_2.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
@@ -285,7 +285,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(record_2)
+      .body(sourceRecord2)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()
@@ -302,7 +302,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED);
 
-    Record record_1 = new Record()
+    Record sourceRecord = new Record()
       .withSnapshotId(snapshot_1.getJobExecutionId())
       .withRecordType(Record.RecordType.MARC_BIB)
       .withRawRecord(rawRecord)
@@ -311,7 +311,7 @@ public class RecordsGenerationTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(record_1)
+      .body(sourceRecord)
       .when()
       .post(SOURCE_STORAGE_RECORDS_PATH)
       .then()

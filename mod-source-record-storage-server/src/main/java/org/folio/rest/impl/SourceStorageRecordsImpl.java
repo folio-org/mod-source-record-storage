@@ -32,6 +32,7 @@ import io.vertx.core.Vertx;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+@SuppressWarnings("java:S6813")
 public class SourceStorageRecordsImpl implements SourceStorageRecords {
 
   private static final Logger LOG = LogManager.getLogger();

@@ -30,7 +30,6 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.rest.jaxrs.model.AdditionalInfo;
@@ -43,6 +42,7 @@ import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.Record.RecordType;
 import org.folio.rest.jaxrs.model.Snapshot;
 import org.folio.rest.jaxrs.model.SourceRecord;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -78,7 +78,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
       marcRecordWith001 = new ParsedRecord()
         .withContent(new JsonObject().put("fields", new JsonArray().add(new JsonObject().put("001", FIRST_HRID))).encode());
     } catch (IOException e) {
-      e.printStackTrace();
+      Assertions.fail(e);
     }
   }
 
@@ -184,7 +184,7 @@ public class SourceStorageStreamApiTest extends AbstractRestVerticleTest {
 
   @BeforeEach
   void setUp(VertxTestContext testContext) {
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID)).onComplete(delete -> {
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID)).onComplete(delete -> {
       if (delete.failed()) {
         testContext.failNow(delete.cause());
       } else {

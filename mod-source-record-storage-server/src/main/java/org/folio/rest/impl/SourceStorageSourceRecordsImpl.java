@@ -41,6 +41,7 @@ import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
 
+@SuppressWarnings("java:S6813")
 public class SourceStorageSourceRecordsImpl implements SourceStorageSourceRecords {
 
   private static final Logger LOG = LogManager.getLogger();

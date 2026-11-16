@@ -28,8 +28,6 @@ import org.folio.rest.jaxrs.model.Qualifier;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.services.caches.ConsortiumConfigurationCache;
-import org.folio.services.util.RestUtil;
 import org.folio.services.util.TypeConnection;
 import org.jooq.Condition;
 
@@ -40,7 +38,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
@@ -71,17 +68,14 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private final RecordDao recordDao;
   private final DataImportEventTypes matchedEventType;
   private final DataImportEventTypes notMatchedEventType;
-  private final ConsortiumConfigurationCache consortiumConfigurationCache;
 
   protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao,
                                           DataImportEventTypes matchedEventType,
-                                          DataImportEventTypes notMatchedEventType,
-                                          ConsortiumConfigurationCache consortiumConfigurationCache) {
+                                          DataImportEventTypes notMatchedEventType) {
     this.typeConnection = typeConnection;
     this.recordDao = recordDao;
     this.matchedEventType = matchedEventType;
     this.notMatchedEventType = notMatchedEventType;
-    this.consortiumConfigurationCache = consortiumConfigurationCache;
   }
 
   @Override
@@ -102,13 +96,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
         List<SubMatchProfileData> subMatchesData = retrieveSubMatchProfilesData(payload);
         List<MatchField> matchFields = prepareMatchFields(incomingRecord, matchDetail, subMatchesData);
         return retrieveMarcRecords(matchFields, subMatchesData, payload, payload.getTenant())
-          .compose(localResult -> {
-            if (isConsortiumAvailable()) {
-              return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchFields, localResult.records())
-                .map(records -> new MatchResult(records, localResult.lastSubMatchNode()));
-            }
-            return Future.succeededFuture(localResult);
-          })
           .compose(result -> processSucceededResult(applyResultNode(result, payload), payload))
           .recover(throwable -> Future.failedFuture(mapToMatchException(throwable)))
           .toCompletionStage().toCompletableFuture();
@@ -119,27 +106,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       LOG.warn("handle:: Error while processing event for MARC record matching", e);
       return CompletableFuture.failedFuture(e);
     }
-  }
-
-  private Future<List<Record>> matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(DataImportEventPayload payload,
-                                                                                           List<MatchField> matchFields,
-                                                                                           List<Record> recordList) {
-    return consortiumConfigurationCache.get(RestUtil.retrieveOkapiConnectionParams(payload))
-      .compose(consortiumConfigurationOptional -> {
-        if (consortiumConfigurationOptional.isPresent() && !consortiumConfigurationOptional.get().getCentralTenantId().equals(payload.getTenant())) {
-          LOG.debug("matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords:: Matching on centralTenant with id: {}",
-            consortiumConfigurationOptional.get().getCentralTenantId());
-          return retrieveMarcRecords(matchFields, List.of(), payload, consortiumConfigurationOptional.get().getCentralTenantId())
-            .map(MatchResult::records)
-            .onSuccess(result -> {
-              if (!result.isEmpty()) {
-                payload.getContext().put(CENTRAL_TENANT_ID, consortiumConfigurationOptional.get().getCentralTenantId());
-              }
-            })
-            .map(centralTenantResult -> Stream.concat(recordList.stream(), centralTenantResult.stream()).toList());
-        }
-        return Future.succeededFuture(recordList);
-      });
   }
 
   private static Throwable mapToMatchException(Throwable throwable) {
@@ -180,8 +146,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return recordDao.getMatchedRecords(
       matchField, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
   }
-
-  abstract boolean isConsortiumAvailable();
 
   private List<SubMatchProfileData> retrieveSubMatchProfilesData(DataImportEventPayload payload) {
     List<SubMatchProfileData> subMatches = new ArrayList<>();

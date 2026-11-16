@@ -79,7 +79,7 @@ public class MarcHoldingsMatchEventHandlerTest extends AbstractLBServiceTest {
   @BeforeEach
   void setUp(VertxTestContext testContext) {
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    handler = new MarcHoldingsMatchEventHandler(recordDao, null);
+    handler = new MarcHoldingsMatchEventHandler(recordDao);
 
     Snapshot existingRecordSnapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

@@ -94,7 +94,7 @@ class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
   @BeforeEach
   void setUp(VertxTestContext testContext) {
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
-    handler = new MarcAuthorityMatchEventHandler(recordDao, null);
+    handler = new MarcAuthorityMatchEventHandler(recordDao);
 
     existingRecordSnapshot = new Snapshot()
       .withJobExecutionId(UUID.randomUUID().toString())

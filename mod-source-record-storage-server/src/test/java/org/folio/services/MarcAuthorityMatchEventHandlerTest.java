@@ -371,43 +371,10 @@ class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
   }
 
   @Test
-  void shouldMatchMultipleRecordsIfMatchProfileIsNextInProfileSnapshot(VertxTestContext testContext) {
-    HashMap<String, String> payloadContext = new HashMap<>();
-    payloadContext.put(EntityType.MARC_AUTHORITY.value(), Json.encode(incomingRecord2));
+  void shouldCombineMatchAndSubmatchProfilesCriteriaAndFindRecord(VertxTestContext testContext) {
     String differsBy10OContent = PARSED_CONTENT2.replace("Eimermacher, Karl", "Other, Name");
-
     ProfileSnapshotWrapper subMatchProfile = matchProfileWrapper("100", "a");
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withContext(payloadContext)
-      .withTenant(TENANT_ID)
-      .withCurrentNode(new ProfileSnapshotWrapper()
-        .withId(UUID.randomUUID().toString())
-        .withContentType(MATCH_PROFILE)
-        .withReactTo(ReactToType.MATCH)
-        .withContent(new MatchProfile()
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withMatchDetails(singletonList(new MatchDetail()
-            .withMatchCriterion(EXACTLY_MATCHES)
-            .withExistingRecordType(EntityType.MARC_AUTHORITY)
-            .withExistingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("010"),
-                new Field().withLabel("indicator1").withValue(""),
-                new Field().withLabel("indicator2").withValue(""),
-                new Field().withLabel("recordSubfield").withValue("a")
-              )))
-            .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-            .withIncomingMatchExpression(new MatchExpression()
-              .withDataValueType(VALUE_FROM_RECORD)
-              .withFields(Lists.newArrayList(
-                new Field().withLabel("field").withValue("010"),
-                new Field().withLabel("indicator1").withValue(""),
-                new Field().withLabel("indicator2").withValue(""),
-                new Field().withLabel("recordSubfield").withValue("a")
-              )))
-          ))).withChildSnapshotWrappers(List.of(subMatchProfile)));
+    DataImportEventPayload eventPayload = payloadWithSubmatchProfile("010", "a", incomingRecord2, subMatchProfile);
 
     String existingRecord3Id = UUID.randomUUID().toString();
     Record existingRecord3 = new Record()
@@ -426,7 +393,7 @@ class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
     var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
     Future<DataImportEventPayload> future = recordDao.saveRecord(existingRecord2, okapiHeaders)
       .compose(r -> recordDao.saveRecord(existingRecord3, okapiHeaders))
-      .compose(r -> Future.fromCompletionStage(handler.handle(dataImportEventPayload)));
+      .compose(r -> Future.fromCompletionStage(handler.handle(eventPayload)));
 
     future.onComplete(testContext.succeeding(updatedEventPayload -> {
       assertEquals(1, updatedEventPayload.getEventsChain().size());
@@ -634,27 +601,6 @@ class MarcAuthorityMatchEventHandlerTest extends AbstractLBServiceTest {
             assertEquals(FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE, throwable.getMessage());
             testContext.completeNow();
           })))));
-  }
-
-  @Test
-  void shouldCombineMatchAndSubmatchCriteriaAndSetSubmatchAsCurrentNode(VertxTestContext testContext) {
-    Record sameBy010Only =
-      buildExistingMarcAuthority(PARSED_CONTENT2.replace("Eimermacher, Karl", "Other, Name"), "1000001");
-    ProfileSnapshotWrapper submatch = matchProfileWrapper("100", "a");
-    DataImportEventPayload payload = payloadWithSubmatchProfile("010", "a", incomingRecord2, submatch);
-
-    var okapiHeaders = Map.of(XOkapiHeaders.TENANT, TENANT_ID);
-    recordDao.saveRecord(existingRecord2, okapiHeaders)
-      .compose(r -> recordDao.saveRecord(sameBy010Only, okapiHeaders))
-      .compose(r -> Future.fromCompletionStage(handler.handle(payload)))
-      .onComplete(testContext.succeeding(resultPayload -> {
-        assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_MATCHED.value(), resultPayload.getEventType());
-        Record matchedRecord = Json.decodeValue(resultPayload.getContext().get(MATCHED_MARC_KEY), Record.class);
-        assertEquals(existingRecord2.getId(), matchedRecord.getId());
-        assertFalse(resultPayload.getContext().containsKey(MULTI_MATCH_IDS));
-        assertEquals(submatch.getId(), resultPayload.getCurrentNode().getId());
-        testContext.completeNow();
-      }));
   }
 
   @Test

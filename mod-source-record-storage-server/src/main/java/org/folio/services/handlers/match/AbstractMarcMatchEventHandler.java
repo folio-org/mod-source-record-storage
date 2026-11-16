@@ -73,9 +73,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private final DataImportEventTypes notMatchedEventType;
   private final ConsortiumConfigurationCache consortiumConfigurationCache;
 
-  @org.springframework.beans.factory.annotation.Value("${srs.records-matching.fetch.records.limit:1000}")
-  private int fetchRecordsLimit = 1000;
-
   protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao,
                                           DataImportEventTypes matchedEventType,
                                           DataImportEventTypes notMatchedEventType,
@@ -156,7 +153,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     if (matchFields.size() > 1) {
       LOG.debug("retrieveMarcRecords:: Process combined match of {} fields, tenant {}", matchFields.size(), tenant);
       return recordDao.getMatchedRecords(matchFields, matchedRecordIds, typeConnection,
-          isNonNullExternalIdRequired(), 0, fetchRecordsLimit, tenant)
+          isNonNullExternalIdRequired(), 0, 2, tenant)
         .compose(records -> {
           if (!records.isEmpty()) {
             return Future.succeededFuture(new MatchResult(records, subMatchesData.getLast().profileWrapper()));
@@ -181,7 +178,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}",
       matchField.getTag(), tenant);
     return recordDao.getMatchedRecords(
-      matchField, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, fetchRecordsLimit, tenant);
+      matchField, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
   }
 
   abstract boolean isConsortiumAvailable();
@@ -271,7 +268,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       condition = condition.and(filterRecordByExternalHrid(valueAsString));
     }
     return recordDao.getRecords(
-      condition, typeConnection.getDbType(), new ArrayList<>(), 0, fetchRecordsLimit, tenantId);
+      condition, typeConnection.getDbType(), new ArrayList<>(), 0, 2, tenantId);
   }
 
   private String getStringValue(Value<?> value) {

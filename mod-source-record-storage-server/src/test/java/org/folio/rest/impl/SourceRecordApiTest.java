@@ -35,7 +35,6 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.IdType;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
@@ -297,8 +296,8 @@ public class SourceRecordApiTest extends AbstractRestVerticleTest {
           .encode()
         )));
 
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
-      .compose(v -> SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, CENTRAL_TENANT_ID)))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
+      .compose(v -> SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID)))
       .onComplete(testContext.succeedingThenComplete());
   }
 

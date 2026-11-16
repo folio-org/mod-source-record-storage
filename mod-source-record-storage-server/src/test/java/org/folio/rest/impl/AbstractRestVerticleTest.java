@@ -27,6 +27,7 @@ import org.apache.http.HttpStatus;
 import org.folio.SharedPostgresContainer;
 import org.folio.TestUtil;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.TenantClient;
@@ -37,7 +38,6 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.ModuleName;
-import org.folio.rest.tools.utils.NetworkUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,6 +73,9 @@ public abstract class AbstractRestVerticleTest {
   private static final String MAX_POOL_SIZE = "50";
 
   static Vertx vertx;
+
+  /** The module's own factory bean, so that tests share the pools of the module under test. */
+  protected static PostgresClientFactory postgresClientFactory;
   static RequestSpecification spec;
   static RequestSpecification specWithoutUserId;
 
@@ -91,7 +94,7 @@ public abstract class AbstractRestVerticleTest {
     // Bind the module to a fresh free port for every test class. Surefire reuses one JVM fork for
     // the whole module, and the RestVerticle HTTP server from a previous class is not always
     // released before the next class starts, which caused "Address already in use" (BindException).
-    PORT = NetworkUtils.nextFreePort();
+    PORT = TestUtil.nextFreePort();
     OKAPI_URL = "http://localhost:" + PORT;
 
     VertxOptions options = new VertxOptions();
@@ -121,7 +124,8 @@ public abstract class AbstractRestVerticleTest {
         String postgresConfigPath = System.getProperty(
           "org.folio.source.storage.test.config",
           "/postgres-conf-local.json");
-        PostgresClientFactory.setConfigFilePath(postgresConfigPath);
+        // the module's factory bean takes this path from RMB when no DB_* variables are set
+        PostgresClient.setConfigFilePath(postgresConfigPath);
         break;
       case "embedded":
         JsonObject pgConfig = SharedPostgresContainer.getConnectionConfig();
@@ -150,6 +154,7 @@ public abstract class AbstractRestVerticleTest {
     CompletableFuture<Void> setup = new CompletableFuture<>();
     vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions).onComplete(res -> {
       try {
+        postgresClientFactory = TestUtil.getPostgresClientFactory(vertx.getDelegate());
         TenantAttributes tenantAttributes = new TenantAttributes();
         tenantAttributes.setModuleTo(ModuleName.getModuleName() + "-1.0.0");
         tenantAttributes.setParameters(Collections.singletonList(new Parameter()
@@ -214,7 +219,7 @@ public abstract class AbstractRestVerticleTest {
     // Clear the factory caches so the next class rebuilds its pools, but never stop the shared
     // container/tester - it stays up for the whole JVM fork and is reaped at JVM exit.
     CompletableFuture<Void> close = new CompletableFuture<>();
-    PostgresClientFactory.closeAll()
+    postgresClientFactory.closeAll()
       .onComplete(closed -> currentVertx.close().onComplete(res -> {
         kafkaContainer.stop();
         close.complete(null);
@@ -252,10 +257,10 @@ public abstract class AbstractRestVerticleTest {
   }
 
   protected void postRecords(Record... records) {
-    for (Record record : records) {
+    for (Record sourceRecord : records) {
       RestAssured.given()
         .spec(spec)
-        .body(record)
+        .body(sourceRecord)
         .when()
         .post(SOURCE_STORAGE_RECORDS_PATH)
         .then()

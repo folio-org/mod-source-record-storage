@@ -26,7 +26,6 @@ import java.util.UUID;
 import java.util.stream.IntStream;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
-import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.util.MatchField;
 import org.folio.dao.util.RecordDaoUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
@@ -107,7 +106,7 @@ public class RecordsMatchingApiTest extends AbstractRestVerticleTest {
 
   @AfterEach
   void cleanUp(VertxTestContext testContext) {
-    SnapshotDaoUtil.deleteAll(PostgresClientFactory.getQueryExecutor(vertx, TENANT_ID))
+    SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
       .onSuccess(v -> testContext.completeNow())
       .onFailure(testContext::failNow);
   }

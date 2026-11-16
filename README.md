@@ -182,6 +182,27 @@ To simplify the tracking of schemas changes, the tenant versioning is displayed 
                   /2019-09-06--15-00-create-record-field-table.xml
 ```
 
+### Database connections
+
+The module keeps two connection pools per tenant: a reactive Vert.x pool used by almost all queries,
+and a blocking JDBC (Hikari) data source used by the batch operations that run inside
+`executeBlocking`. Both are configured from the standard FOLIO `DB_*` environment variables:
+
+| Variable | Default | Applies to | Description |
+|---|---|---|---|
+| `DB_MAXPOOLSIZE` | `15` | both pools | maximum number of connections per tenant and pool |
+| `DB_CONNECTIONRELEASEDELAY` | `60000` | both pools | milliseconds after which an idle connection is closed |
+| `DB_MAX_LIFETIME` | `1800000` | reactive pool | milliseconds after which a connection is replaced |
+| `DB_CONNECTION_TIMEOUT` | `30` | reactive pool | **seconds** to wait for a connection from the pool |
+| `DB_TCP_USER_TIMEOUT` | `60000` | reactive pool | milliseconds that transmitted data may stay unacknowledged before the operating system aborts the connection (`TCP_USER_TIMEOUT`); `0` keeps the operating system default, which is about 15.5 minutes on Linux |
+| `DB_SERVER_PEM` | none | both pools | PEM encoded certificate of the database server; when set, both pools require TLS and verify the server against this certificate, otherwise TLS is disabled |
+
+`DB_TCP_USER_TIMEOUT` is what bounds a connection that was broken silently by something on the
+network path, for example NAT or conntrack on a Kubernetes node, a firewall, or a Pgpool VIP
+failover. Without it a query sent on such a connection blocks until the kernel stops retransmitting.
+It does not limit how long a query may run, because the database acknowledges the query before
+executing it.
+
 ### Database redesign
 
 The database has recently been redesigned to use standard relational table design with less usage of JSONB columns and more use of foreign key constraints and default B-tree indexes optimized for single value columns. The rational was to improve performance of data retrieval and data import. A significant change was the addition of `leader_record_status` column on the `records` table that is populated via a trigger on insert and update on the `marc_records` table. This provides ability to query on status of MARC record quickly and also condition appropriate leader record status that indicate the record has been deleted.

@@ -721,7 +721,11 @@ public class RecordServiceTest extends AbstractLBServiceTest {
       .withMetadata(original.getMetadata());
 
     Snapshot snapshot = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
-      .withProcessingStartedDate(new Date())
+    // calculateGeneration counts only records whose snapshot was updated before this snapshot started
+    // processing. The existing snapshot's updated_date is the database current_timestamp (microseconds),
+    // set just before, while new Date() is truncated to milliseconds, so both can fall into the same
+    // millisecond and the record would get generation 0, colliding with the existing one.
+      .withProcessingStartedDate(Date.from(OffsetDateTime.now().plusSeconds(1).toInstant()))
       .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
 
     ParsedRecord parsedRecord = new ParsedRecord().withId(matchedId)
@@ -757,30 +761,36 @@ public class RecordServiceTest extends AbstractLBServiceTest {
         if (snapshotSaved.failed()) {
           testContext.failNow(snapshotSaved.cause());
         }
-        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, okapiHeaders).onComplete(recordToUpdateGenerationSaved -> {
-          verify(recordDomainEventPublisher).publishRecordUpdated(eq(record1Saved.result()), eq(recordToUpdateGenerationSaved.result()), any());
-          assertTrue(recordToUpdateGenerationSaved.succeeded());
-          assertEquals(recordToUpdateGenerationSaved.result().getMatchedId(), matchedId);
-          assertEquals(1, recordToUpdateGenerationSaved.result().getGeneration());
-          recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(get -> {
-            if (get.failed()) {
-              testContext.failNow(get.cause());
+        recordService.updateRecordGeneration(matchedId, recordToUpdateGeneration, okapiHeaders)
+          .onComplete(recordToUpdateGenerationSaved -> {
+            if (recordToUpdateGenerationSaved.failed()) {
+              testContext.failNow(recordToUpdateGenerationSaved.cause());
+              return;
             }
-            assertTrue(get.result().isPresent());
-            assertEquals(1, get.result().get().getGeneration());
-            assertEquals(get.result().get().getMatchedId(), matchedId);
-            assertNotEquals(get.result().get().getId(), matchedId);
-            assertEquals(State.ACTUAL, get.result().get().getState());
-            recordDao.getRecordById(matchedId, TENANT_ID).onComplete(getRecord1 -> {
-              if (getRecord1.failed()) {
+            verify(recordDomainEventPublisher).publishRecordUpdated(eq(record1Saved.result()),
+              eq(recordToUpdateGenerationSaved.result()), any());
+            assertTrue(recordToUpdateGenerationSaved.succeeded());
+            assertEquals(recordToUpdateGenerationSaved.result().getMatchedId(), matchedId);
+            assertEquals(1, recordToUpdateGenerationSaved.result().getGeneration());
+            recordDao.getRecordByMatchedId(matchedId, TENANT_ID).onComplete(get -> {
+              if (get.failed()) {
                 testContext.failNow(get.cause());
               }
-              assertTrue(getRecord1.result().isPresent());
-              assertEquals(State.OLD, getRecord1.result().get().getState());
-              testContext.completeNow();
+              assertTrue(get.result().isPresent());
+              assertEquals(1, get.result().get().getGeneration());
+              assertEquals(get.result().get().getMatchedId(), matchedId);
+              assertNotEquals(get.result().get().getId(), matchedId);
+              assertEquals(State.ACTUAL, get.result().get().getState());
+              recordDao.getRecordById(matchedId, TENANT_ID).onComplete(getRecord1 -> {
+                if (getRecord1.failed()) {
+                  testContext.failNow(get.cause());
+                }
+                assertTrue(getRecord1.result().isPresent());
+                assertEquals(State.OLD, getRecord1.result().get().getState());
+                testContext.completeNow();
+              });
             });
           });
-        });
       });
     });
   }
@@ -991,7 +1001,7 @@ public class RecordServiceTest extends AbstractLBServiceTest {
 
       var matchedId = savedRecord.result().getMatchedId();
       var snapshot = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
-        .withProcessingStartedDate(new Date())
+        .withProcessingStartedDate(Date.from(OffsetDateTime.now().plusSeconds(1).toInstant()))
         .withStatus(Snapshot.Status.PROCESSING_IN_PROGRESS);
 
       var parsedRecord = new ParsedRecord().withId(UUID.randomUUID().toString())

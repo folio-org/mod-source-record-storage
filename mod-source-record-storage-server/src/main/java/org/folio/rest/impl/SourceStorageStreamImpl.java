@@ -52,6 +52,7 @@ import org.folio.services.RecordSearchParameters;
 import org.folio.services.RecordService;
 import org.folio.spring.SpringContextUtil;
 
+@SuppressWarnings("java:S6813")
 public class SourceStorageStreamImpl implements SourceStorageStream {
 
   private static final Logger LOG = LogManager.getLogger();

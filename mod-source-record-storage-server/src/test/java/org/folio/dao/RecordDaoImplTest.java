@@ -134,7 +134,8 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
 
     Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), copyRecordSnapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
-      .compose(v -> recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
+      .compose(v -> recordDao.getMatchedRecords(
+        List.of(matchField), null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
     future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
       assertEquals(2, result.size());
@@ -166,7 +167,7 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
 
     Future<List<Record>> future = SnapshotDaoUtil.save(postgresClientFactory.getQueryExecutor(TENANT_ID), copyRecordSnapshot)
       .compose(savedSnapshot -> recordDao.saveRecord(copyRecord, okapiHeaders))
-      .compose(v -> recordDao.getMatchedRecords(matchField, List.of(marcRecord.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()), TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
+      .compose(v -> recordDao.getMatchedRecords(List.of(matchField), List.of(marcRecord.getId(), UUID.randomUUID().toString(), UUID.randomUUID().toString()), TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID));
 
     future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
       assertEquals(1, result.size());
@@ -266,7 +267,8 @@ public class RecordDaoImplTest extends AbstractLBServiceTest {
   void shouldReturnEmptyListIfValueFieldIsEmpty(VertxTestContext testContext) {
     var matchField = new MatchField("010", "1", "", "a", MissingValue.getInstance());
 
-    var future = recordDao.getMatchedRecords(matchField, null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
+    var future = recordDao.getMatchedRecords(
+      List.of(matchField), null, TypeConnection.MARC_BIB, true, 0, 10, TENANT_ID);
 
     future.onComplete(testContext.succeeding(result -> testContext.verify(() -> {
       assertEquals(0, result.size());

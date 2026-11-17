@@ -83,7 +83,8 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     try {
       HashMap<String, String> context = payload.getContext();
 
-      if (MapUtils.isEmpty(context) || isEmpty(payload.getContext().get(typeConnection.getMarcType().value())) || Objects.isNull(payload.getCurrentNode()) || Objects.isNull(payload.getEventsChain())) {
+      if (MapUtils.isEmpty(context) || isEmpty(payload.getContext().get(typeConnection.getMarcType().value()))
+        || Objects.isNull(payload.getCurrentNode()) || Objects.isNull(payload.getEventsChain())) {
         LOG.warn(PAYLOAD_HAS_NO_DATA_MSG);
         return CompletableFuture.failedFuture(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       }
@@ -144,7 +145,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}",
       matchField.getTag(), tenant);
     return recordDao.getMatchedRecords(
-      matchField, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
+      List.of(matchField), matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
   }
 
   private List<SubMatchProfileData> retrieveSubMatchProfilesData(DataImportEventPayload payload) {

@@ -287,14 +287,6 @@ public class RecordDaoImpl implements RecordDao {
   }
 
   @Override
-  public Future<List<Record>> getMatchedRecords(MatchField matchedField,
-                                                List<String> matchedRecordIds, TypeConnection typeConnection,
-                                                boolean externalIdRequired, int offset, int limit, String tenantId) {
-    return getMatchedRecords(List.of(matchedField), matchedRecordIds, typeConnection, externalIdRequired,
-      offset, limit, tenantId);
-  }
-
-  @Override
   public Future<List<Record>> getMatchedRecords(List<MatchField> matchFields,
                                                 List<String> matchedRecordIds, TypeConnection typeConnection,
                                                 boolean externalIdRequired, int offset, int limit, String tenantId) {

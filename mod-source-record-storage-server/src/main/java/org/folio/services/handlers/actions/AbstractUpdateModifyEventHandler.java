@@ -20,7 +20,6 @@ import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransacti
 import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;

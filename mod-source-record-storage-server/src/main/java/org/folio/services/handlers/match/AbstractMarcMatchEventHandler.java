@@ -60,7 +60,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
   private static final String MATCH_DETAIL_IS_NOT_VALID = "Match detail is not valid: %s";
   private static final String USER_ID_HEADER = "userId";
-  public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
   public static final String MULTI_MATCH_IDS = "MULTI_MATCH_IDS";
   public static final String ID = "id";
 
@@ -96,8 +95,8 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
       if (isValidMatchDetail(matchDetail)) {
         List<SubMatchProfileData> subMatchesData = retrieveSubMatchProfilesData(payload);
         List<MatchField> matchFields = prepareMatchFields(incomingRecord, matchDetail, subMatchesData);
-        return retrieveMarcRecords(matchFields, subMatchesData, payload, payload.getTenant())
-          .compose(result -> processSucceededResult(applyResultNode(result, payload), payload))
+        return retrieveMarcRecords(matchFields, payload, payload.getTenant())
+          .compose(result -> processSucceededResult(applyResultNode(result, subMatchesData, payload), payload))
           .recover(throwable -> Future.failedFuture(mapToMatchException(throwable)))
           .toCompletionStage().toCompletableFuture();
       }
@@ -114,7 +113,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   }
 
   private Future<MatchResult> retrieveMarcRecords(List<MatchField> matchFields,
-                                                  List<SubMatchProfileData> subMatchesData,
                                                   DataImportEventPayload payload, String tenant) {
     List<String> matchedRecordIds = getMatchedRecordIds(payload);
     if (matchFields.size() > 1) {
@@ -123,15 +121,15 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
           isNonNullExternalIdRequired(), 0, 2, tenant)
         .compose(records -> {
           if (!records.isEmpty()) {
-            return Future.succeededFuture(new MatchResult(records, subMatchesData.getLast().profileWrapper()));
+            return Future.succeededFuture(MatchResult.combinedCriteriaResult(records));
           }
           LOG.debug("retrieveMarcRecords:: Combined match found nothing, fallback to the current match profile only");
           return retrieveMarcRecordsByMatchField(matchFields.getFirst(), matchedRecordIds, tenant)
-            .map(fallback -> new MatchResult(fallback, null));
+            .map(MatchResult::singleCriteriaResult);
         });
     }
     return retrieveMarcRecordsByMatchField(matchFields.getFirst(), matchedRecordIds, tenant)
-      .map(records -> new MatchResult(records, null));
+      .map(MatchResult::singleCriteriaResult);
   }
 
   private Future<List<Record>> retrieveMarcRecordsByMatchField(MatchField matchField, List<String> matchedRecordIds,
@@ -288,9 +286,10 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return content instanceof MatchProfile profile ? profile : JsonObject.mapFrom(content).mapTo(MatchProfile.class);
   }
 
-  private List<Record> applyResultNode(MatchResult result, DataImportEventPayload payload) {
-    if (result.lastSubMatchNode() != null) {
-      payload.setCurrentNode(result.lastSubMatchNode());
+  private List<Record> applyResultNode(MatchResult result, List<SubMatchProfileData> subMatchesData,
+                                        DataImportEventPayload payload) {
+    if (result.combinedCriteriaResult()) {
+      payload.setCurrentNode(subMatchesData.getLast().profileWrapper());
     }
     return result.records();
   }
@@ -357,7 +356,15 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     return Collections.emptyList();
   }
 
-  private record MatchResult(List<Record> records, ProfileSnapshotWrapper lastSubMatchNode) {
+  private record MatchResult(List<Record> records, boolean combinedCriteriaResult) {
+
+    private static MatchResult combinedCriteriaResult(List<Record> records) {
+      return new MatchResult(records, true);
+    }
+
+    private static MatchResult singleCriteriaResult(List<Record> records) {
+      return new MatchResult(records, false);
+    }
   }
 
   private record SubMatchProfileData(ProfileSnapshotWrapper profileWrapper, MatchDetail matchDetail) {

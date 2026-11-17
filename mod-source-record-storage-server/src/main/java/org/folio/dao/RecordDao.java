@@ -79,19 +79,18 @@ public interface RecordDao {
   Future<StrippedParsedRecordCollection> getStrippedParsedRecords(List<String> externalIds, IdType idType, RecordType recordType, Boolean includeDeleted, String tenantId);
 
   /**
-   * Searches for {@link Record} by {@link MatchField} with offset and limit
+   * Searches for {@link Record} the given list of the {@link MatchField} criteria with offset and limit.
    *
-   * @param matchField          Marc field that needs to be matched, including its qualifier and comparison part
+   * @param matchFields         Marc fields that need to be matched, including their qualifier and comparison part
    * @param matchedRecordIds    list of records IDs that will be used as additional criteria for filtering records
-   *                            that match the specified {@code MatchField} criteria
    * @param recordType          record type
-   * @param externalIdRequired  specifies whether necessary not to consider records with {@code externalId == null} while searching
+   * @param externalIdRequired  specifies whether records with {@code externalId == null} must be skipped
    * @param offset              starting index in a list of results
-   * @param limit               limit of records for pagination
-   * @param tenantId            tenant id
-   * @return  {@link Future} of {@link RecordCollection}
+   * @param limit               limit of records
+   * @param tenantId            limit of records for pagination
+   * @return {@link Future} of matched records
    */
-  Future<List<Record>> getMatchedRecords(MatchField matchField,
+  Future<List<Record>> getMatchedRecords(List<MatchField> matchFields,
                                          List<String> matchedRecordIds, TypeConnection recordType, boolean externalIdRequired,
                                          int offset, int limit, String tenantId);
 

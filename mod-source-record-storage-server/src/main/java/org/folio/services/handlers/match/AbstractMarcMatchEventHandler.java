@@ -4,10 +4,12 @@ import io.vertx.core.Future;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
 import org.folio.DataImportEventPayload;
 import org.folio.MatchDetail;
 import org.folio.MatchProfile;
@@ -26,8 +28,6 @@ import org.folio.rest.jaxrs.model.Qualifier;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.Record;
 import org.folio.rest.jaxrs.model.RecordCollection;
-import org.folio.services.caches.ConsortiumConfigurationCache;
-import org.folio.services.util.RestUtil;
 import org.folio.services.util.TypeConnection;
 import org.jooq.Condition;
 
@@ -35,10 +35,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static org.apache.commons.lang3.ObjectUtils.isNotEmpty;
@@ -61,7 +60,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
   private static final String MATCH_DETAIL_IS_NOT_VALID = "Match detail is not valid: %s";
   private static final String USER_ID_HEADER = "userId";
-  public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
   public static final String MULTI_MATCH_IDS = "MULTI_MATCH_IDS";
   public static final String ID = "id";
 
@@ -69,15 +67,14 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   private final RecordDao recordDao;
   private final DataImportEventTypes matchedEventType;
   private final DataImportEventTypes notMatchedEventType;
-  private final ConsortiumConfigurationCache consortiumConfigurationCache;
 
-  protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao, DataImportEventTypes matchedEventType,
-                                          DataImportEventTypes notMatchedEventType, ConsortiumConfigurationCache consortiumConfigurationCache) {
+  protected AbstractMarcMatchEventHandler(TypeConnection typeConnection, RecordDao recordDao,
+                                          DataImportEventTypes matchedEventType,
+                                          DataImportEventTypes notMatchedEventType) {
     this.typeConnection = typeConnection;
     this.recordDao = recordDao;
     this.matchedEventType = matchedEventType;
     this.notMatchedEventType = notMatchedEventType;
-    this.consortiumConfigurationCache = consortiumConfigurationCache;
   }
 
   @Override
@@ -85,25 +82,21 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     try {
       HashMap<String, String> context = payload.getContext();
 
-      if (MapUtils.isEmpty(context) || isEmpty(payload.getContext().get(typeConnection.getMarcType().value())) || Objects.isNull(payload.getCurrentNode()) || Objects.isNull(payload.getEventsChain())) {
+      if (MapUtils.isEmpty(context) || isEmpty(payload.getContext().get(typeConnection.getMarcType().value()))
+        || Objects.isNull(payload.getCurrentNode()) || Objects.isNull(payload.getEventsChain())) {
         LOG.warn(PAYLOAD_HAS_NO_DATA_MSG);
         return CompletableFuture.failedFuture(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       }
       payload.getEventsChain().add(payload.getEventType());
       payload.setAdditionalProperty(USER_ID_HEADER, context.get(USER_ID_HEADER));
 
-      String record = context.get(typeConnection.getMarcType().value());
+      String incomingRecord = context.get(typeConnection.getMarcType().value());
       MatchDetail matchDetail = retrieveMatchDetail(payload);
       if (isValidMatchDetail(matchDetail)) {
-        MatchField matchField = prepareMatchField(record, matchDetail);
-        return retrieveMarcRecords(matchField, payload, payload.getTenant())
-          .compose(localMatchedRecords -> {
-            if (isConsortiumAvailable()) {
-              return matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(payload, matchField, localMatchedRecords);
-            }
-            return Future.succeededFuture(localMatchedRecords);
-          })
-          .compose(recordList -> processSucceededResult(recordList, payload))
+        List<SubMatchProfileData> subMatchesData = retrieveSubMatchProfilesData(payload);
+        List<MatchField> matchFields = prepareMatchFields(incomingRecord, matchDetail, subMatchesData);
+        return retrieveMarcRecords(matchFields, payload, payload.getTenant())
+          .compose(result -> processSucceededResult(applyResultNode(result, subMatchesData, payload), payload))
           .recover(throwable -> Future.failedFuture(mapToMatchException(throwable)))
           .toCompletionStage().toCompletableFuture();
       }
@@ -115,52 +108,91 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     }
   }
 
-  private Future<List<Record>> matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords(DataImportEventPayload payload,
-                                                                                           MatchField matchField,
-                                                                                           List<Record> recordList) {
-    return consortiumConfigurationCache.get(RestUtil.retrieveOkapiConnectionParams(payload))
-      .compose(consortiumConfigurationOptional -> {
-        if (consortiumConfigurationOptional.isPresent() && !consortiumConfigurationOptional.get().getCentralTenantId().equals(payload.getTenant())) {
-          LOG.debug("matchCentralTenantIfNeededAndCombineWithLocalMatchedRecords:: Matching on centralTenant with id: {}",
-            consortiumConfigurationOptional.get().getCentralTenantId());
-          return retrieveMarcRecords(matchField, payload, consortiumConfigurationOptional.get().getCentralTenantId())
-            .onSuccess(result -> {
-              if (!result.isEmpty()) {
-                payload.getContext().put(CENTRAL_TENANT_ID, consortiumConfigurationOptional.get().getCentralTenantId());
-              }
-            })
-            .map(centralTenantResult -> Stream.concat(recordList.stream(), centralTenantResult.stream()).toList());
-        }
-        return Future.succeededFuture(recordList);
-      });
-  }
-
   private static Throwable mapToMatchException(Throwable throwable) {
     return throwable instanceof MatchingException ? throwable : new MatchingException(throwable);
   }
 
-  private Future<List<Record>> retrieveMarcRecords(MatchField matchField, DataImportEventPayload payload,
-                                                   String tenant) {
+  private Future<MatchResult> retrieveMarcRecords(List<MatchField> matchFields,
+                                                  DataImportEventPayload payload, String tenant) {
     List<String> matchedRecordIds = getMatchedRecordIds(payload);
+    if (matchFields.size() > 1) {
+      LOG.debug("retrieveMarcRecords:: Process combined match of {} fields, tenant {}", matchFields.size(), tenant);
+      return recordDao.getMatchedRecords(matchFields, matchedRecordIds, typeConnection,
+          isNonNullExternalIdRequired(), 0, 2, tenant)
+        .compose(records -> {
+          if (!records.isEmpty()) {
+            return Future.succeededFuture(MatchResult.combinedCriteriaResult(records));
+          }
+          LOG.debug("retrieveMarcRecords:: Combined match found nothing, fallback to the current match profile only");
+          return retrieveMarcRecordsByMatchField(matchFields.getFirst(), matchedRecordIds, tenant)
+            .map(MatchResult::singleCriteriaResult);
+        });
+    }
+    return retrieveMarcRecordsByMatchField(matchFields.getFirst(), matchedRecordIds, tenant)
+      .map(MatchResult::singleCriteriaResult);
+  }
+
+  private Future<List<Record>> retrieveMarcRecordsByMatchField(MatchField matchField, List<String> matchedRecordIds,
+                                                               String tenant) {
     if (matchField.isMatchedByRecordColumn()) {
-      LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}", matchField.getTag(), tenant);
+      LOG.debug("retrieveMarcRecords:: Process default field matching, matchField {}, tenant {}",
+        matchField.getTag(), tenant);
       return processDefaultMatchField(matchField, matchedRecordIds, tenant).map(RecordCollection::getRecords);
     }
 
-    LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}", matchField.getTag(), tenant);
-    return recordDao.getMatchedRecords(matchField, matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
+    LOG.debug("retrieveMarcRecords:: Process matched field matching, matchField {}, tenant {}",
+      matchField.getTag(), tenant);
+    return recordDao.getMatchedRecords(
+      List.of(matchField), matchedRecordIds, typeConnection, isNonNullExternalIdRequired(), 0, 2, tenant);
   }
 
-  abstract boolean isConsortiumAvailable();
+  private List<SubMatchProfileData> retrieveSubMatchProfilesData(DataImportEventPayload payload) {
+    List<SubMatchProfileData> subMatches = new ArrayList<>();
+    Optional<SubMatchProfileData> nextSubmatchOptional = extractSubMatchProfileData(payload.getCurrentNode());
+    while (nextSubmatchOptional.isPresent()) {
+      subMatches.add(nextSubmatchOptional.get());
+      nextSubmatchOptional = extractSubMatchProfileData(nextSubmatchOptional.get().profileWrapper());
+    }
+    return subMatches;
+  }
+
+  private Optional<SubMatchProfileData> extractSubMatchProfileData(ProfileSnapshotWrapper node) {
+    if (!hasMatchChild(node)) {
+      return Optional.empty();
+    }
+    ProfileSnapshotWrapper child = node.getChildSnapshotWrappers().getFirst();
+    if (child.getContent() == null) {
+      return Optional.empty();
+    }
+    MatchProfile subMatchProfile = toMatchProfile(child.getContent());
+    if (!isEligibleMatchProfile(subMatchProfile) || CollectionUtils.isEmpty(subMatchProfile.getMatchDetails())) {
+      return Optional.empty();
+    }
+    MatchDetail subMatchDetail = subMatchProfile.getMatchDetails().getFirst();
+    if (!isValidMatchDetail(subMatchDetail)) {
+      LOG.debug("extractSubMatchProfileData:: Submatch detail is not valid, the chain is stopped");
+      return Optional.empty();
+    }
+    return Optional.of(new SubMatchProfileData(child, subMatchDetail));
+  }
+
+  private List<MatchField> prepareMatchFields(String incomingRecord, MatchDetail matchDetail,
+                                              List<SubMatchProfileData> subMatchesData) {
+    List<MatchField> matchFields = new ArrayList<>();
+    matchFields.add(prepareMatchField(incomingRecord, matchDetail));
+    subMatchesData.forEach(subMatch -> matchFields.add(prepareMatchField(incomingRecord, subMatch.matchDetail())));
+    LOG.debug("prepareMatchFields:: Prepared {} match field(s) to be processed in one query", matchFields.size());
+    return matchFields;
+  }
 
   /* Creates a {@link MatchField} from the given {@link MatchDetail} */
-  private MatchField prepareMatchField(String record, MatchDetail matchDetail) {
+  private MatchField prepareMatchField(String incomingRecord, MatchDetail matchDetail) {
     List<Field> matchDetailFields = matchDetail.getExistingMatchExpression().getFields();
     String field = matchDetailFields.get(0).getValue();
     String ind1 = matchDetailFields.get(1).getValue();
     String ind2 = matchDetailFields.get(2).getValue();
     String subfield = matchDetailFields.get(3).getValue();
-    Value value = MarcValueReaderUtil.readValueFromRecord(record, matchDetail.getIncomingMatchExpression());
+    Value<?> value = MarcValueReaderUtil.readValueFromRecord(incomingRecord, matchDetail.getIncomingMatchExpression());
     Qualifier qualifier = matchDetail.getExistingMatchExpression().getQualifier();
     return new MatchField(field, ind1, ind2, subfield, value, prepareQualifierMatch(qualifier),
       prepareComparisonPartType(qualifier));
@@ -198,10 +230,11 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
     } else if (matchField.isExternalHrid()) {
       condition = condition.and(filterRecordByExternalHrid(valueAsString));
     }
-    return recordDao.getRecords(condition, typeConnection.getDbType(), new ArrayList<>(), 0, 2, tenantId);
+    return recordDao.getRecords(
+      condition, typeConnection.getDbType(), new ArrayList<>(), 0, 2, tenantId);
   }
 
-  private String getStringValue(Value value) {
+  private String getStringValue(Value<?> value) {
     if (Value.ValueType.STRING.equals(value.getType())) {
       return String.valueOf(value.getValue());
     }
@@ -245,14 +278,20 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
   /* Retrieves a {@link MatchDetail} from the given {@link DataImportEventPayload} */
   private MatchDetail retrieveMatchDetail(DataImportEventPayload dataImportEventPayload) {
-    MatchProfile matchProfile;
-    ProfileSnapshotWrapper matchingProfileWrapper = dataImportEventPayload.getCurrentNode();
-    if (matchingProfileWrapper.getContent() instanceof Map) {
-      matchProfile = new JsonObject((Map) matchingProfileWrapper.getContent()).mapTo(MatchProfile.class);
-    } else {
-      matchProfile = (MatchProfile) matchingProfileWrapper.getContent();
-    }
+    MatchProfile matchProfile = toMatchProfile(dataImportEventPayload.getCurrentNode().getContent());
     return matchProfile.getMatchDetails().getFirst();
+  }
+
+  private MatchProfile toMatchProfile(Object content) {
+    return content instanceof MatchProfile profile ? profile : JsonObject.mapFrom(content).mapTo(MatchProfile.class);
+  }
+
+  private List<Record> applyResultNode(MatchResult result, List<SubMatchProfileData> subMatchesData,
+                                        DataImportEventPayload payload) {
+    if (result.combinedCriteriaResult()) {
+      payload.setCurrentNode(subMatchesData.getLast().profileWrapper());
+    }
+    return result.records();
   }
 
   /**
@@ -283,7 +322,11 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   }
 
   private boolean canProcessMultiMatchResult(DataImportEventPayload eventPayload) {
-    List<ProfileSnapshotWrapper> childProfiles = eventPayload.getCurrentNode().getChildSnapshotWrappers();
+    return hasMatchChild(eventPayload.getCurrentNode());
+  }
+
+  private boolean hasMatchChild(ProfileSnapshotWrapper node) {
+    List<ProfileSnapshotWrapper> childProfiles = node.getChildSnapshotWrappers();
     return isNotEmpty(childProfiles) && ReactToType.MATCH.equals(childProfiles.getFirst().getReactTo())
       && MATCH_PROFILE.equals(childProfiles.getFirst().getContentType());
   }
@@ -312,4 +355,19 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
 
     return Collections.emptyList();
   }
+
+  private record MatchResult(List<Record> records, boolean combinedCriteriaResult) {
+
+    private static MatchResult combinedCriteriaResult(List<Record> records) {
+      return new MatchResult(records, true);
+    }
+
+    private static MatchResult singleCriteriaResult(List<Record> records) {
+      return new MatchResult(records, false);
+    }
+  }
+
+  private record SubMatchProfileData(ProfileSnapshotWrapper profileWrapper, MatchDetail matchDetail) {
+  }
+
 }

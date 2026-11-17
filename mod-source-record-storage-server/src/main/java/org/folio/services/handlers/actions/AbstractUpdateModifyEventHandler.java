@@ -9,7 +9,6 @@ import static org.folio.ActionProfile.Action.UPDATE;
 import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
 import static org.folio.processing.events.services.publisher.KafkaEventPublisher.RECORD_ID_HEADER;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.services.handlers.match.AbstractMarcMatchEventHandler.CENTRAL_TENANT_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
 import static org.folio.services.util.AdditionalFieldsUtil.addControlledFieldToMarcRecord;
 import static org.folio.services.util.AdditionalFieldsUtil.fill035FieldInMarcRecordIfNotExists;
@@ -21,7 +20,6 @@ import static org.folio.services.util.AdditionalFieldsUtil.updateLatestTransacti
 import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
 
 import io.vertx.core.Future;
-import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -57,6 +55,7 @@ import org.folio.services.util.RestUtil;
 public abstract class AbstractUpdateModifyEventHandler implements EventHandler {
 
   private static final Logger LOG = LogManager.getLogger();
+  protected static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
   private static final String USER_ID_HEADER = "userId";
   private static final String PAYLOAD_HAS_NO_DATA_MSG =
     "Failed to handle event payload, cause event payload context does not contain required data to modify MARC record";

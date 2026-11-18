@@ -1,3 +1,6 @@
+## 2026-11-18 v6.0.5
+* [MODSOURCE-1034](https://folio-org.atlassian.net/browse/MODSOURCE-1034) Downgrade Liquibase from 5 to 4
+
 ## 2026-10-20 v6.0.4
 * [MODSOURCE-1019](https://folio-org.atlassian.net/browse/MODSOURCE-1019) Fix MARC-MARC matching when comparison part is used without a qualifier
 

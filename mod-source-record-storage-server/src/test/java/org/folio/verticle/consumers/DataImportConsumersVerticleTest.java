@@ -4,8 +4,12 @@ import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static java.util.Collections.singletonList;
 import static org.folio.ActionProfile.Action.DELETE;
 import static org.folio.ActionProfile.Action.UPDATE;
-import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
-import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.folio.dataimport.util.DataImportContextKeys.AUTHORITY_RECORD_ID;
+import static org.folio.dataimport.util.DataImportContextKeys.JOB_PROFILE_SNAPSHOT_ID;
+import static org.folio.dataimport.util.DataImportContextKeys.matchedEntityKey;
+import static org.folio.dataimport.util.DataImportHeaders.CHUNK_ID;
+import static org.folio.dataimport.util.DataImportHeaders.JOB_EXECUTION_ID;
+import static org.folio.dataimport.util.DataImportHeaders.RECORD_ID;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_MARC_FOR_DELETE_RECEIVED;
@@ -45,6 +49,7 @@ import org.folio.TestUtil;
 import org.folio.dao.RecordDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dao.util.executor.PgPoolQueryExecutor;
+import org.folio.dataimport.util.DataImportContextKeys;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -83,8 +88,6 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
   private static final String PROFILE_SNAPSHOT_URL = "/data-import-profiles/jobProfileSnapshots";
   private static final String MAPPING_METADATA_URL = "/mapping-metadata";
-  private static final String RECORD_ID_HEADER = "recordId";
-  private static final String CHUNK_ID_HEADER = "chunkId";
   private final String snapshotId = UUID.randomUUID().toString();
   private final String recordId = UUID.randomUUID().toString();
   private final String incorrectRecordId = UUID.randomUUID().toString();
@@ -227,8 +230,8 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withToken(TOKEN)
       .withContext(new HashMap<>() {{
         put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
-        put("MATCHED_" + MARC_BIBLIOGRAPHIC.value(), Json.encode(marcRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
-        put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+        put(matchedEntityKey(MARC_BIBLIOGRAPHIC.value()), Json.encode(marcRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
+        put(JOB_PROFILE_SNAPSHOT_ID, profileSnapshotWrapper.getId());
       }});
 
     // when
@@ -252,7 +255,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     assertEquals(Record.State.ACTUAL, actualRecord.getState());
     assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
     validate005Field(expectedDate, actualRecord);
-    assertNotNull(observedRecord.headers().lastHeader(RECORD_ID_HEADER));
+    assertNotNull(observedRecord.headers().lastHeader(RECORD_ID));
   }
 
   @Test
@@ -303,8 +306,8 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
       .withToken(TOKEN)
       .withContext(new HashMap<>() {{
         put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
-        put("MATCHED_" + MARC_BIBLIOGRAPHIC.value(), Json.encode(incorrectRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
-        put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+        put(matchedEntityKey(MARC_BIBLIOGRAPHIC.value()), Json.encode(incorrectRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
+        put(JOB_PROFILE_SNAPSHOT_ID, profileSnapshotWrapper.getId());
       }});
 
     // when
@@ -319,7 +322,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     DataImportEventPayload dataImportEventPayload =
       Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_ERROR.value(), dataImportEventPayload.getEventType());
-    assertTrue(dataImportEventPayload.getContext().get("ERROR")
+    assertTrue(dataImportEventPayload.getContext().get(DataImportContextKeys.ERROR)
       .contains("HRID (001 field) is not found in the incoming record."));
   }
 
@@ -347,7 +350,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put("MATCHED_MARC_AUTHORITY", Json.encode(marcRecord));
-    payloadContext.put(PROFILE_SNAPSHOT_ID_KEY, profileSnapshotWrapper.getId());
+    payloadContext.put(JOB_PROFILE_SNAPSHOT_ID, profileSnapshotWrapper.getId());
     var eventPayload = new DataImportEventPayload()
       .withContext(payloadContext)
       .withOkapiUrl(mockServer.baseUrl())
@@ -364,7 +367,7 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
     Event obtainedEvent = Json.decodeValue(observedRecord.value(), Event.class);
     var resultPayload = Json.decodeValue(obtainedEvent.getEventPayload(), DataImportEventPayload.class);
     assertEquals(DI_SRS_MARC_AUTHORITY_RECORD_DELETED.value(), resultPayload.getEventType());
-    assertEquals(marcRecord.getExternalIdsHolder().getAuthorityId(), resultPayload.getContext().get("AUTHORITY_RECORD_ID"));
+    assertEquals(marcRecord.getExternalIdsHolder().getAuthorityId(), resultPayload.getContext().get(AUTHORITY_RECORD_ID));
     assertEquals(ACTION_PROFILE, resultPayload.getCurrentNode().getContentType());
   }
 
@@ -379,9 +382,9 @@ public class DataImportConsumersVerticleTest extends AbstractLBServiceTest {
         XOkapiHeaders.URL, mockServer.baseUrl(),
         XOkapiHeaders.TENANT, TENANT_ID,
         XOkapiHeaders.TOKEN, TOKEN,
-        JOB_EXECUTION_ID_HEADER, snapshotId,
-        RECORD_ID_HEADER, marcRecord.getId(),
-        CHUNK_ID_HEADER, UUID.randomUUID().toString()
+        JOB_EXECUTION_ID, snapshotId,
+        RECORD_ID, marcRecord.getId(),
+        CHUNK_ID, UUID.randomUUID().toString()
     );
     send(topic, "1", Json.encode(event), headers);
   }

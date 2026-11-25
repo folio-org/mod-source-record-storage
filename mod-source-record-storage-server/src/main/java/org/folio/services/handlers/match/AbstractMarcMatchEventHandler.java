@@ -47,6 +47,9 @@ import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalHrid;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByRecordId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByState;
+import static org.folio.dataimport.util.DataImportContextKeys.MULTI_MATCH_IDS;
+import static org.folio.dataimport.util.DataImportContextKeys.matchedEntityKey;
+import static org.folio.dataimport.util.DataImportHeaders.USER_ID;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
@@ -59,8 +62,6 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
   public static final String FOUND_MULTIPLE_RECORDS_ERROR_MESSAGE = "Found multiple records matching specified conditions";
   private static final String CANNOT_FIND_RECORDS_ERROR_MESSAGE = "Can`t find records matching specified conditions";
   private static final String MATCH_DETAIL_IS_NOT_VALID = "Match detail is not valid: %s";
-  private static final String USER_ID_HEADER = "userId";
-  public static final String MULTI_MATCH_IDS = "MULTI_MATCH_IDS";
   public static final String ID = "id";
 
   private final TypeConnection typeConnection;
@@ -88,7 +89,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
         return CompletableFuture.failedFuture(new EventProcessingException(PAYLOAD_HAS_NO_DATA_MSG));
       }
       payload.getEventsChain().add(payload.getEventType());
-      payload.setAdditionalProperty(USER_ID_HEADER, context.get(USER_ID_HEADER));
+      payload.setAdditionalProperty(USER_ID, context.get(USER_ID));
 
       String incomingRecord = context.get(typeConnection.getMarcType().value());
       MatchDetail matchDetail = retrieveMatchDetail(payload);
@@ -263,7 +264,7 @@ public abstract class AbstractMarcMatchEventHandler implements EventHandler {
    * @return the key under which a matched record is put into event payload context
    */
   protected String getMatchedMarcKey() {
-    return "MATCHED_" + typeConnection.getMarcType();
+    return matchedEntityKey(typeConnection.getMarcType().value());
   }
 
   protected boolean isNonNullExternalIdRequired() {

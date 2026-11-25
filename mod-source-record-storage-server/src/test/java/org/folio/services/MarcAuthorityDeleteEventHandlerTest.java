@@ -2,6 +2,7 @@ package org.folio.services;
 
 import static org.folio.ActionProfile.Action.DELETE;
 import static org.folio.ActionProfile.Action.UPDATE;
+import static org.folio.dataimport.util.DataImportContextKeys.AUTHORITY_RECORD_ID;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.Record.RecordType.MARC_AUTHORITY;
@@ -117,7 +118,7 @@ public class MarcAuthorityDeleteEventHandlerTest extends AbstractLBServiceTest {
           assertNull(eventPayload.getContext().get("MATCHED_MARC_AUTHORITY"));
           var deletedRecordJson = eventPayload.getContext().get("DELETED_MARC_AUTHORITY");
           assertNotNull(deletedRecordJson);
-          assertEquals(record.getExternalIdsHolder().getAuthorityId(), eventPayload.getContext().get("AUTHORITY_RECORD_ID"));
+          assertEquals(record.getExternalIdsHolder().getAuthorityId(), eventPayload.getContext().get(AUTHORITY_RECORD_ID));
           recordService.getRecordById(record.getId(), TENANT_ID)
             .onComplete(optionalDeletedRecordAr -> {
               assertTrue(optionalDeletedRecordAr.succeeded());

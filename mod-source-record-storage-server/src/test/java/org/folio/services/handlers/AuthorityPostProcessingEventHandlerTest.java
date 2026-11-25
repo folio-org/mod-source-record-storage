@@ -34,6 +34,7 @@ import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.TestUtil;
+import org.folio.dataimport.util.DataImportHeaders;
 import org.folio.kafka.KafkaConfig;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
@@ -72,7 +73,7 @@ public class AuthorityPostProcessingEventHandlerTest extends AbstractPostProcess
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(AUTHORITY.value(), authority.encode());
     payloadContext.put(MARC_AUTHORITY.value(), Json.encode(record));
-    payloadContext.put("recordId", record.getId());
+    payloadContext.put(DataImportHeaders.RECORD_ID, record.getId());
 
     DataImportEventPayload dataImportEventPayload =
       createDataImportEventPayload(payloadContext, DI_INVENTORY_AUTHORITY_CREATED_READY_FOR_POST_PROCESSING);

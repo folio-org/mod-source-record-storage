@@ -8,6 +8,7 @@ import io.vertx.kafka.client.producer.KafkaHeader;
 import io.vertx.kafka.client.producer.impl.KafkaHeaderImpl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dataimport.util.DataImportContextKeys;
 import org.folio.kafka.exception.DuplicateEventException;
 import org.folio.dataimport.util.ConnectionParams;
 import org.folio.kafka.KafkaConfig;
@@ -27,6 +28,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import static org.folio.dataimport.util.DataImportHeaders.JOB_EXECUTION_ID;
+import static org.folio.dataimport.util.DataImportHeaders.RECORD_ID;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
 
@@ -42,10 +45,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
 
   private static final Logger LOGGER = LogManager.getLogger();
 
-  public static final String ERROR_KEY = "ERROR";
-  public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
   public static final String CORRELATION_ID_HEADER = "correlationId";
-  public static final String RECORD_ID_HEADER = "recordId";
 
   private final KafkaConfig kafkaConfig;
 
@@ -68,7 +68,7 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
     List<KafkaHeader> kafkaHeaders = consumerRecord.headers();
     ConnectionParams okapiConnectionParams = new ConnectionParams(KafkaHeaderUtils.kafkaHeadersToMap(kafkaHeaders));
 
-    String jobExecutionId = okapiConnectionParams.getHeaders().get(JOB_EXECUTION_ID_HEADER);
+    String jobExecutionId = okapiConnectionParams.getHeaders().get(JOB_EXECUTION_ID);
     String correlationId = okapiConnectionParams.getHeaders().get(CORRELATION_ID_HEADER);
     String tenantId = okapiConnectionParams.getTenantId();
 
@@ -89,11 +89,11 @@ public class ParsedRecordChunksErrorHandler implements ProcessRecordErrorHandler
         .withTenant(tenantId)
         .withContext(new HashMap<>(){{
           put(EntityType.MARC_BIBLIOGRAPHIC.value(), Json.encode(record));
-          put(ERROR_KEY, message);
-          put(RECORD_ID_HEADER, record.getId());
+          put(DataImportContextKeys.ERROR, message);
+          put(RECORD_ID, record.getId());
         }});
 
-      kafkaHeaders.add(new KafkaHeaderImpl(RECORD_ID_HEADER, record.getId()));
+      kafkaHeaders.add(new KafkaHeaderImpl(RECORD_ID, record.getId()));
 
       sendingFutures.add(EventHandlingUtil.sendEventToKafka(tenantId, Json.encode(dataImportEventPayload), DI_ERROR.value(), kafkaHeaders, kafkaConfig, null));
     }

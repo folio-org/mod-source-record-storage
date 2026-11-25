@@ -1,6 +1,6 @@
 package org.folio.consumers;
 
-import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.folio.dataimport.util.DataImportHeaders.JOB_EXECUTION_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -59,7 +59,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
     KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
     when(kafkaRecord.key()).thenReturn(KAFKA_RECORD_KEY);
     when(kafkaRecord.headers()).thenReturn(List.of(
-      KafkaHeader.header(JOB_EXECUTION_ID_HEADER, cancelledJobId)
+      KafkaHeader.header(JOB_EXECUTION_ID, cancelledJobId)
     ));
 
     // When
@@ -87,7 +87,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
     KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
     when(kafkaRecord.key()).thenReturn(KAFKA_RECORD_KEY);
     when(kafkaRecord.headers()).thenReturn(List.of(
-      KafkaHeader.header(JOB_EXECUTION_ID_HEADER, jobId),
+      KafkaHeader.header(JOB_EXECUTION_ID, jobId),
       KafkaHeader.header(XOkapiHeaders.TENANT, TENANT_ID)
     ));
     when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
@@ -123,7 +123,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
     KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
     when(kafkaRecord.key()).thenReturn(KAFKA_RECORD_KEY);
     when(kafkaRecord.headers()).thenReturn(List.of(
-      KafkaHeader.header(JOB_EXECUTION_ID_HEADER, jobId),
+      KafkaHeader.header(JOB_EXECUTION_ID, jobId),
       KafkaHeader.header(XOkapiHeaders.TENANT, TENANT_ID)
     ));
     when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
@@ -152,7 +152,7 @@ public class ParsedRecordChunksKafkaHandlerTest {
     KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
     when(kafkaRecord.key()).thenReturn(KAFKA_RECORD_KEY);
     when(kafkaRecord.headers()).thenReturn(List.of(
-      KafkaHeader.header(JOB_EXECUTION_ID_HEADER, jobId),
+      KafkaHeader.header(JOB_EXECUTION_ID, jobId),
       KafkaHeader.header(XOkapiHeaders.TENANT, TENANT_ID)
     ));
     when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());

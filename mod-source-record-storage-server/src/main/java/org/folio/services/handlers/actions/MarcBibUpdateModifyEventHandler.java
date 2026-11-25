@@ -2,6 +2,8 @@ package org.folio.services.handlers.actions;
 
 import static java.util.Objects.isNull;
 import static org.apache.commons.lang3.StringUtils.isBlank;
+import static org.folio.dataimport.util.DataImportContextKeys.CENTRAL_TENANT_ID;
+import static org.folio.dataimport.util.DataImportContextKeys.matchedEntityKey;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
 import static org.folio.rest.jaxrs.model.EntityType.MARC_BIBLIOGRAPHIC;
@@ -109,7 +111,7 @@ public class MarcBibUpdateModifyEventHandler extends AbstractUpdateModifyEventHa
       return modifyMarcBibRecord(dataImportEventPayload, mappingProfile, mappingParameters, Optional.empty(), Collections.emptyList())
         .map(v -> null);
     }
-    var matchedRecord = extractRecord(dataImportEventPayload, "MATCHED_" + modifiedEntityType().value());
+    var matchedRecord = extractRecord(dataImportEventPayload, matchedEntityKey(modifiedEntityType().value()));
     var isValid = matchedRecord != null && matchedRecord.getExternalIdsHolder() != null;
     if (!isValid) {
       var msg = String.format(UNEXPECTED_PAYLOAD_MSG, dataImportEventPayload.getJobExecutionId());

@@ -1,6 +1,7 @@
 package org.folio.services.handlers;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.folio.dataimport.util.DataImportHeaders.USER_ID;
 import static org.folio.services.util.AdditionalFieldsUtil.TAG_999;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -59,7 +60,6 @@ public abstract class AbstractPostProcessingEventHandlerTest extends AbstractLBS
   protected static final String PARSED_CONTENT_WITHOUT_001_FIELD =
     "{\"leader\":\"01589ccm a2200373   4500\",\"fields\":[{\"245\":{\"ind1\":\"1\",\"ind2\":\"0\",\"subfields\":[{\"a\":\"Neue Ausgabe sämtlicher Werke,\"}]}},{\"999\":{\"ind1\":\"f\",\"ind2\":\"f\",\"subfields\":[{\"s\":\"bc37566c-0053-4e8b-bd39-15935ca36894\"}]}}]}";
   protected static final String MAPPING_METADATA_URL = "/mapping-metadata";
-  private static final String USER_ID = "userId";
   protected static final String RECORD_ID = UUID.randomUUID().toString();
   private static RawRecord rawRecord;
   private static ParsedRecord parsedRecord;

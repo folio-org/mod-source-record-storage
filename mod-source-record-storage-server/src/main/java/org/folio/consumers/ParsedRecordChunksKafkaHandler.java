@@ -33,6 +33,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.folio.dataimport.util.DataImportHeaders.CHUNK_ID;
+import static org.folio.dataimport.util.DataImportHeaders.JOB_EXECUTION_ID;
+import static org.folio.dataimport.util.DataImportHeaders.USER_ID;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_PARSED_RECORDS_CHUNK_SAVED;
 import static org.folio.services.util.EventHandlingUtil.constructModuleName;
 import static org.folio.services.util.EventHandlingUtil.toOkapiHeaders;
@@ -42,9 +45,6 @@ import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String, byte[]> {
   private static final Logger LOGGER = LogManager.getLogger();
 
-  public static final String JOB_EXECUTION_ID_HEADER = "jobExecutionId";
-  private static final String CHUNK_ID_HEADER = "chunkId";
-  private static final String USER_ID_HEADER = "userId";
   private static final AtomicInteger chunkCounter = new AtomicInteger();
   private static final AtomicInteger indexer = new AtomicInteger();
 
@@ -72,9 +72,9 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
   @SuppressWarnings("squid:S2629")
   public Future<String> handle(KafkaConsumerRecord<String, byte[]> targetRecord) {
     LOGGER.trace("handle:: Handling kafka record: {}", targetRecord);
-    String jobExecutionId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, targetRecord.headers());
-    String chunkId = extractHeaderValue(CHUNK_ID_HEADER, targetRecord.headers());
-    String userId = extractHeaderValue(USER_ID_HEADER, targetRecord.headers());
+    String jobExecutionId = extractHeaderValue(JOB_EXECUTION_ID, targetRecord.headers());
+    String chunkId = extractHeaderValue(CHUNK_ID, targetRecord.headers());
+    String userId = extractHeaderValue(USER_ID, targetRecord.headers());
     int chunkNumber = chunkCounter.incrementAndGet();
     String key = targetRecord.key();
 
@@ -138,15 +138,15 @@ public class ParsedRecordChunksKafkaHandler implements AsyncRecordHandler<String
       .<Void>mapEmpty()
       .eventually(producer::close)
       .onSuccess(res -> {
-        String chunkId = extractHeaderValue(CHUNK_ID_HEADER, commonRecord.headers());
+        String chunkId = extractHeaderValue(CHUNK_ID, commonRecord.headers());
         LOGGER.debug("sendBackRecordsBatchResponse:: RecordCollection processing has been completed with response sent... event: '{}', chunkId: '{}', chunkNumber '{}'-'{}'",
           eventType, chunkId, chunkNumber, targetRecord.key());
         writePromise.complete(targetRecord.key());
       })
       .onFailure(err -> {
         Throwable cause = err.getCause();
-        String jobExecutionId = extractHeaderValue(JOB_EXECUTION_ID_HEADER, commonRecord.headers());
-        String chunkId = extractHeaderValue(CHUNK_ID_HEADER, commonRecord.headers());
+        String jobExecutionId = extractHeaderValue(JOB_EXECUTION_ID, commonRecord.headers());
+        String chunkId = extractHeaderValue(CHUNK_ID, commonRecord.headers());
         LOGGER.warn("sendBackRecordsBatchResponse:: {} write error jobExecutionId={} chunkId={}", producerName, jobExecutionId, chunkId, cause);
         writePromise.fail(cause);
       });

@@ -1,6 +1,6 @@
 package org.folio.verticle.consumers;
 
-import static org.folio.consumers.ParsedRecordChunksKafkaHandler.JOB_EXECUTION_ID_HEADER;
+import static org.folio.dataimport.util.DataImportHeaders.JOB_EXECUTION_ID;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_LOG_SRS_MARC_BIB_RECORD_CREATED;
@@ -29,6 +29,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.folio.TestMocks;
 import org.folio.TestUtil;
 import org.folio.dao.util.SnapshotDaoUtil;
+import org.folio.dataimport.util.DataImportContextKeys;
+import org.folio.dataimport.util.DataImportHeaders;
 import org.folio.errorhandlers.ParsedRecordChunksErrorHandler;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.okapi.common.XOkapiHeaders;
@@ -235,7 +237,7 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
         XOkapiHeaders.URL, OKAPI_URL,
         XOkapiHeaders.TENANT, TENANT_ID,
         XOkapiHeaders.TOKEN, TOKEN,
-        JOB_EXECUTION_ID_HEADER, jobExecutionId
+        JOB_EXECUTION_ID, jobExecutionId
         ));
     send(topic, KAFKA_KEY_NAME, value, headers);
   }
@@ -273,8 +275,8 @@ public class ParsedRecordChunkConsumersVerticleTest extends AbstractLBServiceTes
     assertEquals(EXPECTED_ERROR_EVENTS_NUMBER, testedEventsPayLoads.size());
 
     for (DataImportEventPayload eventPayload : testedEventsPayLoads) {
-      String recordId = eventPayload.getContext().get(ParsedRecordChunksErrorHandler.RECORD_ID_HEADER);
-      String error = eventPayload.getContext().get(ParsedRecordChunksErrorHandler.ERROR_KEY);
+      String recordId = eventPayload.getContext().get(DataImportHeaders.RECORD_ID);
+      String error = eventPayload.getContext().get(DataImportContextKeys.ERROR);
       assertEquals(DI_ERROR.value(), eventPayload.getEventType());
       assertEquals(TENANT_ID, eventPayload.getTenant());
       assertTrue(StringUtils.isNotBlank(recordId));

@@ -2,6 +2,8 @@ package org.folio.services.util;
 
 import static java.util.Arrays.stream;
 import static java.util.Objects.nonNull;
+import static org.folio.dataimport.util.DataImportHeaders.CHUNK_ID;
+import static org.folio.dataimport.util.DataImportHeaders.RECORD_ID;
 import static org.folio.services.domainevent.RecordDomainEventPublisher.RECORD_DOMAIN_EVENT_TOPIC;
 import static org.folio.services.util.KafkaUtil.extractHeaderValue;
 
@@ -33,8 +35,6 @@ import org.folio.services.domainevent.SourceRecordDomainEventType;
 public final class EventHandlingUtil {
 
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final String RECORD_ID_HEADER = "recordId";
-  private static final String CHUNK_ID_HEADER = "chunkId";
 
 
   private EventHandlingUtil() { }
@@ -159,7 +159,7 @@ public final class EventHandlingUtil {
 
   private static String extractRecordId(List<KafkaHeader> kafkaHeaders) {
     return kafkaHeaders.stream()
-      .filter(header -> header.key().equals(RECORD_ID_HEADER))
+      .filter(header -> header.key().equals(RECORD_ID))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);
@@ -167,7 +167,7 @@ public final class EventHandlingUtil {
 
   private static String extractChunkId(List<KafkaHeader> kafkaHeaders) {
     return kafkaHeaders.stream()
-      .filter(header -> header.key().equals(CHUNK_ID_HEADER))
+      .filter(header -> header.key().equals(CHUNK_ID))
       .findFirst()
       .map(header -> header.value().toString())
       .orElse(null);

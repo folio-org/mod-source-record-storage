@@ -11,6 +11,7 @@ import static java.util.Collections.singletonList;
 import static org.apache.commons.lang3.RandomUtils.nextInt;
 import static org.folio.ActionProfile.Action.MODIFY;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
+import static org.folio.dataimport.util.DataImportContextKeys.CENTRAL_TENANT_ID;
 import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_UPDATED;
@@ -70,6 +71,7 @@ import org.folio.dao.SnapshotDao;
 import org.folio.dao.SnapshotDaoImpl;
 import org.folio.dao.util.SnapshotDaoUtil;
 import org.folio.dao.util.executor.PgPoolQueryExecutor;
+import org.folio.dataimport.util.DataImportHeaders;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
 import org.folio.rest.client.TenantClient;
@@ -110,33 +112,30 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     "{\"leader\":\"01314nam  22003851a 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"856\":{\"subfields\":[{\"u\":\"example.com\"}],\"ind1\":\" \",\"ind2\":\" \"}}]}";
   private static final String MAPPING_METADATA_URL = "/mapping-metadata";
   private static final String MATCHED_MARC_BIB_KEY = "MATCHED_MARC_BIBLIOGRAPHIC";
-  private static final String CENTRAL_TENANT_ID_KEY = "CENTRAL_TENANT_ID";
-  private static final String USER_ID_HEADER = "userId";
   private static final String INSTANCE_LINKS_URL = "/links/instances";
   private static final UrlPathPattern URL_PATH_PATTERN =
     new UrlPathPattern(new RegexPattern(INSTANCE_LINKS_URL + "/.*"), true);
   private static final String LINKING_RULES_URL = "/linking-rules/instance-authority";
-  private static final String CENTRAL_TENANT_ID = "centralTenantId";
-  private static final String USER_HAS_NO_PERMISSION_MSG = "User does not have permission to update record/instance on central tenant";
+  private static final String CENTRAL_TENANT_VALUE = "centralTenantId";
+  private static final String USER_HAS_NO_PERMISSION_MSG =
+    "User does not have permission to update record/instance on central tenant";
   private static final String CENTRAL_RECORD_UPDATE_PERMISSION = "consortia.data-import.central-record-update.execute";
   private static final String SECOND_PARSED_CONTENT =
     "{\"leader\":\"02326cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
-      "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
+    "{\"100\":{\"ind1\":\"1\",\"ind2\":\" \",\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}]}}]}";
   private static final String INSTANCE_ID = UUID.randomUUID().toString();
   private static final ObjectMapper mapper = new ObjectMapper();
   private static final String RECORD_ID = "eae222e8-70fd-4422-852c-60d22bae36b8";
   private static final String USER_ID = UUID.randomUUID().toString();
   private static final int CACHE_EXPIRATION_TIME = 3600;
   private static String rawRecordContent;
-  private RawRecord rawRecord;
-  private ParsedRecord parsedRecord;
-
   @RegisterExtension
   WireMockExtension mockServer = WireMockExtension.newInstance()
     .configureStaticDsl(true)
     .options(WireMockConfiguration.wireMockConfig().dynamicPort().notifier(new Slf4jNotifier(true)))
     .build();
-
+  private RawRecord rawRecord;
+  private ParsedRecord parsedRecord;
   @Mock
   private RecordDomainEventPublisher recordDomainEventPublisher;
   private RecordDao recordDao;
@@ -198,8 +197,26 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     .withMappingDetails(new MappingDetail()
       .withMarcMappingOption(UPDATE));
 
+  public static String getParsedContentWithoutLeaderAndDate(String parsedContent) {
+    JsonObject parsedContentAsJson = new JsonObject(parsedContent);
+    parsedContentAsJson.remove("leader");
+    removeFieldFromRecord(parsedContentAsJson, TAG_005);
+    removeFieldFromRecord(parsedContentAsJson, TAG_999);
+
+    return parsedContentAsJson.encode();
+  }
+
+  public static String getParsedContentWithoutDate(String parsedContent) {
+    JsonObject parsedContentAsJson = new JsonObject(parsedContent);
+    removeFieldFromRecord(parsedContentAsJson, TAG_005);
+    removeFieldFromRecord(parsedContentAsJson, TAG_999);
+
+    return parsedContentAsJson.encode();
+  }
+
   @BeforeAll
-  static void setUpBeforeClass() throws IOException, InterruptedException, java.util.concurrent.ExecutionException, TimeoutException {
+  static void setUpBeforeClass()
+    throws IOException, InterruptedException, java.util.concurrent.ExecutionException, TimeoutException {
     // Cache only the raw record content (read from disk once). The RawRecord/ParsedRecord objects
     // themselves are recreated per test in setUp(), because some tests mutate their parsed content
     // in place and a single shared static instance would leak those edits across tests.
@@ -208,7 +225,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     // Provision the central tenant schema so DB operations in tests can use it.
     java.util.concurrent.CompletableFuture<Void> centralTenantSetup = new java.util.concurrent.CompletableFuture<>();
-    TenantClient tenantClient = new TenantClient(OKAPI_URL, CENTRAL_TENANT_ID, TOKEN);
+    TenantClient tenantClient = new TenantClient(OKAPI_URL, CENTRAL_TENANT_VALUE, TOKEN);
     try {
       tenantClient.postTenant(new TenantAttributes().withModuleTo(getFullModuleName()), res2 -> {
         if (res2.result().statusCode() == 204) {
@@ -253,12 +270,14 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     recordDao = new RecordDaoImpl(postgresClientFactory, recordDomainEventPublisher);
     snapshotDao = new SnapshotDaoImpl(postgresClientFactory);
-    ConsortiumConfigurationCache consortiumConfigCache = new ConsortiumConfigurationCache(injectedVertx, CACHE_EXPIRATION_TIME);
+    ConsortiumConfigurationCache consortiumConfigCache =
+      new ConsortiumConfigurationCache(injectedVertx, CACHE_EXPIRATION_TIME);
     recordService = new RecordServiceImpl(recordDao, consortiumConfigCache);
     snapshotService = new SnapshotServiceImpl(snapshotDao);
     InstanceLinkClient instanceLinkClient = new InstanceLinkClient();
     LinkingRulesCache linkingRulesCache = new LinkingRulesCache(instanceLinkClient, vertx, CACHE_EXPIRATION_TIME);
-    MappingParametersSnapshotCache mappingParametersCache = new MappingParametersSnapshotCache(injectedVertx, CACHE_EXPIRATION_TIME);
+    MappingParametersSnapshotCache mappingParametersCache =
+      new MappingParametersSnapshotCache(injectedVertx, CACHE_EXPIRATION_TIME);
     modifyRecordEventHandler = new MarcBibUpdateModifyEventHandler(recordService, snapshotService,
       mappingParametersCache, instanceLinkClient, linkingRulesCache);
 
@@ -284,7 +303,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00001"))
+      .withExternalIdsHolder(
+        new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00001"))
       .withMetadata(new Metadata());
 
     Record record2 = new Record()
@@ -295,11 +315,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withRecordType(MARC_BIB)
       .withRawRecord(rawRecord)
       .withParsedRecord(parsedRecord)
-      .withExternalIdsHolder(new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00002"))
+      .withExternalIdsHolder(
+        new ExternalIdsHolder().withInstanceId(UUID.randomUUID().toString()).withInstanceHrid("hrid00002"))
       .withMetadata(new Metadata());
 
     PgPoolQueryExecutor localTenantQueryExecutor = postgresClientFactory.getQueryExecutor(TENANT_ID);
-    PgPoolQueryExecutor centralTenantQueryExecutor = postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID);
+    PgPoolQueryExecutor centralTenantQueryExecutor = postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_VALUE);
 
     // Remove any data left over from a previous test before seeding this one. Some tests trigger
     // concurrent event handlers whose writes can settle after their @Test finished, so relying only
@@ -311,7 +332,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .compose(v -> recordService.saveRecord(marcRecord, Map.of(XOkapiHeaders.TENANT, TENANT_ID)))
       .compose(v -> SnapshotDaoUtil.save(localTenantQueryExecutor, snapshotForRecordUpdate))
       .compose(v -> SnapshotDaoUtil.save(centralTenantQueryExecutor, snapshot2))
-      .compose(v -> recordService.saveRecord(record2, Map.of(XOkapiHeaders.TENANT, CENTRAL_TENANT_ID)))
+      .compose(v -> recordService.saveRecord(record2, Map.of(XOkapiHeaders.TENANT, CENTRAL_TENANT_VALUE)))
       .onComplete(testContext.succeedingThenComplete());
   }
 
@@ -319,12 +340,13 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   void tearDown(VertxTestContext testContext) {
     wireMockServer.resetRequests();
     SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(TENANT_ID))
-      .compose(v -> SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_ID)))
+      .compose(v -> SnapshotDaoUtil.deleteAll(postgresClientFactory.getQueryExecutor(CENTRAL_TENANT_VALUE)))
       .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
-  void shouldUpdateMarcRecordOnCentralTenantIfPayloadHasCentralTenantIdAndPermissionForCentralRecordUpdate(VertxTestContext testContext) {
+  void shouldUpdateMarcRecordOnCentralTenantIfPayloadHasCentralTenantIdAndPermissionForCentralRecordUpdate(
+    VertxTestContext testContext) {
     // given
     String expectedDate = get005FieldExpectedDate();
     String incomingParsedContent =
@@ -339,8 +361,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     marcRecord.getParsedRecord().setContent(Json.encode(marcRecord.getParsedRecord().getContent()));
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
-    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(marcRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
-    payloadContext.put(CENTRAL_TENANT_ID_KEY, CENTRAL_TENANT_ID);
+    payloadContext.put(MATCHED_MARC_BIB_KEY,
+      Json.encode(marcRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
+    payloadContext.put(CENTRAL_TENANT_ID, CENTRAL_TENANT_VALUE);
     payloadContext.put(PERMISSIONS, JsonArray.of(CENTRAL_RECORD_UPDATE_PERMISSION).encode());
 
     mappingProfile.getMappingDetails().withMarcMappingOption(UPDATE);
@@ -359,39 +382,40 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
-      .withAdditionalProperty(USER_ID_HEADER, USER_ID);
+      .withAdditionalProperty(DataImportHeaders.USER_ID, USER_ID);
 
     // when / then
     vertx.runOnContext(v -> modifyRecordEventHandler.handle(dataImportEventPayload)
       .whenComplete((eventPayload, throwable) -> testContext.verify(() -> {
-      assertNull(throwable);
-      assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
+        assertNull(throwable);
+        assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
-      Record actualRecord =
-        Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
-        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
-      assertEquals(Record.State.ACTUAL, actualRecord.getState());
-      assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
-      validate005Field(expectedDate, actualRecord);
-      recordService.getRecordById(actualRecord.getId(), CENTRAL_TENANT_ID)
-        .onComplete(ar -> {
-          assertTrue(ar.succeeded());
-          assertTrue(ar.result().isPresent());
-          validate005Field(expectedDate, actualRecord);
-          snapshotService.getSnapshotById(marcRecord.getSnapshotId(), CENTRAL_TENANT_ID)
-            .onComplete(ar2 -> {
-              assertTrue(ar2.succeeded());
-              assertTrue(ar2.result().isPresent());
-              assertEquals(ar2.result().get().getJobExecutionId(), marcRecord.getSnapshotId());
-              testContext.completeNow();
-            });
-        });
-    })));
+        Record actualRecord =
+          Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+        assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
+          getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
+        assertEquals(Record.State.ACTUAL, actualRecord.getState());
+        assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
+        validate005Field(expectedDate, actualRecord);
+        recordService.getRecordById(actualRecord.getId(), CENTRAL_TENANT_VALUE)
+          .onComplete(ar -> {
+            assertTrue(ar.succeeded());
+            assertTrue(ar.result().isPresent());
+            validate005Field(expectedDate, actualRecord);
+            snapshotService.getSnapshotById(marcRecord.getSnapshotId(), CENTRAL_TENANT_VALUE)
+              .onComplete(ar2 -> {
+                assertTrue(ar2.succeeded());
+                assertTrue(ar2.result().isPresent());
+                assertEquals(ar2.result().get().getJobExecutionId(), marcRecord.getSnapshotId());
+                testContext.completeNow();
+              });
+          });
+      })));
   }
 
   @Test
-  void shouldReturnFailedFeatureIfCentralTenantIdIsInPayloadButPayloadHasNoPermissionForCentralRecordUpdate(VertxTestContext testContext) {
+  void shouldReturnFailedFeatureIfCentralTenantIdIsInPayloadButPayloadHasNoPermissionForCentralRecordUpdate(
+    VertxTestContext testContext) {
     // given
     Record incomingRecord = new Record()
       .withParsedRecord(new ParsedRecord().withContent(PARSED_CONTENT))
@@ -399,8 +423,9 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     HashMap<String, String> payloadContext = new HashMap<>();
     payloadContext.put(MARC_BIBLIOGRAPHIC.value(), Json.encode(incomingRecord));
-    payloadContext.put(MATCHED_MARC_BIB_KEY, Json.encode(marcRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
-    payloadContext.put(CENTRAL_TENANT_ID_KEY, CENTRAL_TENANT_ID);
+    payloadContext.put(MATCHED_MARC_BIB_KEY,
+      Json.encode(marcRecord.withSnapshotId(snapshotForRecordUpdate.getJobExecutionId())));
+    payloadContext.put(CENTRAL_TENANT_ID, CENTRAL_TENANT_VALUE);
     payloadContext.put(PERMISSIONS, StringUtils.EMPTY);
 
     profileSnapshotWrapper.getChildSnapshotWrappers().getFirst()
@@ -418,7 +443,7 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
       .withContext(payloadContext)
       .withProfileSnapshot(profileSnapshotWrapper)
       .withCurrentNode(profileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
-      .withAdditionalProperty(USER_ID_HEADER, USER_ID);
+      .withAdditionalProperty(DataImportHeaders.USER_ID, USER_ID);
 
     // when
     CompletableFuture<DataImportEventPayload> future = modifyRecordEventHandler.handle(dataImportEventPayload);
@@ -468,18 +493,18 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // when / then
     vertx.runOnContext(v -> modifyRecordEventHandler.handle(dataImportEventPayload)
       .whenComplete((eventPayload, throwable) -> testContext.verify(() -> {
-      assertNull(throwable);
-      assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
+        assertNull(throwable);
+        assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
-      Record actualRecord =
-        Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
-        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
-      assertEquals(Record.State.ACTUAL, actualRecord.getState());
-      assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
-      validate005Field(expectedDate, actualRecord);
-      testContext.completeNow();
-    })));
+        Record actualRecord =
+          Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+        assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
+          getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
+        assertEquals(Record.State.ACTUAL, actualRecord.getState());
+        assertEquals(dataImportEventPayload.getJobExecutionId(), actualRecord.getSnapshotId());
+        validate005Field(expectedDate, actualRecord);
+        testContext.completeNow();
+      })));
   }
 
   @Test
@@ -519,16 +544,17 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // when / then
     vertx.runOnContext(v -> modifyRecordEventHandler.handle(dataImportEventPayload)
       .whenComplete((eventPayload, throwable) -> testContext.verify(() -> {
-      assertNull(throwable);
-      assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
+        assertNull(throwable);
+        assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
-      Record actualRecord =
-        Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      assertEquals(getParsedContentWithoutDate(expectedParsedContent), getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
-      assertEquals(Record.State.ACTUAL, actualRecord.getState());
-      validate005Field(expectedDate, actualRecord);
-      testContext.completeNow();
-    })));
+        Record actualRecord =
+          Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+        assertEquals(getParsedContentWithoutDate(expectedParsedContent),
+          getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
+        assertEquals(Record.State.ACTUAL, actualRecord.getState());
+        validate005Field(expectedDate, actualRecord);
+        testContext.completeNow();
+      })));
   }
 
   @Test
@@ -569,16 +595,17 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // when / then
     vertx.runOnContext(v -> modifyRecordEventHandler.handle(dataImportEventPayload)
       .whenComplete((eventPayload, throwable) -> testContext.verify(() -> {
-      assertNull(throwable);
-      assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
+        assertNull(throwable);
+        assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
-      Record actualRecord =
-        Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      assertEquals(getParsedContentWithoutDate(expectedParsedContent), getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
-      assertEquals(Record.State.ACTUAL, actualRecord.getState());
-      validate005Field(expectedDate, actualRecord);
-      testContext.completeNow();
-    })));
+        Record actualRecord =
+          Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+        assertEquals(getParsedContentWithoutDate(expectedParsedContent),
+          getParsedContentWithoutDate(actualRecord.getParsedRecord().getContent().toString()));
+        assertEquals(Record.State.ACTUAL, actualRecord.getState());
+        validate005Field(expectedDate, actualRecord);
+        testContext.completeNow();
+      })));
   }
 
   @Test
@@ -679,11 +706,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     String incomingParsedContent =
       "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
-        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+      "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
       "{\"leader\":\"00273cam a2200073Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
-        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}," +
-        "{\"999\":{\"subfields\":[{\"s\":\"43594a90-3269-4988-bcb1-b3aae4c0ffee\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
+      "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"http://id.loc.gov/authorities/names/n2008052404\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}},"
+      +
+      "{\"999\":{\"subfields\":[{\"s\":\"43594a90-3269-4988-bcb1-b3aae4c0ffee\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
 
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 0, testContext);
   }
@@ -693,11 +721,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     String incomingParsedContent =
       "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
-        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+      "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
       "{\"leader\":\"00186cam a2200073Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
-        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}}," +
-        "{\"999\":{\"subfields\":[{\"s\":\"43594a90-3269-4988-bcb1-b3aae4c0ffee\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
+      "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"}],\"ind1\":\"1\",\"ind2\":\" \"}},"
+      +
+      "{\"999\":{\"subfields\":[{\"s\":\"43594a90-3269-4988-bcb1-b3aae4c0ffee\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
 
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 1, testContext);
   }
@@ -707,11 +736,12 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     // given
     String incomingParsedContent =
       "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
-        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+      "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
     String expectedParsedContent =
       "{\"leader\":\"00213cam a2200073Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"}," +
-        "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"}],\"ind1\":\"1\",\"ind2\":\" \"}}," +
-        "{\"999\":{\"subfields\":[{\"s\":\"43594a90-3269-4988-bcb1-b3aae4c0ffee\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
+      "{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"}],\"ind1\":\"1\",\"ind2\":\" \"}},"
+      +
+      "{\"999\":{\"subfields\":[{\"s\":\"43594a90-3269-4988-bcb1-b3aae4c0ffee\"}],\"ind1\":\"f\",\"ind2\":\"f\"}}]}";
 
     verifyBibRecordUpdate(incomingParsedContent, expectedParsedContent, 1, 1, testContext);
   }
@@ -719,7 +749,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
   @Test
   void shouldNotUpdateBibFieldWhen500ErrorGetEntityLinkRequest(VertxTestContext testContext) {
     wireMockServer.stubFor(get(URL_PATH_PATTERN).willReturn(WireMock.serverError()));
-    String incomingParsedContent = "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
+    String incomingParsedContent =
+      "{\"leader\":\"02340cam a2200301Ki 4500\",\"fields\":[{\"001\":\"ybp7406411\"},{\"100\":{\"subfields\":[{\"a\":\"Chin, Staceyann Test,\"},{\"e\":\"author updated.\"},{\"0\":\"test different 0 subfield\"},{\"9\":\"5a56ffa8-e274-40ca-8620-34a23b5b45dd\"}],\"ind1\":\"1\",\"ind2\":\" \"}}]}";
 
     Snapshot snapshotForRecordUpdate1 = new Snapshot().withJobExecutionId(UUID.randomUUID().toString())
       .withStatus(Snapshot.Status.PARSING_IN_PROGRESS);
@@ -785,7 +816,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
           .whenComplete((eventPayload, throwable) -> {
             assertNotNull(throwable);
             assertNull(eventPayload);
-            assertTrue(throwable.getMessage().contains(String.format("Error loading InstanceLinkDtoCollection by instanceId: '%s'", INSTANCE_ID)));
+            assertTrue(throwable.getMessage()
+              .contains(String.format("Error loading InstanceLinkDtoCollection by instanceId: '%s'", INSTANCE_ID)));
             verifyGetAndPut(1, 0, testContext);
             testContext.completeNow();
           });
@@ -843,28 +875,30 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
 
     // when: the first import updates the matched record and commits.
     vertx.runOnContext(v ->
-    modifyRecordEventHandler.handle(dataImportEventPayloadOriginalRecord).whenComplete((eventPayload, throwable) -> {
-      assertNull(throwable);
-      assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
+      modifyRecordEventHandler.handle(dataImportEventPayloadOriginalRecord).whenComplete((eventPayload, throwable) -> {
+        assertNull(throwable);
+        assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
-      Record actualRecord =
-        Json.decodeValue(dataImportEventPayloadOriginalRecord.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
-      assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
-        getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
-      assertEquals(Record.State.ACTUAL, actualRecord.getState());
-      assertEquals(dataImportEventPayloadOriginalRecord.getJobExecutionId(), actualRecord.getSnapshotId());
-      validate005Field(expectedDate, actualRecord);
+        Record actualRecord =
+          Json.decodeValue(dataImportEventPayloadOriginalRecord.getContext().get(MARC_BIBLIOGRAPHIC.value()),
+            Record.class);
+        assertEquals(getParsedContentWithoutLeaderAndDate(expectedParsedContent),
+          getParsedContentWithoutLeaderAndDate(actualRecord.getParsedRecord().getContent().toString()));
+        assertEquals(Record.State.ACTUAL, actualRecord.getState());
+        assertEquals(dataImportEventPayloadOriginalRecord.getJobExecutionId(), actualRecord.getSnapshotId());
+        validate005Field(expectedDate, actualRecord);
 
-      // then: re-importing the same record must be rejected as a duplicate. The second import runs
-      // only after the first has committed, so the two updates never open concurrent transactions on
-      // the same record. Running them concurrently deadlocks under full-suite DB load and can leak a
-      // write past this test that breaks the next test's setUp on idx_records_matched_id_gen.
-      modifyRecordEventHandler.handle(dataImportEventPayloadDuplicateRecord).whenComplete((duplicatePayload, duplicateThrowable) -> {
-        assertNotNull(duplicateThrowable);
-        assertEquals(DuplicateRecordException.class, duplicateThrowable.getClass());
-        testContext.completeNow();
-      });
-    }));
+        // then: re-importing the same record must be rejected as a duplicate. The second import runs
+        // only after the first has committed, so the two updates never open concurrent transactions on
+        // the same record. Running them concurrently deadlocks under full-suite DB load and can leak a
+        // write past this test that breaks the next test's setUp on idx_records_matched_id_gen.
+        modifyRecordEventHandler.handle(dataImportEventPayloadDuplicateRecord)
+          .whenComplete((duplicatePayload, duplicateThrowable) -> {
+            assertNotNull(duplicateThrowable);
+            assertEquals(DuplicateRecordException.class, duplicateThrowable.getClass());
+            testContext.completeNow();
+          });
+      }));
   }
 
   private InstanceLinkDtoCollection constructLinkCollection() {
@@ -954,7 +988,8 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
         modifyRecordEventHandler.handle(dataImportEventPayload)
           .whenComplete((eventPayload, throwable) -> {
             assertNull(throwable);
-            var actualRecord = Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
+            var actualRecord =
+              Json.decodeValue(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()), Record.class);
             assertEquals(Record.State.ACTUAL, actualRecord.getState());
             assertEquals(DI_SRS_MARC_BIB_RECORD_UPDATED.value(), eventPayload.getEventType());
 
@@ -984,23 +1019,6 @@ public class MarcBibUpdateModifyEventHandlerTest extends AbstractLBServiceTest {
     } catch (JsonProcessingException e) {
       testContext.failNow(e);
     }
-  }
-
-  public static String getParsedContentWithoutLeaderAndDate(String parsedContent) {
-    JsonObject parsedContentAsJson = new JsonObject(parsedContent);
-    parsedContentAsJson.remove("leader");
-    removeFieldFromRecord(parsedContentAsJson, TAG_005);
-    removeFieldFromRecord(parsedContentAsJson, TAG_999);
-
-    return parsedContentAsJson.encode();
-  }
-
-  public static String getParsedContentWithoutDate(String parsedContent) {
-    JsonObject parsedContentAsJson = new JsonObject(parsedContent);
-    removeFieldFromRecord(parsedContentAsJson, TAG_005);
-    removeFieldFromRecord(parsedContentAsJson, TAG_999);
-
-    return parsedContentAsJson.encode();
   }
 
   private static JsonObject removeFieldFromRecord(JsonObject recordJson, String tag) {

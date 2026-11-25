@@ -5,6 +5,7 @@
 * [MODSOURCE-1019](https://folio-org.atlassian.net/browse/MODSOURCE-1019) Fix MARC-MARC matching when comparison part is used without a qualifier
 * [MODSOURCE-1021](https://folio-org.atlassian.net/browse/MODSOURCE-1021) Reject duplicate records within one import job on record generation update regardless of timing
 * [MODSOURCE-1026](https://folio-org.atlassian.net/browse/MODSOURCE-1026) Report optimistic locking error instead of "Incoming file may contain duplicates" when record is modified concurrently during import
+* [MODSOURCE-1028](https://folio-org.atlassian.net/browse/MODSOURCE-1028) Do not cache missing job profile snapshot, retry on 404 and send DI_ERROR when the snapshot cannot be obtained
 * [MODSOURCE-1024](https://folio-org.atlassian.net/browse/MODSOURCE-1024) Close idle reactive database connections after DB_CONNECTIONRELEASEDELAY
 * [MODSOURCE-1025](https://folio-org.atlassian.net/browse/MODSOURCE-1025) MARC Authority record is not found by the sub-match profile when more than two records are found by first match profile
   (the changes introduce processing of the current match profile alongside sub-match profiles by combining their criteria into single query for MARC-Authority and MARC-Holdings matching)

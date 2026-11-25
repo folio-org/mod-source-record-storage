@@ -6,6 +6,10 @@ import static org.apache.commons.lang3.StringUtils.isNotEmpty;
 import static org.folio.dao.util.MarcUtil.reorderMarcRecordFields;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByExternalId;
 import static org.folio.dao.util.RecordDaoUtil.filterRecordByNotSnapshotId;
+import static org.folio.dataimport.util.DataImportContextKeys.CENTRAL_TENANT_ID;
+import static org.folio.dataimport.util.DataImportContextKeys.CENTRAL_TENANT_INSTANCE_UPDATED;
+import static org.folio.dataimport.util.DataImportHeaders.RECORD_ID;
+import static org.folio.dataimport.util.DataImportHeaders.USER_ID;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_INVENTORY_INSTANCE_UPDATED_READY_FOR_POST_PROCESSING;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.services.util.AdditionalFieldsUtil.HR_ID_FROM_FIELD;
@@ -40,6 +44,7 @@ import org.folio.DataImportEventPayload;
 import org.folio.MappingProfile;
 import org.folio.dao.util.ParsedRecordDaoUtil;
 import org.folio.dao.util.RecordType;
+import org.folio.dataimport.util.DataImportContextKeys;
 import org.folio.kafka.KafkaConfig;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.processing.events.services.handler.EventHandler;
@@ -60,8 +65,6 @@ import org.jooq.Condition;
 
 public abstract class AbstractPostProcessingEventHandler implements EventHandler {
 
-  private static final String USER_ID_HEADER = "userId";
-  public static final String JOB_EXECUTION_ID_KEY = "JOB_EXECUTION_ID";
   protected static final String HRID_FIELD = "hrid";
   private static final Logger LOG = LogManager.getLogger();
   private static final AtomicInteger indexer = new AtomicInteger();
@@ -70,13 +73,9 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     "Failed to handle event, cause event payload context does not contain needed data";
   private static final String MAPPING_PARAMS_NOT_FOUND_MSG = "MappingParameters was not found by jobExecutionId: '%s'";
   private static final String DATA_IMPORT_IDENTIFIER = "DI";
-  private static final String RECORD_ID_HEADER = "recordId";
   private static final String DISCOVERY_SUPPRESS_FIELD = "discoverySuppress";
   private static final String FAILED_UPDATE_STATE_MSG = "Error during update records state to OLD";
   private static final String ID_FIELD = "id";
-  public static final String POST_PROCESSING_INDICATOR = "POST_PROCESSING";
-  public static final String CENTRAL_TENANT_INSTANCE_UPDATED_FLAG = "CENTRAL_TENANT_INSTANCE_UPDATED";
-  public static final String CENTRAL_TENANT_ID = "CENTRAL_TENANT_ID";
   private final KafkaConfig kafkaConfig;
   private final MappingParametersSnapshotCache mappingParamsCache;
   private final RecordService recordService;
@@ -155,14 +154,14 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
       KafkaHeader.header(XOkapiHeaders.TOKEN, eventPayload.getToken()))
     );
 
-    String recordId = eventPayload.getContext().get(RECORD_ID_HEADER);
+    String recordId = eventPayload.getContext().get(RECORD_ID);
     if (StringUtils.isNotBlank(recordId)) {
-      kafkaHeaders.add(KafkaHeader.header(RECORD_ID_HEADER, recordId));
+      kafkaHeaders.add(KafkaHeader.header(RECORD_ID, recordId));
     }
 
-    String userId = eventPayload.getContext().get(USER_ID_HEADER);
+    String userId = eventPayload.getContext().get(USER_ID);
     if (StringUtils.isNotBlank(userId)) {
-      kafkaHeaders.add(KafkaHeader.header(USER_ID_HEADER, userId));
+      kafkaHeaders.add(KafkaHeader.header(USER_ID, userId));
     }
 
     String requestId = eventPayload.getContext().get(XOkapiHeaders.REQUEST_ID);
@@ -203,7 +202,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
     var eventContext = dataImportEventPayload.getContext();
     String entityAsString = eventContext.get(getExternalType().value());
     String recordAsString = eventContext.get(getMarcType().value());
-    String userId = (String) dataImportEventPayload.getAdditionalProperties().get(USER_ID_HEADER);
+    String userId = (String) dataImportEventPayload.getAdditionalProperties().get(USER_ID);
 
     if (isEmpty(entityAsString) || isEmpty(recordAsString)) {
       LOG.warn(EVENT_HAS_NO_DATA_MSG + " jobExecutionId={}", dataImportEventPayload.getJobExecutionId());
@@ -237,7 +236,7 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   private String prepareReplyEventPayload(DataImportEventPayload dataImportEventPayload, Record record) {
     record.getParsedRecord().setContent(ParsedRecordDaoUtil.normalizeContent(record.getParsedRecord()));
     HashMap<String, String> context = dataImportEventPayload.getContext();
-    context.put(JOB_EXECUTION_ID_KEY, dataImportEventPayload.getJobExecutionId());
+    context.put(DataImportContextKeys.JOB_EXECUTION_ID, dataImportEventPayload.getJobExecutionId());
     context.put(getRecordType().value(), Json.encode(record));
     context.put(DATA_IMPORT_IDENTIFIER, Boolean.TRUE.toString());
     context.put(getMarcType().value(), Json.encode(record));
@@ -347,14 +346,14 @@ public abstract class AbstractPostProcessingEventHandler implements EventHandler
   }
 
   private static boolean centralTenantOperationExists(DataImportEventPayload dataImportEventPayload) {
-    return dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG) != null &&
-      dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG).equals("true");
+    return dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED) != null &&
+      dataImportEventPayload.getContext().get(CENTRAL_TENANT_INSTANCE_UPDATED).equals("true");
   }
 
   private Future<Record> saveRecordForCentralTenant(DataImportEventPayload dataImportEventPayload, Record
     record, String jobExecutionId) {
     String centralTenantId = dataImportEventPayload.getContext().get(CENTRAL_TENANT_ID);
-    dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED_FLAG);
+    dataImportEventPayload.getContext().remove(CENTRAL_TENANT_INSTANCE_UPDATED);
     LOG.info("handle:: Processing AbstractPostProcessingEventHandler - saving record by jobExecutionId: {} for the central tenantId: {}", jobExecutionId, centralTenantId);
     var okapiHeaders = toOkapiHeaders(dataImportEventPayload);
     if (centralTenantId != null) {

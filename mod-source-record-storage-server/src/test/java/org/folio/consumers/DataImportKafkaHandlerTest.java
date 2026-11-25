@@ -1,17 +1,19 @@
 package org.folio.consumers;
 
 import static org.apache.commons.lang3.StringUtils.EMPTY;
-import static org.folio.consumers.DataImportKafkaHandler.CHUNK_ID_HEADER;
-import static org.folio.consumers.DataImportKafkaHandler.JOB_EXECUTION_ID_HEADER;
-import static org.folio.consumers.DataImportKafkaHandler.PROFILE_SNAPSHOT_ID_KEY;
-import static org.folio.consumers.DataImportKafkaHandler.RECORD_ID_HEADER;
-import static org.folio.consumers.DataImportKafkaHandler.USER_ID_HEADER;
+import static org.folio.dataimport.util.DataImportContextKeys.JOB_PROFILE_SNAPSHOT_ID;
+import static org.folio.dataimport.util.DataImportHeaders.CHUNK_ID;
+import static org.folio.dataimport.util.DataImportHeaders.JOB_EXECUTION_ID;
+import static org.folio.dataimport.util.DataImportHeaders.RECORD_ID;
+import static org.folio.dataimport.util.DataImportHeaders.USER_ID;
 import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
 import static org.folio.okapi.common.XOkapiHeaders.PERMISSIONS;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_COMPLETED;
+import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_ERROR;
 import static org.folio.rest.jaxrs.model.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -35,7 +37,6 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -58,11 +59,13 @@ import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.services.caches.CancelledJobsIdsCache;
 import org.folio.services.caches.JobProfileSnapshotCache;
+import org.folio.services.exceptions.ProfileSnapshotNotFoundException;
 import org.folio.services.util.KafkaTestUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -127,14 +130,14 @@ public class DataImportKafkaHandlerTest {
   void setUp() {
     KafkaTestUtil.clearAllTopics(getConsumerProperties());
     when(profileSnapshotCacheMock.get(anyString(), any(ConnectionParams.class)))
-      .thenReturn(Future.succeededFuture(Optional.of(jobProfileSnapshotWrapper)));
+      .thenReturn(Future.succeededFuture(jobProfileSnapshotWrapper));
     when(cancelledJobsIdsCacheMock.contains(anyString())).thenReturn(false);
     when(mockedEventHandler.isEligible(any(DataImportEventPayload.class)))
       .thenReturn(true);
     doAnswer(invocation -> CompletableFuture.completedFuture(invocation.<DataImportEventPayload>getArgument(0)))
       .when(mockedEventHandler).handle(any(DataImportEventPayload.class));
-    dataImportKafkaHandler = new DataImportKafkaHandler(vertx, profileSnapshotCacheMock,
-      cancelledJobsIdsCacheMock, kafkaConfig);
+    dataImportKafkaHandler = new DataImportKafkaHandler(profileSnapshotCacheMock,
+      cancelledJobsIdsCacheMock, new DiErrorEventSender(vertx, kafkaConfig));
     EventManager.clearEventHandlers();
     EventManager.registerEventHandler(mockedEventHandler);
     EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, 1);
@@ -161,7 +164,7 @@ public class DataImportKafkaHandlerTest {
       .withOkapiUrl(OKAPI_URL)
       .withToken(EMPTY)
       .withContext(new HashMap<>(Map.of(
-        PROFILE_SNAPSHOT_ID_KEY, jobProfileSnapshotWrapper.getId()
+        JOB_PROFILE_SNAPSHOT_ID, jobProfileSnapshotWrapper.getId()
       )));
 
     Event event = new Event()
@@ -171,9 +174,9 @@ public class DataImportKafkaHandlerTest {
 
     List<KafkaHeader> headers = List.of(
       new KafkaHeaderImpl(PERMISSIONS, expectedPermissions),
-      new KafkaHeaderImpl(USER_ID_HEADER, expectedUserId),
-      new KafkaHeaderImpl(RECORD_ID_HEADER, expectedRecordId),
-      new KafkaHeaderImpl(CHUNK_ID_HEADER, expectedChunkId));
+      new KafkaHeaderImpl(USER_ID, expectedUserId),
+      new KafkaHeaderImpl(RECORD_ID, expectedRecordId),
+      new KafkaHeaderImpl(CHUNK_ID, expectedChunkId));
 
     KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
     when(kafkaRecord.headers()).thenReturn(headers);
@@ -188,9 +191,9 @@ public class DataImportKafkaHandlerTest {
       verify(mockedEventHandler).handle(payloadCaptor.capture());
       DataImportEventPayload payload = payloadCaptor.getValue();
       assertEquals(expectedPermissions, payload.getContext().get(PERMISSIONS));
-      assertEquals(expectedUserId, payload.getContext().get(USER_ID_HEADER));
-      assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID_HEADER));
-      assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID_HEADER));
+      assertEquals(expectedUserId, payload.getContext().get(USER_ID));
+      assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID));
+      assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID));
       verifyEventPublished(DI_COMPLETED.value());
       testContext.completeNow();
     })));
@@ -208,13 +211,13 @@ public class DataImportKafkaHandlerTest {
       .withJobExecutionId(cancelledJobId)
       .withTenant(TENANT_ID)
       .withOkapiUrl(OKAPI_URL)
-      .withContext(new HashMap<>(Map.of(PROFILE_SNAPSHOT_ID_KEY, jobProfileSnapshotWrapper.getId())));
+      .withContext(new HashMap<>(Map.of(JOB_PROFILE_SNAPSHOT_ID, jobProfileSnapshotWrapper.getId())));
 
     Event event = new Event().withId("01").withEventPayload(Json.encode(dataImportEventPayload));
     List<KafkaHeader> headers = List.of(
-      KafkaHeader.header(RECORD_ID_HEADER, UUID.randomUUID().toString()),
-      KafkaHeader.header(CHUNK_ID_HEADER, UUID.randomUUID().toString()),
-      KafkaHeader.header(JOB_EXECUTION_ID_HEADER, cancelledJobId)
+      KafkaHeader.header(RECORD_ID, UUID.randomUUID().toString()),
+      KafkaHeader.header(CHUNK_ID, UUID.randomUUID().toString()),
+      KafkaHeader.header(JOB_EXECUTION_ID, cancelledJobId)
     );
 
     KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
@@ -283,7 +286,7 @@ public class DataImportKafkaHandlerTest {
       .withOkapiUrl(OKAPI_URL)
       .withToken(EMPTY)
       .withContext(new HashMap<>(Map.of(
-        PROFILE_SNAPSHOT_ID_KEY, jobProfileSnapshotWrapper.getId()
+        JOB_PROFILE_SNAPSHOT_ID, jobProfileSnapshotWrapper.getId()
       )));
 
     Event event = new Event()
@@ -292,10 +295,10 @@ public class DataImportKafkaHandlerTest {
       .withEventPayload(Json.encode(eventPayload));
 
     List<KafkaHeader> headers = List.of(
-      new KafkaHeaderImpl(RECORD_ID_HEADER, expectedRecordId),
-      new KafkaHeaderImpl(CHUNK_ID_HEADER, expectedChunkId),
-      new KafkaHeaderImpl(USER_ID_HEADER, expectedUserId),
-      new KafkaHeaderImpl(JOB_EXECUTION_ID_HEADER, cancelledJobId)
+      new KafkaHeaderImpl(RECORD_ID, expectedRecordId),
+      new KafkaHeaderImpl(CHUNK_ID, expectedChunkId),
+      new KafkaHeaderImpl(USER_ID, expectedUserId),
+      new KafkaHeaderImpl(JOB_EXECUTION_ID, cancelledJobId)
     );
 
     KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
@@ -310,9 +313,48 @@ public class DataImportKafkaHandlerTest {
       ArgumentCaptor<DataImportEventPayload> payloadCaptor = ArgumentCaptor.forClass(DataImportEventPayload.class);
       verify(mockedEventHandler).handle(payloadCaptor.capture());
       DataImportEventPayload payload = payloadCaptor.getValue();
-      assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID_HEADER));
-      assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID_HEADER));
-      assertEquals(expectedUserId, payload.getContext().get(USER_ID_HEADER));
+      assertEquals(expectedRecordId, payload.getContext().get(RECORD_ID));
+      assertEquals(expectedChunkId, payload.getContext().get(CHUNK_ID));
+      assertEquals(expectedUserId, payload.getContext().get(USER_ID));
+      testContext.completeNow();
+    })));
+  }
+
+  @DisplayName("should fail future and publish DI_ERROR event when job profile snapshot is not found")
+  @Test
+  void shouldFailFutureAndPublishDiError_whenSnapshotIsNotFound(VertxTestContext testContext) {
+    // given
+    when(profileSnapshotCacheMock.get(anyString(), any(ConnectionParams.class)))
+      .thenReturn(Future.failedFuture(new ProfileSnapshotNotFoundException("not found")));
+
+    DataImportEventPayload eventPayload = new DataImportEventPayload()
+      .withEventType(DI_SRS_MARC_BIB_RECORD_MATCHED.value())
+      .withJobExecutionId(UUID.randomUUID().toString())
+      .withCurrentNode(jobProfileSnapshotWrapper.getChildSnapshotWrappers().getFirst())
+      .withTenant(TENANT_ID)
+      .withOkapiUrl(OKAPI_URL)
+      .withToken(EMPTY)
+      .withContext(new HashMap<>(Map.of(JOB_PROFILE_SNAPSHOT_ID, jobProfileSnapshotWrapper.getId())));
+    Event event = new Event()
+      .withEventType(DI_SRS_MARC_BIB_RECORD_MATCHED.value())
+      .withId(UUID.randomUUID().toString())
+      .withEventPayload(Json.encode(eventPayload));
+    List<KafkaHeader> headers = List.of(
+      new KafkaHeaderImpl(RECORD_ID, UUID.randomUUID().toString()),
+      new KafkaHeaderImpl(CHUNK_ID, UUID.randomUUID().toString()),
+      new KafkaHeaderImpl(USER_ID, UUID.randomUUID().toString()));
+    KafkaConsumerRecord<String, byte[]> kafkaRecord = mock(KafkaConsumerRecord.class);
+    when(kafkaRecord.headers()).thenReturn(headers);
+    when(kafkaRecord.value()).thenReturn(Json.encode(event).getBytes());
+
+    // when
+    Future<String> future = dataImportKafkaHandler.handle(kafkaRecord);
+
+    // then
+    future.onComplete(testContext.failing(error -> testContext.verify(() -> {
+      assertThat(error).isInstanceOf(ProfileSnapshotNotFoundException.class);
+      verify(mockedEventHandler, never()).handle(any(DataImportEventPayload.class));
+      verifyEventPublished(DI_ERROR.value());
       testContext.completeNow();
     })));
   }

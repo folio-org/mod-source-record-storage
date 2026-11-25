@@ -131,6 +131,10 @@ After setup, it is good to check logs in all related modules for errors. Data im
   * "SRS\_MARCINDEXERS\_DELETE\_INTERVAL\_SECONDS": 1800
   * "SRS\_MARCINDEXERS\_DELETE\_PLANNEDTIME" (no default, comma separated list of times of the day, for example `01:55,03:55`)
   * "SRS\_MARCINDEXERS\_DELETE\_DIRTYBATCHSIZE": 100000
+* Job profile snapshot cache (relevant from module version 6.1.0):
+  * "_srs.profile-snapshot-cache.expiration.time.seconds_": 3600
+  * "_srs.profile-snapshot-cache.not-found.retry.attempts_": 3 (total attempts when the snapshot is not found, HTTP 404)
+  * "_srs.profile-snapshot-cache.not-found.retry.delay.ms_": 500
 * Variables for setting number of partitions of topics:
   * DI_PARSED_RECORDS_CHUNK_SAVED_PARTITIONS
   * DI_SRS_MARC_AUTHORITY_RECORD_MATCHED_PARTITIONS
